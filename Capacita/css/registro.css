@@ -1,0 +1,13 @@
+@import url("./login.css");
+
+.terminos-enlace {
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.18s ease;
+}
+
+.terminos-enlace:hover {
+    color: #1d4ed8;
+}
