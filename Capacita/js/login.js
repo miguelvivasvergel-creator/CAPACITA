@@ -1,3 +1,9 @@
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+const supabaseUrl = 'https://ideubwvlffbapneqftwj.supabase.co'
+const supabaseKey = 'sb_publishable_Q5ynxzxEh3b5ildr02QEXQ_eTx9xmXZ'
+const supabase = createClient(supabaseUrl, supabaseKey)
+
 "use strict";
 
 const vistaLogin = document.getElementById("vistaLogin");
@@ -236,17 +242,45 @@ if (formRegistro) {
 
         if (valido && botonRegistro) {
             const textoOriginal = botonRegistro.querySelector(".texto-boton");
-            if (textoOriginal) textoOriginal.textContent = "Creando cuenta...";
+            if (textoOriginal) textoOriginal.textContent = "Creando cuenta en BD...";
             botonRegistro.disabled = true;
 
-            window.setTimeout(() => {
-                if (textoOriginal) textoOriginal.textContent = "Crear cuenta gratis";
-                botonRegistro.disabled = false;
-                mostrarToast("¡Cuenta creada con éxito! Bienvenido a Capacita.");
-                window.setTimeout(() => {
-                    cambiarVista("login");
-                }, 800);
-            }, 750);
+            // 1. Conexión real a Supabase
+            // Como la función principal no es async, usamos una función autoejecutable
+            (async () => {
+                try {
+                    const { data, error } = await supabase
+                        .from('usuarios')
+                        .insert([
+                            { 
+                                nombre: nombre, 
+                                email: correo, 
+                                password_hash: contrasena // Recuerda que en V2 esto lo encriptaremos
+                            }
+                        ]);
+
+                    if (error) {
+                        // Si el correo ya existe, Supabase nos avisará
+                        mostrarToast("Error: " + error.message);
+                        if (textoOriginal) textoOriginal.textContent = "Crear cuenta gratis";
+                        botonRegistro.disabled = false;
+                        return;
+                    }
+
+                    // 2. Éxito: Mostrar mensaje y cambiar vista
+                    mostrarToast("¡Cuenta guardada en Supabase con éxito!");
+                    window.setTimeout(() => {
+                        cambiarVista("login");
+                        if (textoOriginal) textoOriginal.textContent = "Crear cuenta gratis";
+                        botonRegistro.disabled = false;
+                        formRegistro.reset(); // Limpiamos el formulario
+                    }, 1500);
+
+                } catch (err) {
+                    mostrarToast("Error de conexión con la base de datos.");
+                    botonRegistro.disabled = false;
+                }
+            })();
         }
     });
 }
