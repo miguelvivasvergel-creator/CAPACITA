@@ -391,7 +391,7 @@ if (formRegistro) {
     }
 
     initNodes();
-
+/*/
     function animate() {
         mouse.x += (mouse.targetX - mouse.x) * 0.06;
         mouse.y += (mouse.targetY - mouse.y) * 0.06;
@@ -437,4 +437,5 @@ if (formRegistro) {
     }
 
     animate();
+    /*/
 })();

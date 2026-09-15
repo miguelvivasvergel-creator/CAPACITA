@@ -181,6 +181,9 @@ const terminosReg = document.getElementById("terms");
 const errorNombreReg = document.getElementById("errorNombre");
 const errorCorreoReg = document.getElementById("errorCorreoRegistro");
 const errorContrasenaReg = document.getElementById("errorContrasenaRegistro");
+const estadoNombre = document.getElementById("estadoNombre");
+const estadoCorreoRegistro = document.getElementById("estadoCorreoRegistro");
+const estadoContrasenaRegistro = document.getElementById("estadoContrasenaRegistro");
 const botonRegistro = document.getElementById("botonRegistro");
 
 if (formRegistro) {
@@ -258,7 +261,50 @@ if (formRegistro) {
         });
     }
 });
+entradaNombreReg?.addEventListener("input", () => {
+    const nombre = entradaNombreReg.value.trim();
 
+    entradaNombreReg.classList.remove("is-invalid", "is-valid");
+    estadoNombre.classList.remove("valido");
+
+    if (nombre.length >= 3) {
+        entradaNombreReg.classList.add("is-valid");
+        estadoNombre.textContent = "✓ Nombre válido";
+        estadoNombre.classList.add("valido");
+    } else {
+        estadoNombre.textContent = "";
+    }
+});
+
+entradaCorreoReg?.addEventListener("input", () => {
+    const correoValido = entradaCorreoReg.validity.valid && entradaCorreoReg.value.trim() !== "";
+
+    entradaCorreoReg.classList.remove("is-invalid", "is-valid");
+    estadoCorreoRegistro.classList.remove("valido");
+
+    if (correoValido) {
+        entradaCorreoReg.classList.add("is-valid");
+        estadoCorreoRegistro.textContent = "✓ Correo válido";
+        estadoCorreoRegistro.classList.add("valido");
+    } else {
+        estadoCorreoRegistro.textContent = "";
+    }
+});
+
+entradaContrasenaReg?.addEventListener("input", () => {
+    const contrasenaValida = entradaContrasenaReg.value.length >= 8;
+
+    entradaContrasenaReg.classList.remove("is-invalid", "is-valid");
+    estadoContrasenaRegistro.classList.remove("valido");
+
+    if (contrasenaValida) {
+        entradaContrasenaReg.classList.add("is-valid");
+        estadoContrasenaRegistro.textContent = "✓ Contraseña válida";
+        estadoContrasenaRegistro.classList.add("valido");
+    } else {
+        estadoContrasenaRegistro.textContent = "";
+    }
+});
 (function () {
     const canvas = document.getElementById("networkCanvas");
     if (!canvas) return;
