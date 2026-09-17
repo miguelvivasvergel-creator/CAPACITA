@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function LoginForm({ onSwitchToRegister, showToast }) {
+export default function LoginForm({ onSwitchToRegister, showToast, onLoginSuccess }) {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -16,7 +16,6 @@ export default function LoginForm({ onSwitchToRegister, showToast }) {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    // Limpiar error del campo al escribir
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -51,11 +50,23 @@ export default function LoginForm({ onSwitchToRegister, showToast }) {
     setTimeout(() => {
       setIsLoading(false);
       showToast("Sesión iniciada correctamente.");
-    }, 750);
+      if (onLoginSuccess) {
+        onLoginSuccess({
+          name: "Miguel Vivas",
+          email: formData.email.trim(),
+        });
+      }
+    }, 600);
   };
 
   const handleGoogleLogin = () => {
-    showToast("Acceso con Google listo para conectar en backend.");
+    showToast("Sesión iniciada con Google.");
+    if (onLoginSuccess) {
+      onLoginSuccess({
+        name: "Miguel Vivas",
+        email: "miguel@gmail.com",
+      });
+    }
   };
 
   return (
