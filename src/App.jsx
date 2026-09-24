@@ -3,11 +3,18 @@ import NetworkCanvas from './components/NetworkCanvas';
 import HeroSection from './components/HeroSection';
 import AuthCard from './components/AuthCard';
 import Toast from './components/Toast';
+import {
+  registrarUsuario,
+  loginUsuario,
+  loginConGoogle,
+  obtenerUsuarioActual,
+} from './services/supabase';
 
 export default function App() {
   const [modo, setModo] = useState('login');
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+  const [usuarioActual, setUsuarioActual] = useState(null);
   const toastTimeoutRef = useRef(null);
 
   const mostrarToast = useCallback((msg) => {
@@ -16,7 +23,7 @@ export default function App() {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     toastTimeoutRef.current = setTimeout(() => {
       setToastVisible(false);
-    }, 3000);
+    }, 3500);
   }, []);
 
   const handleCambiarModo = (nuevoModo) => {
@@ -27,6 +34,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    // 1. Manejo del historial del navegador
     const handlePopState = (e) => {
       if (e.state && e.state.vista) {
         setModo(e.state.vista);
@@ -42,22 +50,54 @@ export default function App() {
     }
 
     window.addEventListener('popstate', handlePopState);
+
+    // 2. Verificar si ya hay una sesión activa de Supabase
+    obtenerUsuarioActual().then((user) => {
+      if (user) {
+        setUsuarioActual(user);
+      }
+    });
+
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleGoogleClick = () => {
-    mostrarToast('Iniciando conexión con Google...');
+  const handleGoogleClick = async () => {
+    mostrarToast('Redirigiendo a Google...');
+    const result = await loginConGoogle();
+    if (!result.success) {
+      mostrarToast(`Error: ${result.error}`);
+    }
   };
 
-  const handleLoginExitoso = (datos) => {
-    mostrarToast(`¡Bienvenido de nuevo, ${datos.correo}!`);
+  const handleLoginExitoso = async ({ correo, contrasena }) => {
+    const result = await loginUsuario({ email: correo, password: contrasena });
+    if (result.success) {
+      setUsuarioActual(result.data);
+      mostrarToast(`¡Bienvenido de nuevo, ${result.data.name}!`);
+      return true;
+    } else {
+      mostrarToast(`Error: ${result.error}`);
+      return false;
+    }
   };
 
-  const handleRegisterExitoso = (datos) => {
-    mostrarToast(`¡Cuenta creada con éxito! Bienvenido, ${datos.fullname}.`);
-    setTimeout(() => {
-      handleCambiarModo('login');
-    }, 1200);
+  const handleRegisterExitoso = async ({ fullname, email, password }) => {
+    const result = await registrarUsuario({
+      nombre: fullname,
+      email: email,
+      password: password,
+    });
+
+    if (result.success) {
+      mostrarToast(`¡Cuenta creada con éxito! Bienvenido, ${fullname}.`);
+      setTimeout(() => {
+        handleCambiarModo('login');
+      }, 1500);
+      return true;
+    } else {
+      mostrarToast(`Error: ${result.error}`);
+      return false;
+    }
   };
 
   return (

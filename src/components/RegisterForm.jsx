@@ -7,9 +7,10 @@ export default function RegisterForm({ onIrLogin, onGoogleClick, onRegisterExito
   const [skill, setSkill] = useState('');
   const [terms, setTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [errores, setErrores] = useState({});
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const nuevosErrores = {};
 
@@ -23,8 +24,8 @@ export default function RegisterForm({ onIrLogin, onGoogleClick, onRegisterExito
       nuevosErrores.email = 'El formato de correo no es válido.';
     }
 
-    if (!password || password.length < 8) {
-      nuevosErrores.password = 'La contraseña debe tener mínimo 8 caracteres.';
+    if (!password || password.length < 6) {
+      nuevosErrores.password = 'La contraseña debe tener mínimo 6 caracteres.';
     }
 
     if (!terms) {
@@ -34,7 +35,16 @@ export default function RegisterForm({ onIrLogin, onGoogleClick, onRegisterExito
     setErrores(nuevosErrores);
 
     if (Object.keys(nuevosErrores).length === 0) {
-      onRegisterExitoso({ fullname, email, password, skill });
+      setLoading(true);
+      const ok = await onRegisterExitoso({ fullname, email, password, skill });
+      setLoading(false);
+      if (ok) {
+        setFullname('');
+        setEmail('');
+        setPassword('');
+        setSkill('');
+        setTerms(false);
+      }
     }
   };
 
@@ -111,7 +121,7 @@ export default function RegisterForm({ onIrLogin, onGoogleClick, onRegisterExito
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8"></path>
+                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2-0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8"></path>
               </svg>
             </div>
             <input
@@ -147,7 +157,7 @@ export default function RegisterForm({ onIrLogin, onGoogleClick, onRegisterExito
                 setPassword(e.target.value);
                 if (errores.password) setErrores({ ...errores, password: '' });
               }}
-              placeholder="Mínimo 8 caracteres"
+              placeholder="Mínimo 6 caracteres"
               className={`vivid-input block w-full rounded-2xl pl-10 pr-11 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 font-body ${errores.password ? 'is-invalid' : ''}`}
             />
             <button
@@ -213,12 +223,15 @@ export default function RegisterForm({ onIrLogin, onGoogleClick, onRegisterExito
 
         <button
           type="submit"
-          className="w-full mt-1.5 flex items-center justify-center gap-2 py-2.5 px-6 rounded-full text-white boton-primario active:scale-[0.99] font-bold text-xs sm:text-sm shadow-md shadow-blue-500/25 transition duration-150 cursor-pointer"
+          disabled={loading}
+          className="w-full mt-1.5 flex items-center justify-center gap-2 py-2.5 px-6 rounded-full text-white boton-primario active:scale-[0.99] font-bold text-xs sm:text-sm shadow-md shadow-blue-500/25 transition duration-150 cursor-pointer disabled:opacity-75"
         >
-          <span>Crear cuenta gratis</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-          </svg>
+          <span>{loading ? 'Creando cuenta...' : 'Crear cuenta gratis'}</span>
+          {!loading && (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
+            </svg>
+          )}
         </button>
       </form>
 

@@ -5,9 +5,10 @@ export default function LoginForm({ onIrRegistro, onGoogleClick, onLoginExitoso 
   const [contrasena, setContrasena] = useState('');
   const [recordarme, setRecordarme] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [errores, setErrores] = useState({});
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const nuevosErrores = {};
 
@@ -24,7 +25,9 @@ export default function LoginForm({ onIrRegistro, onGoogleClick, onLoginExitoso 
     setErrores(nuevosErrores);
 
     if (Object.keys(nuevosErrores).length === 0) {
-      onLoginExitoso({ correo, contrasena, recordarme });
+      setLoading(true);
+      await onLoginExitoso({ correo, contrasena, recordarme });
+      setLoading(false);
     }
   };
 
@@ -128,12 +131,15 @@ export default function LoginForm({ onIrRegistro, onGoogleClick, onLoginExitoso 
 
         <button
           type="submit"
-          className="w-full mt-2 flex items-center justify-center gap-2 py-3 px-6 rounded-full text-white boton-primario active:scale-[0.99] font-bold text-sm shadow-md shadow-blue-500/25 transition duration-150 cursor-pointer"
+          disabled={loading}
+          className="w-full mt-2 flex items-center justify-center gap-2 py-3 px-6 rounded-full text-white boton-primario active:scale-[0.99] font-bold text-sm shadow-md shadow-blue-500/25 transition duration-150 cursor-pointer disabled:opacity-75"
         >
-          <span>Iniciar sesión</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-          </svg>
+          <span>{loading ? 'Verificando...' : 'Iniciar sesión'}</span>
+          {!loading && (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
+            </svg>
+          )}
         </button>
       </form>
 
