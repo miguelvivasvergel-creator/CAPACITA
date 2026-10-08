@@ -3,6 +3,8 @@ import NetworkCanvas from './components/NetworkCanvas';
 import HeroSection from './components/HeroSection';
 import AuthCard from './components/AuthCard';
 import Toast from './components/Toast';
+import Capacidades from './pages/Capacidades/Capacidades';
+import AppLayout from './components/layout/AppLayout';
 import {
   registrarUsuario,
   loginUsuario,
@@ -15,6 +17,9 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [usuarioActual, setUsuarioActual] = useState(null);
+  const [vista, setVista] = useState(
+    window.location.hash === '#capacidades' ? 'capacidades' : 'auth',
+  );
   const toastTimeoutRef = useRef(null);
 
   const mostrarToast = useCallback((msg) => {
@@ -27,16 +32,29 @@ export default function App() {
   }, []);
 
   const handleCambiarModo = (nuevoModo) => {
+    setVista('auth');
     setModo(nuevoModo);
     const titulo = nuevoModo === 'registro' ? 'Registro — Capacita' : 'Iniciar Sesión — Capacita';
     document.title = titulo;
     window.history.pushState({ vista: nuevoModo }, '', nuevoModo === 'registro' ? '#registro' : '#login');
   };
 
+  const handleIrACapacidades = () => {
+    setVista('capacidades');
+    document.title = 'Capacidades — Capacita';
+    window.history.pushState({ vista: 'capacidades' }, '', '#capacidades');
+  };
+
   useEffect(() => {
     // 1. Manejo del historial del navegador
     const handlePopState = (e) => {
-      if (e.state && e.state.vista) {
+      if (window.location.hash === '#capacidades') {
+        setVista('capacidades');
+      } else {
+        setVista('auth');
+      }
+
+      if (e.state && (e.state.vista === 'login' || e.state.vista === 'registro')) {
         setModo(e.state.vista);
       } else if (window.location.hash === '#registro') {
         setModo('registro');
@@ -55,6 +73,9 @@ export default function App() {
     obtenerUsuarioActual().then((user) => {
       if (user) {
         setUsuarioActual(user);
+      } else if (window.location.hash === '#capacidades') {
+        setVista('auth');
+        window.history.replaceState({ vista: 'login' }, '', '#login');
       }
     });
 
@@ -74,6 +95,7 @@ export default function App() {
     if (result.success) {
       setUsuarioActual(result.data);
       mostrarToast(`¡Bienvenido de nuevo, ${result.data.name}!`);
+      handleIrACapacidades();
       return true;
     } else {
       mostrarToast(`Error: ${result.error}`);
@@ -101,6 +123,14 @@ export default function App() {
   };
 
   return (
+    vista === 'capacidades' && usuarioActual ? (
+  <AppLayout usuario={usuarioActual} seccionActiva="capacidades">
+    <Capacidades />
+  </AppLayout>
+) :(
+    vista === 'capacidades' && usuarioActual ? (
+      <Capacidades />
+    ) : (
     <div className="relative min-h-screen w-full overflow-x-hidden">
       <NetworkCanvas />
 
@@ -150,5 +180,7 @@ export default function App() {
 
       <Toast mensaje={toastMsg} visible={toastVisible} />
     </div>
-  );
+    )
+  )
+);
 }

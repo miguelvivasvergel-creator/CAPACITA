@@ -1,5 +1,5 @@
 /**
- * Datos falsos de capacidades para desarrollo y pruebas del Módulo B (Franklin)
+ * Datos falsos de capacidades para desarrollo y pruebas del Módulo B 
  * Tipos permitidos: 'pdf', 'texto', 'imagen', 'audio', 'datos'
  */
 
