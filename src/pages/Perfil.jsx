@@ -73,7 +73,12 @@ export default function Perfil({ usuario, username, onCambiarSeccion, onConfigur
       </div>
 
       {pestana === 'capacidades' && <ListaCapacidades capacidades={perfil.capabilities} />}
-      {pestana === 'workflows' && <ListaWorkflows workflows={perfil.workflows} />}
+      {pestana === 'workflows' && (
+        <ListaWorkflows
+          workflows={perfil.workflows}
+          onEjecutar={(id) => onCambiarSeccion?.(`ejecutar/workflow/${id}`)}
+        />
+      )}
       {pestana === 'actividad' && (
         <PerfilActividad
           actividad={perfil.activity}

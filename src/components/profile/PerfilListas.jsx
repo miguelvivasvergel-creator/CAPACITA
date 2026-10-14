@@ -58,7 +58,7 @@ export function ListaCapacidades({ capacidades }) {
   );
 }
 
-export function ListaWorkflows({ workflows }) {
+export function ListaWorkflows({ workflows, onEjecutar }) {
   if (workflows.length === 0) {
     return (
       <EstadoVacio
@@ -89,7 +89,18 @@ export function ListaWorkflows({ workflows }) {
             ))}
           </div>
 
-          <p className="mt-3 text-xs font-medium text-slate-400">{wf.uses_count} ejecuciones</p>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-400">{wf.uses_count} ejecuciones</span>
+            <button
+              onClick={() => onEjecutar?.(wf.id)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#1a56db] bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86A1 1 0 008 5.14z" />
+              </svg>
+              Ejecutar
+            </button>
+          </div>
         </article>
       ))}
     </div>

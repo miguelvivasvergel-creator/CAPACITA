@@ -9,6 +9,7 @@ import Capacidades from './pages/Capacidades/Capacidades';
 import Workflows from './pages/Workflows';
 import Comunidad from './pages/Comunidad';
 import Perfil from './pages/Perfil';
+import Ejecutar from './pages/Ejecutar';
 import {
   supabase,
   registrarUsuario,
@@ -18,9 +19,9 @@ import {
   cerrarSesion,
 } from './services/supabase';
 
-const SECCIONES_VALIDAS = ['inicio', 'capacidades', 'workflows', 'comunidad', 'perfil'];
+const SECCIONES_VALIDAS = ['inicio', 'capacidades', 'workflows', 'comunidad', 'perfil', 'ejecutar'];
 
-// La sección es la primera parte del hash: '#perfil/fahida' → 'perfil'
+// La sección es la primera parte del hash: '#perfil/fahida' → 'perfil', '#ejecutar/workflow/wf-001' → 'ejecutar'
 const esSeccionValida = (hash) => SECCIONES_VALIDAS.includes(hash.split('/')[0]);
 
 export default function App() {
@@ -64,6 +65,7 @@ export default function App() {
       workflows: 'Workflows — Capacita',
       comunidad: 'Comunidad — Capacita',
       perfil: 'Perfil — Capacita',
+      ejecutar: 'Ejecutar — Capacita',
     };
     document.title = titulos[seccion.split('/')[0]] || 'Capacita';
     window.history.pushState({ vista: seccion }, '', `#${seccion}`);
@@ -212,8 +214,8 @@ export default function App() {
 
   // Si está autenticado y en una sección de la app
   if (usuarioActual && esSeccionValida(vista)) {
-    // '#perfil/fahida' → seccion = 'perfil', parametro = 'fahida'
-    const [seccion, parametro] = vista.split('/');
+    // '#perfil/fahida' → seccion = 'perfil', parametros = ['fahida']
+    const [seccion, ...parametros] = vista.split('/');
 
     return (
       <AppLayout
@@ -230,12 +232,15 @@ export default function App() {
         {seccion === 'comunidad' && <Comunidad _usuario={usuarioActual} />}
         {seccion === 'perfil' && (
           <Perfil
-            key={parametro}
+            key={parametros[0]}
             usuario={usuarioActual}
-            username={parametro || usuarioActual.username}
+            username={parametros[0] || usuarioActual.username}
             onCambiarSeccion={handleCambiarSeccion}
             onConfigurar={() => mostrarToast('La Configuración la está terminando Miguel (módulo A).')}
           />
+        )}
+        {seccion === 'ejecutar' && (
+          <Ejecutar key={vista} tipo={parametros[0]} id={parametros[1]} />
         )}
         <Toast mensaje={toastMsg} visible={toastVisible} />
       </AppLayout>
