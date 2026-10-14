@@ -26,6 +26,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    # Supabase (solo backend: la service key nunca va al frontend)
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
+    SUPABASE_JWT_SECRET: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
