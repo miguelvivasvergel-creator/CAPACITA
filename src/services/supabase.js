@@ -53,6 +53,8 @@ export function extraerDatosUsuario(authUser, perfil = null) {
   return {
     id: authUser.id,
     email: authUser.email,
+    // Nombre de usuario para la URL del perfil (#perfil/:username)
+    username: perfil?.username || authUser.email?.split('@')[0] || authUser.id,
     name: nombre,
     avatar_url: avatar,
     rol: perfil?.rol || 'usuario',

@@ -8,6 +8,7 @@ import Inicio from './pages/Inicio';
 import Capacidades from './pages/Capacidades/Capacidades';
 import Workflows from './pages/Workflows';
 import Comunidad from './pages/Comunidad';
+import Perfil from './pages/Perfil';
 import {
   supabase,
   registrarUsuario,
@@ -17,7 +18,10 @@ import {
   cerrarSesion,
 } from './services/supabase';
 
-const SECCIONES_VALIDAS = ['inicio', 'capacidades', 'workflows', 'comunidad'];
+const SECCIONES_VALIDAS = ['inicio', 'capacidades', 'workflows', 'comunidad', 'perfil'];
+
+// La sección es la primera parte del hash: '#perfil/fahida' → 'perfil'
+const esSeccionValida = (hash) => SECCIONES_VALIDAS.includes(hash.split('/')[0]);
 
 export default function App() {
   const [modo, setModo] = useState(() =>
@@ -30,7 +34,7 @@ export default function App() {
   
   const initialHash = window.location.hash.replace('#', '');
   const [vista, setVista] = useState(
-    SECCIONES_VALIDAS.includes(initialHash) ? initialHash : 'auth'
+    esSeccionValida(initialHash) ? initialHash : 'auth'
   );
 
   const toastTimeoutRef = useRef(null);
@@ -59,8 +63,9 @@ export default function App() {
       capacidades: 'Capacidades — Capacita',
       workflows: 'Workflows — Capacita',
       comunidad: 'Comunidad — Capacita',
+      perfil: 'Perfil — Capacita',
     };
-    document.title = titulos[seccion] || 'Capacita';
+    document.title = titulos[seccion.split('/')[0]] || 'Capacita';
     window.history.pushState({ vista: seccion }, '', `#${seccion}`);
   };
 
@@ -82,7 +87,7 @@ export default function App() {
     // 1. Manejo del historial del navegador
     const handlePopState = (e) => {
       const hash = window.location.hash.replace('#', '');
-      if (SECCIONES_VALIDAS.includes(hash)) {
+      if (esSeccionValida(hash)) {
         setVista(hash);
       } else {
         setVista('auth');
@@ -105,7 +110,7 @@ export default function App() {
         if (user) {
           setUsuarioActual(user);
           const hash = window.location.hash.replace('#', '');
-          if (SECCIONES_VALIDAS.includes(hash)) {
+          if (esSeccionValida(hash)) {
             setVista(hash);
           } else {
             setVista('inicio');
@@ -113,7 +118,7 @@ export default function App() {
           }
         } else {
           const hash = window.location.hash.replace('#', '');
-          if (SECCIONES_VALIDAS.includes(hash)) {
+          if (esSeccionValida(hash)) {
             setVista('auth');
             window.history.replaceState({ vista: 'login' }, '', '#login');
           }
@@ -129,7 +134,7 @@ export default function App() {
         const user = await obtenerUsuarioActual();
         if (user) {
           setUsuarioActual(user);
-          setVista((prev) => (SECCIONES_VALIDAS.includes(prev) ? prev : 'inicio'));
+          setVista((prev) => (esSeccionValida(prev) ? prev : 'inicio'));
         }
       } else if (event === 'SIGNED_OUT') {
         setUsuarioActual(null);
@@ -206,20 +211,33 @@ export default function App() {
   }
 
   // Si está autenticado y en una sección de la app
-  if (usuarioActual && SECCIONES_VALIDAS.includes(vista)) {
+  if (usuarioActual && esSeccionValida(vista)) {
+    // '#perfil/fahida' → seccion = 'perfil', parametro = 'fahida'
+    const [seccion, parametro] = vista.split('/');
+
     return (
       <AppLayout
         usuario={usuarioActual}
-        seccionActiva={vista}
+        seccionActiva={seccion}
         onCambiarSeccion={handleCambiarSeccion}
         onCerrarSesion={handleCerrarSesion}
       >
-        {vista === 'inicio' && (
+        {seccion === 'inicio' && (
           <Inicio usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
-        {vista === 'capacidades' && <Capacidades />}
-        {vista === 'workflows' && <Workflows _usuario={usuarioActual} />}
-        {vista === 'comunidad' && <Comunidad _usuario={usuarioActual} />}
+        {seccion === 'capacidades' && <Capacidades />}
+        {seccion === 'workflows' && <Workflows _usuario={usuarioActual} />}
+        {seccion === 'comunidad' && <Comunidad _usuario={usuarioActual} />}
+        {seccion === 'perfil' && (
+          <Perfil
+            key={parametro}
+            usuario={usuarioActual}
+            username={parametro || usuarioActual.username}
+            onCambiarSeccion={handleCambiarSeccion}
+            onConfigurar={() => mostrarToast('La Configuración la está terminando Miguel (módulo A).')}
+          />
+        )}
+        <Toast mensaje={toastMsg} visible={toastVisible} />
       </AppLayout>
     );
   }
