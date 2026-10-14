@@ -1,11 +1,12 @@
 // src/pages/Perfil.jsx
 // Perfil propio y público (#perfil/:username). Módulo D — Fahida.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PerfilEncabezado from '../components/profile/PerfilEncabezado';
 import PerfilTarjetas from '../components/profile/PerfilTarjetas';
 import PerfilActividad from '../components/profile/PerfilActividad';
+import EditarPerfilModal from '../components/profile/EditarPerfilModal';
 import { ListaCapacidades, ListaWorkflows, EstadoVacio } from '../components/profile/PerfilListas';
-import { obtenerPerfilMock } from '../mocks/profile';
+import { cargarPerfil } from '../services/perfil';
 
 const PESTANAS = [
   { id: 'capacidades', label: 'Capacidades' },
@@ -13,13 +14,36 @@ const PESTANAS = [
   { id: 'actividad', label: 'Actividad' },
 ];
 
+function PerfilCargando() {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6 animate-pulse">
+      <div className="h-64 rounded-2xl bg-slate-100" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((n) => <div key={n} className="h-20 rounded-2xl bg-slate-100" />)}
+      </div>
+      <div className="h-40 rounded-2xl bg-slate-100" />
+    </div>
+  );
+}
+
 export default function Perfil({ usuario, username, onCambiarSeccion, onConfigurar }) {
+  const [datos, setDatos] = useState(undefined); // undefined = cargando, null = no existe
   const [pestana, setPestana] = useState('capacidades');
+  const [editando, setEditando] = useState(false);
 
-  const perfil = obtenerPerfilMock(username, usuario);
-  const esPropio = username === usuario?.username;
+  useEffect(() => {
+    let activo = true;
+    cargarPerfil(username, usuario).then((resultado) => {
+      if (activo) setDatos(resultado);
+    });
+    return () => {
+      activo = false;
+    };
+  }, [username, usuario]);
 
-  if (!perfil) {
+  if (datos === undefined) return <PerfilCargando />;
+
+  if (datos === null) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <EstadoVacio
@@ -31,18 +55,32 @@ export default function Perfil({ usuario, username, onCambiarSeccion, onConfigur
     );
   }
 
+  const { perfil, deEjemplo } = datos;
+  const esPropio = username === usuario?.username;
+
   const contadores = {
     capacidades: perfil.capabilities.length,
     workflows: perfil.workflows.length,
     actividad: perfil.activity.length,
   };
 
+  const alGuardar = (actualizado) => {
+    setDatos({ ...datos, perfil: { ...perfil, ...actualizado } });
+    setEditando(false);
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+      {deEjemplo && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          Algunos datos son de ejemplo mientras se conectan todos los módulos.
+        </p>
+      )}
+
       <PerfilEncabezado
         perfil={perfil}
         esPropio={esPropio}
-        onEditar={() => {}}
+        onEditar={() => setEditando(true)}
         onConfigurar={onConfigurar}
       />
 
@@ -83,6 +121,14 @@ export default function Perfil({ usuario, username, onCambiarSeccion, onConfigur
         <PerfilActividad
           actividad={perfil.activity}
           onVerWorkflow={() => onCambiarSeccion?.('workflows')}
+        />
+      )}
+
+      {editando && (
+        <EditarPerfilModal
+          perfil={perfil}
+          onCerrar={() => setEditando(false)}
+          onGuardado={alGuardar}
         />
       )}
     </div>
