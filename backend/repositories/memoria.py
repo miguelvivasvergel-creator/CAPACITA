@@ -125,6 +125,16 @@ WORKFLOWS: list[dict] = [
         "clones_count": 0,
     },
     {
+        "id": "wf-003",
+        "owner_id": "usr-demo-2",
+        "name": "Traducir y resumir",
+        "description": "Traduce un texto al español y luego genera un resumen corto.",
+        "visibility": "public",
+        "steps": ["cap-003", "cap-004"],
+        "uses_count": 15,
+        "clones_count": 3,
+    },
+    {
         "id": "wf-010",
         "owner_id": "usr-demo-3",
         "name": "Contrato a resumen",
@@ -176,6 +186,11 @@ RUNS: list[dict] = [
         "finished_at": AHORA - timedelta(days=1) + timedelta(seconds=3.1),
     },
 ]
+
+
+# Archivos subidos ({ id, owner_id, name, type }). Los registra POST /files (Módulo B)
+# para que POST /runs pueda comprobar que el archivo de entrada es del usuario.
+ARCHIVOS: list[dict] = []
 
 
 def buscar_por_id(lista: list[dict], item_id: str) -> dict | None:

@@ -1,8 +1,8 @@
 /**
  * Datos falsos para la pantalla de Ejecución del Módulo D (Fahida).
- * Cada "ejecutable" es un workflow o una capacidad con sus pasos y permisos.
+ * Reemplazan a GET /workflows/{id} (Módulo C) mientras ese endpoint no exista.
+ * Los ids, pasos y permisos coinciden con backend/repositories/memoria.py.
  */
-import imagenEjemplo from '../assets/hero.png';
 
 export const mockEjecutables = [
   {
@@ -13,19 +13,15 @@ export const mockEjecutables = [
     input_type: 'pdf',
     output_type: 'texto',
     steps: [
-      { name: 'Extraer texto', input_type: 'pdf', output_type: 'texto' },
-      { name: 'Traducir', input_type: 'texto', output_type: 'texto' },
-      { name: 'Resumir', input_type: 'texto', output_type: 'texto' },
+      { name: 'Extraer texto de PDF', input_type: 'pdf', output_type: 'texto' },
+      { name: 'Traducir texto multilingüe', input_type: 'texto', output_type: 'texto' },
+      { name: 'Resumir texto', input_type: 'texto', output_type: 'texto' },
     ],
     required_permissions: [
       'Procesar el documento que subas',
       'Enviar el texto a un servicio de traducción',
       'Generar un resumen con inteligencia artificial',
     ],
-    resultado: {
-      output_text:
-        'El contrato establece un periodo de prueba de 3 meses, un salario mensual fijo y la posibilidad de trabajo remoto dos días por semana. Cualquiera de las partes puede terminarlo con 15 días de aviso.',
-    },
   },
   {
     id: 'wf-002',
@@ -34,9 +30,24 @@ export const mockEjecutables = [
     description: 'Quita el fondo de una foto de producto para usarla en la tienda.',
     input_type: 'imagen',
     output_type: 'imagen',
-    steps: [{ name: 'Quitar fondo', input_type: 'imagen', output_type: 'imagen' }],
+    steps: [{ name: 'Quitar fondo de imagen', input_type: 'imagen', output_type: 'imagen' }],
     required_permissions: ['Procesar la imagen que subas'],
-    resultado: { output_url: imagenEjemplo },
+  },
+  {
+    id: 'wf-003',
+    tipo: 'workflow',
+    name: 'Traducir y resumir',
+    description: 'Traduce un texto al español y luego genera un resumen corto.',
+    input_type: 'texto',
+    output_type: 'texto',
+    steps: [
+      { name: 'Traducir texto multilingüe', input_type: 'texto', output_type: 'texto' },
+      { name: 'Resumir texto', input_type: 'texto', output_type: 'texto' },
+    ],
+    required_permissions: [
+      'Enviar el texto a un servicio de traducción',
+      'Generar un resumen con inteligencia artificial',
+    ],
   },
   {
     id: 'wf-010',
@@ -46,16 +57,13 @@ export const mockEjecutables = [
     input_type: 'pdf',
     output_type: 'texto',
     steps: [
-      { name: 'Extraer texto', input_type: 'pdf', output_type: 'texto' },
-      { name: 'Resumir', input_type: 'texto', output_type: 'texto' },
+      { name: 'Extraer texto de PDF', input_type: 'pdf', output_type: 'texto' },
+      { name: 'Resumir texto', input_type: 'texto', output_type: 'texto' },
     ],
     required_permissions: [
       'Procesar el documento que subas',
       'Generar un resumen con inteligencia artificial',
     ],
-    resultado: {
-      output_text: 'Resumen: duración de 12 meses, pago a 30 días y cláusula de confidencialidad.',
-    },
   },
 ];
 

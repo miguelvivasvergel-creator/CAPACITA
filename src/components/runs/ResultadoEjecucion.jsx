@@ -10,7 +10,8 @@ export default function ResultadoEjecucion({ tipo, resultado }) {
     setTimeout(() => setCopiado(false), 2000);
   };
 
-  if (tipo === 'texto') {
+  // Mientras no existan salidas de tipo archivo (bucket outputs), se muestra el texto
+  if (tipo === 'texto' || !resultado.output_url) {
     return (
       <div className="relative">
         <p className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200/80 rounded-xl p-4 pr-24">

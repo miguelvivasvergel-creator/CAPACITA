@@ -86,7 +86,7 @@ export const mockPerfiles = [
     bio: 'Diseño interfaces y traduzco cosas en mis ratos libres.',
     avatar_url: null,
     created_at: '2026-09-18T08:30:00Z',
-    stats: { public_capabilities: 1, public_workflows: 0, runs: 12, clones: 45 },
+    stats: { public_capabilities: 1, public_workflows: 1, runs: 12, clones: 48 },
     capabilities: [
       {
         id: 'cap-003',
@@ -98,7 +98,16 @@ export const mockPerfiles = [
         uses_count: 230,
       },
     ],
-    workflows: [],
+    workflows: [
+      {
+        id: 'wf-003',
+        name: 'Traducir y resumir',
+        description: 'Traduce un texto al español y luego genera un resumen corto.',
+        steps: ['Traducir', 'Resumir'],
+        visibility: 'public',
+        uses_count: 15,
+      },
+    ],
     activity: [],
   },
 ];
