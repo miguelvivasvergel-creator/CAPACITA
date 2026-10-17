@@ -8,6 +8,7 @@ import Inicio from './pages/Inicio';
 import Capacidades from './pages/Capacidades/Capacidades';
 import Workflows from './pages/Workflows';
 import Comunidad from './pages/Comunidad';
+import Configuracion from './pages/Configuracion';
 import {
   supabase,
   registrarUsuario,
@@ -17,7 +18,7 @@ import {
   cerrarSesion,
 } from './services/supabase';
 
-const SECCIONES_VALIDAS = ['inicio', 'capacidades', 'workflows', 'comunidad'];
+const SECCIONES_VALIDAS = ['inicio', 'capacidades', 'workflows', 'comunidad', 'configuracion'];
 
 export default function App() {
   const [modo, setModo] = useState(() =>
@@ -59,6 +60,7 @@ export default function App() {
       capacidades: 'Capacidades — Capacita',
       workflows: 'Workflows — Capacita',
       comunidad: 'Comunidad — Capacita',
+      configuracion: 'Configuración — Capacita',
     };
     document.title = titulos[seccion] || 'Capacita';
     window.history.pushState({ vista: seccion }, '', `#${seccion}`);
@@ -220,6 +222,9 @@ export default function App() {
         {vista === 'capacidades' && <Capacidades />}
         {vista === 'workflows' && <Workflows _usuario={usuarioActual} />}
         {vista === 'comunidad' && <Comunidad _usuario={usuarioActual} />}
+        {vista === 'configuracion' && (
+          <Configuracion usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />
+        )}
       </AppLayout>
     );
   }
