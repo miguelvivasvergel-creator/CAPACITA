@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://ideubwvlffbapneqftwj.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Q5ynxzxEh3b5ildr02QEXQ_eTx9xmXZ";
+// Se leen del .env (ver .env.example). Los valores por defecto son la llave
+// pública (anon) del proyecto, para que nadie se quede sin poder correr la app.
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL || "https://ideubwvlffbapneqftwj.supabase.co";
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_Q5ynxzxEh3b5ildr02QEXQ_eTx9xmXZ";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -49,6 +53,8 @@ export function extraerDatosUsuario(authUser, perfil = null) {
   return {
     id: authUser.id,
     email: authUser.email,
+    // Nombre de usuario para la URL del perfil (#perfil/:username)
+    username: perfil?.username || authUser.email?.split('@')[0] || authUser.id,
     name: nombre,
     avatar_url: avatar,
     rol: perfil?.rol || 'usuario',

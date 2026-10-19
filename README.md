@@ -36,31 +36,44 @@ El cronograma detallado de 11 semanas, la arquitectura técnica de base de datos
 ## 💻 Instalación y Ejecución Local
 
 ### Prerrequisitos
-* Node.js 18+ instalado
-* npm o pnpm
+* Node.js 18+ y npm
+* Python 3.11+
 
 ### Pasos
-1. Clonar el repositorio:
+1. **Clonar el repositorio:**
    ```bash
    git clone https://github.com/miguelvivasvergel-creator/CAPACITA.git
    cd CAPACITA
    ```
 
-2. Instalar dependencias:
+2. **Crear los archivos de entorno** (y llenar los valores que te pase el equipo):
    ```bash
-   npm install
+   cp .env.example .env
+   cp backend/.env.example backend/.env
    ```
 
-3. Iniciar el servidor de desarrollo:
+3. **Instalar dependencias del frontend y del backend:**
+   ```bash
+   npm install
+   cd backend
+   python -m venv .venv
+   .venv\Scripts\activate        # En Mac/Linux: source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+4. **Correr el backend** (desde `backend/`, con el entorno activado):
+   ```bash
+   python main.py
+   ```
+   La API queda en `http://127.0.0.1:8000` y la documentación en `http://127.0.0.1:8000/docs`.
+
+5. **Correr el frontend** (en otra terminal, desde la raíz):
    ```bash
    npm run dev
    ```
    La aplicación estará disponible en `http://localhost:5173`.
 
-4. Compilar para producción:
-   ```bash
-   npm run build
-   ```
+> Las reglas del repositorio (carpetas, ramas, PR y privacidad) están en [AGENTS.md](./AGENTS.md).
 
 ---
 
