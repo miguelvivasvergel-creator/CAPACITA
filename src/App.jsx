@@ -8,6 +8,7 @@ import Inicio from './pages/Inicio';
 import Capacidades from './pages/Capacidades/Capacidades';
 import Workflows from './pages/Workflows';
 import Comunidad from './pages/Comunidad';
+import Configuracion from './pages/Configuracion';
 import Perfil from './pages/Perfil';
 import Ejecutar from './pages/Ejecutar';
 import {
@@ -19,7 +20,15 @@ import {
   cerrarSesion,
 } from './services/supabase';
 
-const SECCIONES_VALIDAS = ['inicio', 'capacidades', 'workflows', 'comunidad', 'perfil', 'ejecutar'];
+const SECCIONES_VALIDAS = [
+  'inicio',
+  'capacidades',
+  'workflows',
+  'comunidad',
+  'configuracion',
+  'perfil',
+  'ejecutar',
+];
 
 // La sección es la primera parte del hash: '#perfil/fahida' → 'perfil', '#ejecutar/workflow/wf-001' → 'ejecutar'
 const esSeccionValida = (hash) => SECCIONES_VALIDAS.includes(hash.split('/')[0]);
@@ -64,6 +73,7 @@ export default function App() {
       capacidades: 'Capacidades — Capacita',
       workflows: 'Workflows — Capacita',
       comunidad: 'Comunidad — Capacita',
+      configuracion: 'Configuración — Capacita',
       perfil: 'Perfil — Capacita',
       ejecutar: 'Ejecutar — Capacita',
     };
@@ -230,13 +240,16 @@ export default function App() {
         {seccion === 'capacidades' && <Capacidades />}
         {seccion === 'workflows' && <Workflows _usuario={usuarioActual} />}
         {seccion === 'comunidad' && <Comunidad _usuario={usuarioActual} />}
+        {seccion === 'configuracion' && (
+          <Configuracion usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />
+        )}
         {seccion === 'perfil' && (
           <Perfil
             key={parametros[0]}
             usuario={usuarioActual}
             username={parametros[0] || usuarioActual.username}
             onCambiarSeccion={handleCambiarSeccion}
-            onConfigurar={() => mostrarToast('La Configuración la está terminando Miguel (módulo A).')}
+            onConfigurar={() => handleCambiarSeccion('configuracion')}
           />
         )}
         {seccion === 'ejecutar' && (
