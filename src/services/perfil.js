@@ -1,18 +1,26 @@
 // src/services/perfil.js
-// Carga todo lo que muestra la pantalla de Perfil.
-// Si algún endpoint todavía no existe o falla, usa los datos falsos de src/mocks/profile.js.
+// carga todo lo que se ve en la pantalla de perfil
+// Si algún endpoint todavía no existe o falla usa los datos falsos de la api de vs community
+import { getPerfil } from './capacitaApi';
 import { api } from '../api';
 import { obtenerPerfilMock } from '../mocks/profile';
 
 export async function cargarPerfil(username, usuarioActual) {
+    // 1) Intentar con la API en .NET (datos reales de la base de datos)
+  try {
+    const perfilReal = await getPerfil(username);
+    return { perfil: perfilReal, deEjemplo: false };
+  } catch {
+    // 2) Si falla (API apagada o usuario no existe), sigue el flujo anterior con mocks
+  }
   const usuario = encodeURIComponent(username);
   const mock = obtenerPerfilMock(username, usuarioActual);
 
   const [perfil, actividad, capacidades, workflows] = await Promise.allSettled([
     api(`/users/${usuario}`),
     api(`/users/${usuario}/activity`),
-    api(`/capabilities?scope=available&owner=${usuario}`), // Módulo B (Franklin)
-    api(`/workflows?scope=available&owner=${usuario}`), // Módulo C (Luis Miguel)
+    api(`/capabilities?scope=available&owner=${usuario}`), 
+    api(`/workflows?scope=available&owner=${usuario}`), 
   ]);
 
   // Sin perfil real ni de ejemplo: el usuario no existe

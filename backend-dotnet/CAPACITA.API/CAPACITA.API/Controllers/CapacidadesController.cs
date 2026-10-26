@@ -58,6 +58,7 @@ namespace CAPACITA.API.Controllers
             var capacidad = new Capacidad
             {
                 Nombre = dto.Nombre,
+                PerfilId = dto.PerfilId,
                 Descripcion = dto.Descripcion,
                 TipoEntrada = dto.TipoEntrada,
                 TipoSalida = dto.TipoSalida,

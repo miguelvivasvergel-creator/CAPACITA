@@ -44,6 +44,7 @@ namespace CAPACITA.API.DTO
         [Required, RegularExpression("^(public|private)$",
             ErrorMessage = "Debe ser public o private.")]
         public string Visibilidad { get; set; } = "private";
+        public int? PerfilId { get; set; }
 
         public List<string> Permisos { get; set; } = new();
     }
