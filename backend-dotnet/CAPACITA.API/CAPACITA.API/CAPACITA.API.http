@@ -1,0 +1,6 @@
+@CAPACITA.API_HostAddress = http://localhost:5118
+
+GET {{CAPACITA.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

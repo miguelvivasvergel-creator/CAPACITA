@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   mockComunidadItems,
   mockCreadoresDestacados,
   mockCapacidadesPopulares,
 } from '../mocks/community';
+import { getComunidad, getCreadores, getPopulares } from '../services/capacitaApi';
 
 const PAGINA = 4;
 
@@ -23,8 +24,32 @@ export default function Comunidad({ _usuario }) {
   const [mostrar, setMostrar] = useState(PAGINA);
   const [toast, setToast] = useState('');
 
+  const [datos, setDatos] = useState({ items: [], creadores: [], populares: [], deEjemplo: false });
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    Promise.all([getComunidad(), getCreadores(), getPopulares()])
+      .then(([items, creadores, populares]) =>
+        setDatos({ items, creadores, populares, deEjemplo: false }))
+      .catch(() =>
+        setDatos({
+          items: mockComunidadItems,
+          creadores: mockCreadoresDestacados,
+          populares: mockCapacidadesPopulares,
+          deEjemplo: true,
+        }))
+      .finally(() => setCargando(false));
+  }, []);
+
+
+
+
+
+
+
+
   // 1. Filtrar por tipo
-  let items = mockComunidadItems;
+  let items = datos.items;
   if (filtro === 'capacidades') items = items.filter((x) => x.tipo === 'capacidad');
   if (filtro === 'workflows')   items = items.filter((x) => x.tipo === 'workflow');
 
@@ -61,6 +86,16 @@ export default function Comunidad({ _usuario }) {
           {toast}
         </div>
       )}
+
+
+            {datos.deEjemplo && !cargando && (
+        <p className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-2 inline-block font-body">
+          No se pudo conectar con la API. Mostrando datos de ejemplo.
+        </p>
+      )}
+
+
+
 
       {/* Layout 2 columnas */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,5 +1,5 @@
 // src/pages/Perfil.jsx
-// Perfil propio y público (#perfil/:username). Módulo D — Fahida.
+
 import { useState, useEffect } from 'react';
 import PerfilEncabezado from '../components/profile/PerfilEncabezado';
 import PerfilTarjetas from '../components/profile/PerfilTarjetas';
