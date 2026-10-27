@@ -6,12 +6,20 @@ import { api } from '../api';
 import { obtenerPerfilMock } from '../mocks/profile';
 
 export async function cargarPerfil(username, usuarioActual) {
-    // 1) Intentar con la API en .NET (datos reales de la base de datos)
   try {
     const perfilReal = await getPerfil(username);
-    return { perfil: perfilReal, deEjemplo: false };
+    return {
+      perfil: {
+        capabilities: [],
+        workflows: [],
+        activity: [],
+        stats: { public_capabilities: 0, public_workflows: 0, runs: 0, clones: 0 },
+        ...perfilReal,
+      },
+      deEjemplo: false,
+    };
   } catch {
-    // 2) Si falla (API apagada o usuario no existe), sigue el flujo anterior con mocks
+    
   }
   const usuario = encodeURIComponent(username);
   const mock = obtenerPerfilMock(username, usuarioActual);

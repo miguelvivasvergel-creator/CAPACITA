@@ -12,7 +12,8 @@ builder.Services.AddControllers()
         o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower);
 
 builder.Services.AddCors(o => o.AddPolicy("React", p =>
-    p.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+    p.SetIsOriginAllowed(origin =>
+        new Uri(origin).Host is "localhost" or "127.0.0.1")
      .AllowAnyHeader().AllowAnyMethod()));
 
 builder.Services.AddDbContext<AppDbContext>(options =>

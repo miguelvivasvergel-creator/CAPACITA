@@ -11,6 +11,7 @@ import Comunidad from './pages/Comunidad';
 import Configuracion from './pages/Configuracion';
 import Perfil from './pages/Perfil';
 import Ejecutar from './pages/Ejecutar';
+import Buscar from './pages/Buscar';
 import {
   supabase,
   registrarUsuario,
@@ -28,6 +29,7 @@ const SECCIONES_VALIDAS = [
   'configuracion',
   'perfil',
   'ejecutar',
+  'buscar',
 ];
 
 // La sección es la primera parte del hash: '#perfil/fahida' → 'perfil', '#ejecutar/workflow/wf-001' → 'ejecutar'
@@ -76,6 +78,7 @@ export default function App() {
       configuracion: 'Configuración — Capacita',
       perfil: 'Perfil — Capacita',
       ejecutar: 'Ejecutar — Capacita',
+      buscar: 'Buscar — Capacita',
     };
     document.title = titulos[seccion.split('/')[0]] || 'Capacita';
     window.history.pushState({ vista: seccion }, '', `#${seccion}`);
@@ -254,6 +257,13 @@ export default function App() {
         )}
         {seccion === 'ejecutar' && (
           <Ejecutar key={vista} tipo={parametros[0]} id={parametros[1]} />
+        )}
+        {seccion === 'buscar' && (
+          <Buscar
+            key={vista}
+            texto={decodeURIComponent(parametros[0] || '')}
+            onCambiarSeccion={handleCambiarSeccion}
+          />
         )}
         <Toast mensaje={toastMsg} visible={toastVisible} />
       </AppLayout>

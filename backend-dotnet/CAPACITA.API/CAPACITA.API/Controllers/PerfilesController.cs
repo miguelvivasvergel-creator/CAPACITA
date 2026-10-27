@@ -2,6 +2,7 @@
 using CAPACITA.API.DTO;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using CAPACITA.API.Models;
 
 namespace CAPACITA.API.Controllers
 {
@@ -12,8 +13,7 @@ namespace CAPACITA.API.Controllers
         private readonly AppDbContext _context;
         public PerfilesController(AppDbContext context) { _context = context; }
 
-        // GET api/perfiles/franklin_dev
-        [HttpGet("{username}")]
+
 
 
         // GET api/perfiles?q=fra&limit=8  -> buscador de usuarios
@@ -45,7 +45,8 @@ namespace CAPACITA.API.Controllers
             return Ok(resultado);
         }
 
-
+        // GET api/perfiles/franklin_dev
+        [HttpGet("{username}")]
 
         public async Task<ActionResult<PerfilDTO>> Get(string username)
         {
@@ -112,6 +113,33 @@ namespace CAPACITA.API.Controllers
             };
 
             return Ok(dto);
+        }
+
+        // POST api/perfiles
+        [HttpPost]
+        public async Task<ActionResult<PerfilResumenDTO>> Crear(PerfilCreateDTO dto)
+        {
+            var existe = await _context.Perfiles.AnyAsync(p => p.Username == dto.Username);
+            if (existe) return Conflict(new { mensaje = "Ese username ya existe." });
+
+            var perfil = new Perfil
+            {
+                Username = dto.Username,
+                DisplayName = dto.DisplayName,
+                Bio = dto.Bio,
+                AvatarUrl = dto.AvatarUrl
+            };
+            _context.Perfiles.Add(perfil);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(Get), new { username = perfil.Username },
+                new PerfilResumenDTO
+                {
+                    Username = perfil.Username,
+                    DisplayName = perfil.DisplayName,
+                    Bio = perfil.Bio,
+                    AvatarUrl = perfil.AvatarUrl
+                });
         }
     }
 }

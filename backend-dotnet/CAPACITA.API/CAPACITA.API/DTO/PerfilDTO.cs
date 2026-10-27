@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
+
 namespace CAPACITA.API.DTO
 {
     public class PerfilDTO
@@ -65,5 +66,38 @@ namespace CAPACITA.API.DTO
         public string? AvatarUrl { get; set; }
         public int PublicCapabilities { get; set; }
         public int PublicWorkflows { get; set; }
+    }
+
+    public class BusquedaItemDTO
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string OwnerUsername { get; set; } = "";
+    }
+
+    public class BusquedaDTO
+    {
+        public List<PerfilResumenDTO> Usuarios { get; set; } = new();
+        public List<BusquedaItemDTO> Capacidades { get; set; } = new();
+        public List<BusquedaItemDTO> Workflows { get; set; } = new();
+    }
+
+    public class PerfilCreateDTO
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(30, MinimumLength = 3)]
+        [System.ComponentModel.DataAnnotations.RegularExpression("^[a-zA-Z0-9_]+$",
+            ErrorMessage = "Solo letras, números y guion bajo.")]
+        public string Username { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(80)]
+        public string DisplayName { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.StringLength(300)]
+        public string Bio { get; set; } = "";
+
+        public string? AvatarUrl { get; set; }
     }
 }

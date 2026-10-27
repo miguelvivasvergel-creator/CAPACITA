@@ -12,3 +12,5 @@ export const getPopulares = () => get('/Comunidad/populares');
 export const getPerfil = (username) => get(`/Perfiles/${encodeURIComponent(username)}`);
 export const buscarPerfiles = (texto, limite = 8) =>
   get(`/Perfiles?q=${encodeURIComponent(texto)}&limit=${limite}`);
+export const buscarTodo = (texto, limite = 5) =>
+  get(`/Buscar?q=${encodeURIComponent(texto)}&limit=${limite}`);
