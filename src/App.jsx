@@ -115,6 +115,7 @@ export default function App() {
     };
 
     window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
 
     // 2. Comprobar sesión activa de Supabase
     obtenerUsuarioActual()
@@ -156,6 +157,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
       subscription?.unsubscribe();
     };
   }, []);
@@ -239,7 +241,9 @@ export default function App() {
         )}
         {seccion === 'capacidades' && <Capacidades />}
         {seccion === 'workflows' && <Workflows _usuario={usuarioActual} />}
-        {seccion === 'comunidad' && <Comunidad _usuario={usuarioActual} />}
+        {seccion === 'comunidad' && (
+          <Comunidad _usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
+        )}
         {seccion === 'configuracion' && (
           <Configuracion usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />
         )}

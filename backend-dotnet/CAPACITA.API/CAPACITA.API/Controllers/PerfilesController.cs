@@ -1,4 +1,4 @@
-﻿using CAPACITA.API.Data;
+using CAPACITA.API.Data;
 using CAPACITA.API.DTO;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +11,6 @@ namespace CAPACITA.API.Controllers
     {
         private readonly AppDbContext _context;
         public PerfilesController(AppDbContext context) { _context = context; }
-
-        // GET api/perfiles/franklin_dev
-        [HttpGet("{username}")]
-
 
         // GET api/perfiles?q=fra&limit=8  -> buscador de usuarios
         [HttpGet]
@@ -45,8 +41,8 @@ namespace CAPACITA.API.Controllers
             return Ok(resultado);
         }
 
-
-
+        // GET api/perfiles/franklin_dev
+        [HttpGet("{username}")]
         public async Task<ActionResult<PerfilDTO>> Get(string username)
         {
             var perfil = await _context.Perfiles.FirstOrDefaultAsync(p => p.Username == username);

@@ -1,281 +1,280 @@
-import { useState, useEffect } from 'react';
-import {
-  mockComunidadItems,
-  mockCreadoresDestacados,
-  mockCapacidadesPopulares,
-} from '../mocks/community';
-import { getComunidad, getCreadores, getPopulares } from '../services/capacitaApi';
+import { useState, useEffect, useRef } from 'react';
+import { getComunidad, getCreadores, getPopulares, buscarPerfiles } from '../services/CapacitaAPI';
 
 const PAGINA = 4;
 
-// Convierte una fecha ISO en "Hace X horas / días"
 function tiempoRelativo(fechaIso) {
+  if (!fechaIso) return '';
   const diff = (Date.now() - new Date(fechaIso).getTime()) / 1000;
   if (diff < 3600) return `Hace ${Math.max(1, Math.floor(diff / 60))} min`;
   if (diff < 86400) return `Hace ${Math.floor(diff / 3600)} horas`;
   const dias = Math.floor(diff / 86400);
-  if (dias === 1) return 'Ayer';
-  return `Hace ${dias} días`;
+  return dias === 1 ? 'Ayer' : `Hace ${dias} días`;
 }
 
-export default function Comunidad({ _usuario }) {
-  const [filtro, setFiltro] = useState('todo');       // todo | capacidades | workflows
-  const [orden, setOrden] = useState('recientes');    // recientes | populares
+export default function Comunidad({ _usuario, onCambiarSeccion }) {
+  const [filtro, setFiltro] = useState('todo');
+  const [orden, setOrden] = useState('recientes');
   const [mostrar, setMostrar] = useState(PAGINA);
   const [toast, setToast] = useState('');
 
-  const [datos, setDatos] = useState({ items: [], creadores: [], populares: [], deEjemplo: false });
-  const [cargando, setCargando] = useState(true);
+  // Datos reales de la API .NET
+  const [items, setItems]       = useState([]);
+  const [creadores, setCreadores] = useState([]);
+  const [populares, setPopulares] = useState([]);
+  const [cargando, setCargando]   = useState(true);
+  const [errorApi, setErrorApi]   = useState(null);
 
+  // Buscador de usuarios
+  const [query, setQuery]           = useState('');
+  const [resultados, setResultados] = useState([]);
+  const [buscando, setBuscando]     = useState(false);
+  const buscadorRef = useRef(null);
+
+  // --- Carga inicial ---
   useEffect(() => {
     Promise.all([getComunidad(), getCreadores(), getPopulares()])
-      .then(([items, creadores, populares]) =>
-        setDatos({ items, creadores, populares, deEjemplo: false }))
-      .catch(() =>
-        setDatos({
-          items: mockComunidadItems,
-          creadores: mockCreadoresDestacados,
-          populares: mockCapacidadesPopulares,
-          deEjemplo: true,
-        }))
+      .then(([i, c, p]) => { setItems(i || []); setCreadores(c || []); setPopulares(p || []); })
+      .catch(() => setErrorApi('No se pudo conectar con la API .NET.'))
       .finally(() => setCargando(false));
   }, []);
 
+  // --- Buscador con debounce 300 ms ---
+  useEffect(() => {
+    const texto = query.trim();
+    if (texto.length < 2) { setResultados([]); setBuscando(false); return; }
 
+    setBuscando(true);
+    const id = setTimeout(async () => {
+      try   { setResultados(await buscarPerfiles(texto) || []); }
+      catch  { setResultados([]); }
+      finally { setBuscando(false); }
+    }, 300);
 
+    return () => clearTimeout(id);
+  }, [query]);
 
+  // Cerrar lista al clic fuera
+  useEffect(() => {
+    const fn = (e) => { if (!buscadorRef.current?.contains(e.target)) setQuery(''); };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, []);
 
-
-
-
-  // 1. Filtrar por tipo
-  let items = datos.items;
-  if (filtro === 'capacidades') items = items.filter((x) => x.tipo === 'capacidad');
-  if (filtro === 'workflows')   items = items.filter((x) => x.tipo === 'workflow');
-
-  // 2. Ordenar
-  items = [...items].sort((a, b) => {
-    if (orden === 'populares') return b.uses_count - a.uses_count;
-    return new Date(b.created_at) - new Date(a.created_at);
-  });
-
-  const visibles = items.slice(0, mostrar);
-  const hayMas = mostrar < items.length;
-
-  const handleClonar = (item) => {
-    setToast(`"${item.name}" clonado a tu cuenta ✓`);
-    setTimeout(() => setToast(''), 2500);
+  const irPerfil = (username) => {
+    setQuery('');
+    if (onCambiarSeccion) {
+      onCambiarSeccion(`perfil/${username}`);
+    } else {
+      window.location.assign(`#perfil/${username}`);
+    }
   };
+
+  // Filtro + orden de publicaciones
+  let lista = items;
+  if (filtro === 'capacidades') lista = lista.filter((x) => x.tipo === 'capacidad');
+  if (filtro === 'workflows')   lista = lista.filter((x) => x.tipo === 'workflow');
+  lista = [...lista].sort((a, b) =>
+    orden === 'populares'
+      ? (b.uses_count || 0) - (a.uses_count || 0)
+      : new Date(b.created_at) - new Date(a.created_at)
+  );
+  const visibles = lista.slice(0, mostrar);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
 
-      {/* Pestañas-chip (Todo / Capacidades / Workflows / Más populares / Recientes) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-soft inline-flex flex-wrap gap-1">
-        <PestañaChip activo={filtro === 'todo'}        onClick={() => { setFiltro('todo');        setMostrar(PAGINA); }}>Todo</PestañaChip>
-        <PestañaChip activo={filtro === 'capacidades'} onClick={() => { setFiltro('capacidades'); setMostrar(PAGINA); }}>Capacidades</PestañaChip>
-        <PestañaChip activo={filtro === 'workflows'}   onClick={() => { setFiltro('workflows');   setMostrar(PAGINA); }}>Workflows</PestañaChip>
+      {/* ── Buscador de usuarios ── */}
+      <div className="relative mb-6 max-w-sm" ref={buscadorRef}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar usuarios…"
+          className="w-full pl-4 pr-10 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#1a56db] transition font-body"
+        />
+        {buscando && (
+          <div className="absolute right-3 top-2.5">
+            <svg className="animate-spin h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+            </svg>
+          </div>
+        )}
+
+        {/* Resultados del buscador */}
+        {query.trim().length >= 2 && (
+          <ul className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl divide-y divide-slate-100 max-h-64 overflow-y-auto font-body">
+            {resultados.length === 0 && !buscando && (
+              <li className="p-3 text-sm text-slate-500 text-center">Sin resultados para &quot;{query}&quot;</li>
+            )}
+            {resultados.map((p) => (
+              <li key={p.username}>
+                <button
+                  onClick={() => irPerfil(p.username)}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 transition-colors text-left cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                    {(p.display_name || p.username || '?').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{p.display_name}</p>
+                    <p className="text-xs text-slate-400">@{p.username} · ⚡{p.public_capabilities ?? 0} 🔀{p.public_workflows ?? 0}</p>
+                  </div>
+                </button>
+              </li>
+            ))}
+            {/* Nota de limitación actual */}
+            <li className="px-3 py-2 text-[11px] text-slate-400 bg-slate-50">
+              ℹ️ Solo muestra los 4 perfiles de ejemplo de la API .NET. Los usuarios reales de Supabase se integran en un paso siguiente.
+            </li>
+          </ul>
+        )}
+      </div>
+
+      {/* ── Chips de filtro ── */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-soft inline-flex flex-wrap gap-1 mb-4">
+        {['todo','capacidades','workflows'].map((f) => (
+          <button key={f} onClick={() => { setFiltro(f); setMostrar(PAGINA); }}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-full cursor-pointer transition-colors font-body ${filtro === f ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+            {f === 'todo' ? 'Todo' : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
         <div className="w-px bg-slate-200 mx-1 my-1" />
-        <PestañaChip activo={orden === 'populares'}    onClick={() => setOrden('populares')}>Más populares</PestañaChip>
-        <PestañaChip activo={orden === 'recientes'}    onClick={() => setOrden('recientes')}>Recientes</PestañaChip>
+        {['populares','recientes'].map((o) => (
+          <button key={o} onClick={() => setOrden(o)}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-full cursor-pointer transition-colors font-body ${orden === o ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+            {o === 'populares' ? 'Más populares' : 'Recientes'}
+          </button>
+        ))}
       </div>
 
       {/* Toast */}
-      {toast && (
-        <div className="mt-4 inline-block bg-green-50 border border-green-200 text-green-700 text-xs font-semibold font-body px-3 py-2 rounded-full">
-          {toast}
-        </div>
+      {toast && <div className="mb-4 inline-block bg-green-50 border border-green-200 text-green-700 text-xs font-semibold font-body px-3 py-2 rounded-full">{toast}</div>}
+
+      {/* Error de conexión */}
+      {errorApi && !cargando && (
+        <p className="mb-4 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 font-body">{errorApi}</p>
       )}
 
+      {/* ── Layout principal ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {datos.deEjemplo && !cargando && (
-        <p className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-2 inline-block font-body">
-          No se pudo conectar con la API. Mostrando datos de ejemplo.
-        </p>
-      )}
-
-
-
-
-      {/* Layout 2 columnas */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Grid de tarjetas */}
+        {/* Tarjetas */}
         <div className="lg:col-span-2">
-          {visibles.length === 0 ? (
+          {cargando ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[1,2,3,4].map((n) => <div key={n} className="h-48 bg-slate-100 rounded-2xl animate-pulse" />)}
+            </div>
+          ) : visibles.length === 0 ? (
             <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center text-sm text-slate-500 font-body">
               No hay publicaciones con ese filtro.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {visibles.map((item) => (
-                <TarjetaComunidad
-                  key={item.id}
-                  item={item}
-                  onClonar={() => handleClonar(item)}
-                />
+                <Tarjeta key={item.id} item={item} onClonar={() => { setToast(`"${item.name}" clonado ✓`); setTimeout(() => setToast(''), 2500); }} onIrPerfil={irPerfil} />
               ))}
             </div>
           )}
 
-          {hayMas && (
+          {mostrar < lista.length && (
             <div className="mt-6 text-center">
-              <button
-                onClick={() => setMostrar(mostrar + PAGINA)}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-full cursor-pointer transition-colors font-body shadow-soft"
-              >
-                <span>🔄</span>
-                <span>Cargar más</span>
+              <button onClick={() => setMostrar(mostrar + PAGINA)}
+                className="px-6 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-full cursor-pointer transition-colors font-body shadow-soft">
+                🔄 Cargar más
               </button>
             </div>
           )}
         </div>
 
-        {/* Columna derecha */}
+        {/* Sidebar */}
         <aside className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
-            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight font-sans mb-4">
-              Creadores destacados
-            </h3>
-            <ul className="space-y-3">
-              {mockCreadoresDestacados.map((c) => (
-                <li key={c.username} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center font-body shrink-0">
-                    {c.nombre.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+          <SidebarCard titulo="Creadores destacados">
+            {cargando
+              ? [1,2,3].map((n) => <div key={n} className="h-10 bg-slate-100 rounded-xl animate-pulse" />)
+              : creadores.map((c) => (
+                <button key={c.username} onClick={() => irPerfil(c.username)}
+                  className="w-full flex items-center gap-3 hover:bg-slate-50 rounded-xl p-1 transition-colors cursor-pointer">
+                  <div className="w-9 h-9 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                    {(c.nombre || '?').slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1">
-                      <p className="text-sm font-semibold text-slate-800 truncate font-sans">
-                        {c.nombre}
-                      </p>
-                      <CheckVerificado />
-                    </div>
-                    <p className="text-xs text-slate-500 truncate font-body">
-                      {c.usos} usos
-                    </p>
+                  <div className="min-w-0 text-left">
+                    <p className="text-sm font-semibold text-slate-800 truncate font-sans">{c.nombre}</p>
+                    <p className="text-xs text-slate-500 font-body">{c.usos} usos</p>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                </button>
+              ))
+            }
+          </SidebarCard>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
-            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight font-sans mb-4">
-              Capacidades más populares
-            </h3>
-            <ol className="space-y-2.5 font-body">
-              {mockCapacidadesPopulares.map((c, idx) => (
-                <li key={c.id} className="flex items-center justify-between text-sm">
+          <SidebarCard titulo="Capacidades más populares">
+            {cargando
+              ? [1,2,3].map((n) => <div key={n} className="h-6 bg-slate-100 rounded animate-pulse" />)
+              : populares.map((c, idx) => (
+                <div key={c.id} className="flex items-center justify-between text-sm font-body">
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="text-xs text-slate-400 font-semibold w-4">{idx + 1}</span>
                     <span className="text-slate-700 truncate">{c.name}</span>
                   </div>
-                  <span className="text-xs text-slate-500 shrink-0 font-semibold">
-                    {c.uses_count}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
+                  <span className="text-xs text-slate-500 font-semibold shrink-0">{c.uses_count ?? 0}</span>
+                </div>
+              ))
+            }
+          </SidebarCard>
         </aside>
       </div>
     </div>
   );
 }
 
-/* ---------- Subcomponentes ---------- */
+/* ── Subcomponentes ── */
 
-function PestañaChip({ activo, onClick, children }) {
+function SidebarCard({ titulo, children }) {
   return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-1.5 text-xs font-semibold rounded-full cursor-pointer transition-colors font-body ${
-        activo
-          ? 'bg-blue-600 text-white shadow-sm'
-          : 'text-slate-600 hover:bg-slate-50'
-      }`}
-    >
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-soft space-y-3">
+      <h3 className="text-sm font-extrabold text-slate-900 tracking-tight font-sans">{titulo}</h3>
       {children}
-    </button>
+    </div>
   );
 }
 
-function CheckVerificado() {
-  return (
-    <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function TarjetaComunidad({ item, onClonar }) {
+function Tarjeta({ item, onClonar, onIrPerfil }) {
   const esCapacidad = item.tipo === 'capacidad';
-  const tipos = esCapacidad
-    ? [item.input_type, item.output_type]
-    : item.pasos;
+  const chips = esCapacidad ? [item.input_type, item.output_type].filter(Boolean) : item.pasos || [];
 
   return (
-    <article className="pillar-card bg-white border border-slate-200 rounded-2xl p-5 shadow-soft flex flex-col">
-      {/* Etiqueta + tiempo */}
+    <article className="bg-white border border-slate-200 rounded-2xl p-5 shadow-soft flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full font-body ${
-          esCapacidad
-            ? 'bg-blue-50 text-blue-700 border border-blue-100'
-            : 'bg-purple-50 text-purple-700 border border-purple-100'
-        }`}>
-          {esCapacidad ? '⚡' : '🔀'} {esCapacidad ? 'Capacidad' : 'Workflow'}
+        <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full font-body ${esCapacidad ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
+          {esCapacidad ? '⚡ Capacidad' : '🔀 Workflow'}
         </span>
-        <span className="text-xs text-slate-400 font-body">
-          {tiempoRelativo(item.created_at)}
-        </span>
+        <span className="text-xs text-slate-400 font-body">{tiempoRelativo(item.created_at)}</span>
       </div>
 
-      {/* Nombre */}
-      <h3 className="text-base font-extrabold text-slate-900 tracking-tight font-sans">
-        {item.name}
-      </h3>
-      <p className="mt-1.5 text-xs text-slate-500 font-body line-clamp-2">
-        {item.description}
-      </p>
+      <h3 className="text-base font-extrabold text-slate-900 font-sans">{item.name}</h3>
+      <p className="mt-1 text-xs text-slate-500 font-body line-clamp-2">{item.description}</p>
 
-      {/* Chips con flechas */}
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        {tipos.map((t, idx) => (
-          <span key={idx} className="flex items-center gap-1.5">
-            <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-full text-[11px] font-semibold text-slate-700 font-body">
-              {t}
-            </span>
-            {idx < tipos.length - 1 && (
-              <span className="text-slate-400 text-xs">→</span>
-            )}
+        {chips.map((t, i) => (
+          <span key={i} className="flex items-center gap-1.5">
+            <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-full text-[11px] font-semibold text-slate-700 font-body">{t}</span>
+            {i < chips.length - 1 && <span className="text-slate-400 text-xs">→</span>}
           </span>
         ))}
       </div>
 
-      {/* Pie: autor + usos + botón */}
       <div className="mt-auto pt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
+        <button onClick={() => onIrPerfil?.(item.owner_username)} className="flex items-center gap-2 hover:opacity-75 cursor-pointer">
           <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center font-body shrink-0">
-            {item.owner_name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+            {(item.owner_name || '?').slice(0, 2).toUpperCase()}
           </div>
-          <div className="flex items-center gap-1 min-w-0">
-            <span className="text-xs font-semibold text-slate-800 truncate font-body">
-              {item.owner_name}
-            </span>
-            <CheckVerificado />
-          </div>
-          <span className="text-xs text-slate-400 font-body shrink-0">
-            ▶ {item.uses_count}
-          </span>
-        </div>
-        <button
-          onClick={onClonar}
-          className="boton-primario inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-full cursor-pointer font-body shrink-0"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          <span>Clonar y usar</span>
+          <span className="text-xs font-semibold text-slate-800 font-body">{item.owner_name}</span>
+          <span className="text-xs text-slate-400 font-body">▶ {item.uses_count || 0}</span>
+        </button>
+        <button onClick={onClonar}
+          className="boton-primario inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-full cursor-pointer font-body">
+          Clonar y usar
         </button>
       </div>
     </article>
