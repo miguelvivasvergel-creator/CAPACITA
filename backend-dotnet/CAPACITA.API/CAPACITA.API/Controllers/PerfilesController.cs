@@ -14,6 +14,39 @@ namespace CAPACITA.API.Controllers
 
         // GET api/perfiles/franklin_dev
         [HttpGet("{username}")]
+
+
+        // GET api/perfiles?q=fra&limit=8  -> buscador de usuarios
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<PerfilResumenDTO>>> Buscar(
+            [FromQuery] string? q, [FromQuery] int limit = 8)
+        {
+            q = q?.Trim();
+            if (string.IsNullOrEmpty(q) || q.Length < 2)
+                return Ok(new List<PerfilResumenDTO>());
+
+            limit = Math.Clamp(limit, 1, 20);
+
+            var resultado = await _context.Perfiles
+                .Where(p => p.Username.Contains(q) || p.DisplayName.Contains(q))
+                .OrderBy(p => p.DisplayName)
+                .Take(limit)
+                .Select(p => new PerfilResumenDTO
+                {
+                    Username = p.Username,
+                    DisplayName = p.DisplayName,
+                    Bio = p.Bio,
+                    AvatarUrl = p.AvatarUrl,
+                    PublicCapabilities = p.Capacidades.Count(c => c.Visibilidad == "public"),
+                    PublicWorkflows = p.Workflows.Count(w => w.Visibilidad == "public")
+                })
+                .ToListAsync();
+
+            return Ok(resultado);
+        }
+
+
+
         public async Task<ActionResult<PerfilDTO>> Get(string username)
         {
             var perfil = await _context.Perfiles.FirstOrDefaultAsync(p => p.Username == username);

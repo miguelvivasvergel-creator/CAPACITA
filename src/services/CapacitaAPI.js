@@ -10,3 +10,5 @@ export const getComunidad = () => get('/Comunidad');
 export const getCreadores = () => get('/Comunidad/creadores');
 export const getPopulares = () => get('/Comunidad/populares');
 export const getPerfil = (username) => get(`/Perfiles/${encodeURIComponent(username)}`);
+export const buscarPerfiles = (texto, limite = 8) =>
+  get(`/Perfiles?q=${encodeURIComponent(texto)}&limit=${limite}`);

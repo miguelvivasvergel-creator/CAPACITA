@@ -53,5 +53,17 @@ namespace CAPACITA.API.DTO
         public string Status { get; set; } = "";
         public DateTime StartedAt { get; set; }
         public int DurationMs { get; set; }
+
+
+    }
+
+    public class PerfilResumenDTO
+    {
+        public string Username { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string Bio { get; set; } = "";
+        public string? AvatarUrl { get; set; }
+        public int PublicCapabilities { get; set; }
+        public int PublicWorkflows { get; set; }
     }
 }
