@@ -2,6 +2,18 @@
 
 Guía corta para cualquier persona (o agente de IA) que trabaje en este repositorio.
 
+## Contexto obligatorio al iniciar una sesión
+
+- Leer primero [`docs/CONTEXTO_Y_CONTINUIDAD.md`](./docs/CONTEXTO_Y_CONTINUIDAD.md), después [`docs/VISION_MAESTRA.md`](./docs/VISION_MAESTRA.md) y [`docs/estado.md`](./docs/estado.md).
+- Para la entrega entre dos personas, leer [`docs/PLAN_DOS_PERSONAS_MARTES.md`](./docs/PLAN_DOS_PERSONAS_MARTES.md): reparto A/B, contratos, dueños de archivos, hitos y verificación. No registrar tareas previstas como completadas.
+- Esos documentos conservan la visión acordada con el usuario, propuestas técnicas, restricciones de presupuesto, diagnóstico y siguiente punto de trabajo. Distinguir decisiones aceptadas, propuestas y funcionalidades verificadas.
+- Capacita es un asistente de trabajo extensible mediante capacidades creadas, combinadas y compartidas. No reducir el producto a marketing, documentos, un catálogo estático o una interfaz de chat.
+- Buscar primero en el catálogo interno autorizado. Si falta una capacidad, proponer su creación mediante contratos, generación, pruebas aisladas y versiones; no afirmar que generar una descripción equivale a tener una implementación funcional.
+- No ejecutar código generado dentro del proceso de la API ni entregar credenciales a ese código. Mantener controles de permisos y aprobación para acciones externas.
+- El equipo es estudiantil y tiene poco presupuesto: priorizar software abierto, cuotas gratuitas y créditos confirmados. No contratar servicios, activar facturación ni prometer recursos ilimitados sin autorización.
+- El usuario autorizó guardar contexto, planificar el reparto entre Miguel y Fahida y subir esa documentación a su rama `miguel`. Esto no autoriza implementar módulos, alterar datos, desplegar ni publicar la aplicación. Antes de nuevos cambios de código, atender la instrucción vigente del usuario.
+- Al finalizar trabajo significativo, actualizar la continuidad con cambios, validación, bloqueos y siguiente paso; nunca registrar propuestas como implementadas. No incluir secretos ni datos privados.
+
 ## Carpetas
 
 | Parte | Carpeta | Qué va ahí |

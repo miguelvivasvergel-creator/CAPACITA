@@ -2,6 +2,15 @@
 
 Cada persona actualiza su sección al terminar cada bloque de fechas: qué quedó listo, qué falta y qué bloquea.
 
+## Visión y continuidad — 13/11/2026
+
+- **Planificado:** reparto equilibrado entre dos personas y calendario hasta el martes 17/11 en [PLAN_DOS_PERSONAS_MARTES.md](./PLAN_DOS_PERSONAS_MARTES.md). Nombres confirmados: **Miguel (A): objetivos/catálogo/generación; Fahida (B): pruebas/workflows/ejecución**. Sin implementación iniciada por esta tarea.
+- **Documentado:** visión acordada, creación y reutilización de capacidades, arquitectura propuesta, aislamiento, conectores, permisos, presupuesto y criterios de aceptación en [VISION_MAESTRA.md](./VISION_MAESTRA.md).
+- **Punto de reanudación:** diagnóstico verificado, decisiones, limitaciones y siguiente paso en [CONTEXTO_Y_CONTINUIDAD.md](./CONTEXTO_Y_CONTINUIDAD.md). `AGENTS.md` indica leerlos al iniciar.
+- **Validación anterior:** lint con un error de hooks y seis advertencias; sin verificación funcional completa ni inspección del esquema desplegado de Supabase.
+- **Pendiente:** implementar progresivamente la visión. El guardado de documentación no implementa los módulos ni autoriza gastos o despliegues.
+- Las secciones de módulos inferiores conservan reportes previos del equipo; contrastarlas con el diagnóstico y código antes de tratarlas como funcionalidades integradas.
+
 ## Módulo A — Miguel (puerta de entrada)
 
 - **Listo:**
