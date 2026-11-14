@@ -38,9 +38,20 @@ limitada a 64 KiB, OOM a 256 MiB, CPU limitada según cgroup del host, máximo d
 Scripts de referencia y verificación bajo scripts/maintenance; reporte local
 ignorado y evidencia resumida en el documento acumulativo.
 
-Esto supera el bloqueo inicial de infraestructura para pruebas locales; todavía
-no hay laboratorio integrado, ejecución de candidatos, builds persistentes ni
-habilitación. Siguiente: bloque 2 con contratos/hashes, harness y reportes privados.
+Bloque 2 implementado localmente: POST/GET de builds privados, revalidación de
+contratos/identificadores/hashes, cola y reportes persistentes en SQLite del host,
+trabajador separado y panel dentro del candidato. Candidatos de fixture ejecutados
+realmente en gVisor, sin credenciales ni ejecución en FastAPI/host. 75 pruebas
+backend pasan; lint/build y auditoría de imports correctos. La batería real cubre
+transformación, rechazo previo, aislamiento, temporales, procesos, timeout, OOM,
+salida excesiva, errores y contratos/salidas incorrectas, con limpieza verificada.
+Guía y límites en [LABORATORIO_BLOQUE_2.md](LABORATORIO_BLOQUE_2.md).
+
+Corregida interferencia de Docker Desktop sobre /run/docker.sock: el Engine de
+Ubuntu usa /run/capacita-docker.sock mediante override de su servicio. No se
+modificó Docker Desktop ni Supabase. Pendientes: aceptación con candidato remoto
+propio y dos sesiones reales, revisión A de persistencia/evidencia local y caída
+abrupta. No hay habilitación/publicación ni motor de runs del bloque 3.
 Guía de consumo A: [ENTREGA_A_B_CANDIDATOS.md](ENTREGA_A_B_CANDIDATOS.md).
 Cada bloque deja pruebas, pendientes y commit local. Sin gastos ni publicación.
 
@@ -48,7 +59,7 @@ Propiedad: laboratorio, pruebas aisladas, archivos, workflows, builds, motor, re
 
 Hay código heredado de runs/perfiles/adaptadores y datos en memoria; no demuestra motor persistente ni aislamiento real. Reportes anteriores de Franklin, Luis Miguel y Fahida conservados en [ESTADO_2026-11-14.md](historial/ESTADO_2026-11-14.md), sin tratarlos como aceptación actual ni reasignarlos.
 
-Consumo de definición A en [CONTRATO_INTEGRACION.md](CONTRATO_INTEGRACION.md), pendiente revisión conjunta. Sandbox, candidatos/artefactos, builds, habilitación y ejecución pendientes según el [plan A/B](PLAN_DOS_PERSONAS_MARTES.md).
+Consumo de definición A en [CONTRATO_INTEGRACION.md](CONTRATO_INTEGRACION.md), pendiente revisión conjunta. Sandbox y laboratorio local probados; integración remota, habilitación y motor de ejecución pendientes según el [plan A/B](PLAN_DOS_PERSONAS_MARTES.md).
 
 ## Verificación y límites
 

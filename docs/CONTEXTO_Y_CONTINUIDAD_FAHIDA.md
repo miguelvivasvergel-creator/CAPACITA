@@ -6,12 +6,14 @@ bloqueos y siguiente paso; no crear una continuidad nueva por sesión.
 
 ## Punto actual para retomar
 
-Bloque 1 (base local y controles de infraestructura) verificado el 14/11/2026:
-10 comprobaciones pasan, con 8 contenedores propios eliminados. El siguiente
-trabajo es el bloque 2: laboratorio que consume candidatos privados de A,
-revalida contratos/hashes y persiste reportes. Aún no hay ejecución de candidatos,
-API de builds, habilitación ni publicación. Leer el cierre al final para reproducir
-la prueba. Las secciones iniciales conservan el diagnóstico histórico.
+Bloque 2 implementado localmente el 14/11/2026: API privada de builds, cola/reportes
+SQLite durables, trabajador separado, harness dentro de gVisor y panel de candidato.
+75 pruebas backend pasan; batería real de candidatos de fixture comprobada, con
+límites y limpieza. Ver el cierre al final y la [guía reproducible](LABORATORIO_BLOQUE_2.md).
+Pendiente aceptación con candidato Supabase propio y segunda sesión real, revisión
+A del almacenamiento local y recuperación tras apagado abrupto. No hay versiones
+habilitadas, publicación ni motor persistente del bloque 3. Las secciones iniciales
+conservan el diagnóstico histórico, superado por los cierres posteriores.
 
 ## Acuerdos de trabajo
 
@@ -32,7 +34,7 @@ la prueba. Las secciones iniciales conservan el diagnóstico histórico.
 | Bloque | Estado | Evidencia / dependencia |
 | --- | --- | --- |
 | 1. Base y sandbox | Verificado localmente | Ubuntu/Engine/runsc y 10 comprobaciones reales pasan; controles de recursos, salida, timeout y limpieza. |
-| 2. Laboratorio y reportes | Pendiente | Consume candidato y sandbox del bloque 1. |
+| 2. Laboratorio y reportes | Implementado y probado localmente; aceptación remota pendiente | API/trabajador/UI, hashes, contratos, SQLite privado y candidatos de fixture en gVisor. |
 | 3. Ejecución persistente | Pendiente | Trabajador, repositorios y versiones habilitadas. |
 | 4. Workflows | Pendiente | Contratos compartidos, validación y mapeo entre pasos. |
 | 5. Resultados e historial | Pendiente | Runs y resultados persistentes privados. |
@@ -308,3 +310,99 @@ antes de probar un candidato propio. Diseñar reportes privados con acceso ajeno
 convertir este script diagnóstico en un endpoint que acepte código arbitrario.
 Definir también recuperación ante caída del controlador: la batería acredita
 limpieza en los errores probados, no recuperación después de apagar Windows.
+
+## Bloque 2 — 14/11/2026: laboratorio y reportes privados
+
+Instrucción vigente: «vamos con el bloque 2». Implementación local y prueba
+reproducible entregadas; aceptación con sesión/candidato remoto aún pendiente.
+
+### Implementado
+
+- `backend/schemas/builds.py`, `repositories/builds.py`, `api/builds.py`:
+  POST 202 con candidate_id, hash, casos e Idempotency-Key; GET detalle/lista
+  propios, ajeno 404. No acepta dueño ni código desde el body de builds.
+- Reusa CandidateRepository/Auth/catálogo de A. Revalida CandidateManifest,
+  definición, identificadores, firma AST y hashes antes de encolar y en worker.
+  No cambia el contrato de A ni consume Gemini. No admite recursos/permisos externos.
+- SQLite en `output/laboratory/builds.sqlite3`, ignorado: instantáneas de tareas,
+  estados y reportes privados conservados al reabrir/reiniciar. Persistencia local,
+  sin RLS de PostgreSQL, firma ni garantía frente a un administrador del host.
+- `services/build_worker.py`: proceso separado, lock de trabajador, claim
+  atómico, queued/testing/passed/failed/interrupted, recuperación sin reintentos
+  automáticos, validación de entradas y salidas fuera del código candidato.
+- `services/sandbox_runner.py`: controlador stdlib dentro de Ubuntu, contenedor
+  nuevo por caso válido. El harness llama run solo dentro de gVisor. No entrega
+  JWT, claves, .env, montajes del host ni socket Docker al invitado.
+- Mismo perfil comprobado B1: 256 MiB sin swap adicional, 0,5 CPU, 8 procesos
+  invitados/64 tareas host, tmpfs 16 MiB, salida 64 KiB, uid 65534, red none,
+  raíz read-only y limpieza comprobada. Tiempo máximo por caso 12 s. Imagen
+  fijada al digest del bloque 1, sin pull ni fallback a runc.
+- Reportes ligados a candidato/hashes, casos, motivos, tiempos, versiones,
+  límites y limpieza; no contienen inputs, valores de salida ni trazas crudas.
+  Los casos son expectativas del dueño, no evidencia independiente auditada.
+- `LaboratorioCandidato.jsx` y servicio propio: editor JSON, encolar, consultar
+  estado y reabrir reportes paginados. Mocks primero separados; nunca fallback.
+  Integración mínima en router principal, api.js (Idempotency-Key) y panel de
+  candidatos de A; queda para revisión A, sin atribuir revisión conjunta.
+
+### Incidencias corregidas y entorno
+
+- Creado `.venv` local con Python 3.12.9 y dependencias existentes de requirements;
+  no se cambiaron dependencias compartidas. En el entorno restringido el launcher
+  no detectaba Python y WSL daba acceso denegado; fuera sí están disponibles.
+- Un error inicial de placeholders en INSERT SQLite fue detectado por tests y
+  corregido antes de ejecutar candidatos; las 75 pruebas finales pasan.
+- Docker Desktop había reemplazado /run/docker.sock dentro de Ubuntu: respondía
+  Engine 28.5.1 sin runsc. La batería falló sin ejecutar candidatos. Se añadió
+  configure_sandbox_socket_wsl.sh, con autorización de sistema, y override del
+  servicio Docker **de Ubuntu** para /run/capacita-docker.sock. Engine propio
+  vuelve a responder 29.1.3 y runsc release-20261109.0. No se cambió Desktop.
+  Setup, smoke y batería B1 usan ahora el socket exclusivo; configuración toma
+  el mismo lock del sandbox antes de reiniciar el daemon.
+- El primer perfil de laboratorio tenía timeout 3 s: la fixture de memoria fue
+  cortada por tiempo y no acreditó OOM. Se alineó al perfil general B1 de 12 s;
+  la pasada final sí verifica fallo por memoria. No se relajó el límite de RAM.
+
+### Verificación final
+
+- **75 pruebas backend pasan** (62 previas + 13 nuevas): privacidad HTTP,
+  autenticación, integridad, contratos/casos, idempotencia/conflictos, cuota,
+  paginación, persistencia, recuperación interrupted, exclusión de trabajador,
+  salida real validada y errores sanitizados. Proveedor/Supabase simulados;
+  no acreditan dos cuentas remotas.
+- **12 escenarios reales B2 pasan**: cinco transformaciones con acentos,
+  espacios/vacíos/whitespace; seis entradas inválidas rechazadas sin ejecutar;
+  aislamiento, temporal nuevo, procesos, timeout, OOM, exceso de salida,
+  excepción, objeto no serializable, stdout no JSON, contrato de salida y valor
+  incorrectos. En total 16 contenedores de candidatos de fixture, todos eliminados
+  con ausencia comprobada. No se ejecutó el candidato remoto de Miguel.
+- **10 comprobaciones B1 pasan otra vez** con el socket exclusivo, incluyendo
+  CPU limitada por cgroup del host y admisión única. Regresión iniciada
+  14/11/2026 18:41:09 UTC, reporte `output/sandbox/block1-latest.json` ignorado.
+- Lint y build frontend correctos; Python compila, OpenAPI registra GET/POST
+  /api/builds y GET /api/builds/{id}. Auditoría de imports sin rutas rotas ni
+  inactivos sin clasificar; enlaces locales correctos. La deprecación de
+  Starlette/httpx sigue como advertencia; no impide los tests.
+- La batería pública B2 se reproduce con
+  `.venv/Scripts/python.exe scripts/maintenance/verify_laboratory.py` y escribe
+  `output/laboratory/block2-latest.json` ignorado. `failed` en una fixture de
+  timeout/OOM/salida incorrecta es el estado esperado del build, no de la batería.
+- Sin gastos, generación IA, migraciones/datos remotos, push ni despliegue.
+
+### Cierre y siguiente paso
+
+Guía completa de arranque, API, pruebas manuales y límites:
+[LABORATORIO_BLOQUE_2.md](LABORATORIO_BLOQUE_2.md). Commit local identificable por
+`feat(laboratorio): probar candidatos aislados y persistir reportes privados`.
+
+Antes de dar la aceptación integrada por cerrada: iniciar API/Vite/trabajador,
+abrir candidato privado propio desde sesión real, añadir casos propios, encolar,
+reabrir reporte tras recargar y confirmar 404 con otra cuenta. No pedir claves
+ni tokens por chat. No se verificó aún este recorrido en navegador.
+
+Revisar con A el nuevo contrato de builds y cómo convertir almacenamiento local
+en evidencia confiable compartida antes de habilitar versiones. La recuperación
+de testing se prueba con repositorio reabierto; no se probó apagar Windows durante
+un candidato. Falta prueba específica de recuperación tras caída abrupta y
+política de retención. Próximo desarrollo: bloque 3, ejecución persistente sobre
+versiones habilitadas; el motor heredado no queda integrado por este laboratorio.

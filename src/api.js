@@ -15,10 +15,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
  *   api('/runs', { method: 'POST', body: { workflow_id, text } })
  *   api('/users/me/avatar', { method: 'POST', body: formData })
  */
-export async function api(ruta, { method = 'GET', body, signal } = {}) {
+export async function api(ruta, { method = 'GET', body, signal, idempotencyKey } = {}) {
   const { data: { session } } = await supabase.auth.getSession();
 
   const headers = {};
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
   if (session?.access_token) {
     headers.Authorization = `Bearer ${session.access_token}`;
   }

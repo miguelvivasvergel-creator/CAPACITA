@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { revisarGeneracion, listarCandidatos, generarCandidato } from '../../services/candidatos';
+import LaboratorioCandidato from './LaboratorioCandidato';
 
 export default function CandidatosCapacidad({ capacidad }) {
   const [revision, setRevision] = useState(null);
@@ -85,10 +86,11 @@ export default function CandidatosCapacidad({ capacidad }) {
       {page.items.length > 0 && <div className="space-y-3">
         <h4 className="text-sm font-bold text-slate-800">Candidatos guardados</h4>
         {page.items.map((candidate) => <details key={candidate.id} className="rounded-xl border border-slate-200 bg-white p-3">
-          <summary className="cursor-pointer text-sm font-semibold">Python · borrador · pruebas pendientes · {candidate.id.slice(0, 8)}</summary>
+          <summary className="cursor-pointer text-sm font-semibold">Python · borrador · {candidate.id.slice(0, 8)}</summary>
           <p className="mt-2 text-xs text-slate-500">Proveedor: {candidate.provider} · modelo: {candidate.model}. La revisión de sintaxis no acredita seguridad ni resultados correctos.</p>
           <p className="mt-2 break-all text-xs text-slate-500">SHA-256: {candidate.manifest.artifact_hash}</p>
           <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 text-xs text-slate-800">{candidate.manifest.proposal.source}</pre>
+          <LaboratorioCandidato candidate={candidate} />
         </details>)}
         {page.next_cursor && <button type="button" disabled={busy} onClick={loadMore} className="rounded-xl border px-4 py-2 text-sm">Cargar más candidatos</button>}
       </div>}

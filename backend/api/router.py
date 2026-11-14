@@ -6,6 +6,7 @@ from api.users import router as users_router
 from api.runs import router as runs_router
 from api.candidates import router as candidates_router
 from api.objectives import router as objectives_router
+from api.builds import router as builds_router
 
 # Enrutador principal de la API
 api_router = APIRouter()
@@ -18,3 +19,4 @@ api_router.include_router(users_router)
 api_router.include_router(runs_router)
 api_router.include_router(candidates_router)
 api_router.include_router(objectives_router)
+api_router.include_router(builds_router)

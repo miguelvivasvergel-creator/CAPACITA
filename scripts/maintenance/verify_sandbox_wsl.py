@@ -18,7 +18,7 @@ IMAGE = "python@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe1
 LOCK = "/run/lock/capacita-sandbox.lock"
 OUTPUT_LIMIT = 65536
 ENV = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"}
-DOCKER = ["/usr/bin/docker", "--host", "unix:///var/run/docker.sock"]
+DOCKER = ["/usr/bin/docker", "--host", "unix:///run/capacita-docker.sock"]
 
 
 def docker(*args):

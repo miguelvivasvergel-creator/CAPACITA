@@ -34,12 +34,9 @@ printf '%s\n' "$source_line" > "$source_path"
 apt-get update
 apt-get install -y --no-install-recommends runsc
 systemctl start docker
-# Algunos paquetes Docker de distribución requieren registro explícito.
-if ! env -u DOCKER_HOST -u DOCKER_CONTEXT /usr/bin/docker --host unix:///var/run/docker.sock info --format '{{json .Runtimes}}' |
-    /usr/bin/python3 -c 'import json,sys; sys.exit(0 if "runsc" in json.load(sys.stdin) else 1)'; then
-    runsc install
-    systemctl restart docker
-fi
-env -u DOCKER_HOST -u DOCKER_CONTEXT /usr/bin/docker --host unix:///var/run/docker.sock info --format '{{range $name, $runtime := .Runtimes}}{{$name}} {{end}}'
+# Registrar antes de validar el runtime en el socket exclusivo (también en instalación nueva).
+runsc install
+/bin/bash "$(dirname "$0")/configure_sandbox_socket_wsl.sh"
+env -u DOCKER_HOST -u DOCKER_CONTEXT /usr/bin/docker --host unix:///run/capacita-docker.sock info --format '{{range $name, $runtime := .Runtimes}}{{$name}} {{end}}'
 runsc --version
 dpkg-query -W -f='${Package} ${Version}\n' docker.io runsc
