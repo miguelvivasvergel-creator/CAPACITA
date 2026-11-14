@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, SecretStr
 
 
 class Settings(BaseSettings):
@@ -30,6 +31,11 @@ class Settings(BaseSettings):
     # La autorización procede del JWT del usuario, no de una service key.
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
+
+    GEMINI_API_KEY: SecretStr = SecretStr("")
+    GEMINI_MODEL: str = Field(default="gemini-4-hydrogen", pattern=r"^gemini-[a-z0-9.-]+$")
+    GEMINI_TIMEOUT_SECONDS: float = Field(default=45, ge=1, le=60)
+    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=4096, ge=256, le=8192)
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",

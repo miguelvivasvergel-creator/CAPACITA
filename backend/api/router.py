@@ -4,6 +4,8 @@ from api.capabilities import router as capabilities_router
 from api.files import router as files_router
 from api.users import router as users_router
 from api.runs import router as runs_router
+from api.candidates import router as candidates_router
+from api.objectives import router as objectives_router
 
 # Enrutador principal de la API
 api_router = APIRouter()
@@ -14,3 +16,5 @@ api_router.include_router(capabilities_router)
 api_router.include_router(files_router)
 api_router.include_router(users_router)
 api_router.include_router(runs_router)
+api_router.include_router(candidates_router)
+api_router.include_router(objectives_router)

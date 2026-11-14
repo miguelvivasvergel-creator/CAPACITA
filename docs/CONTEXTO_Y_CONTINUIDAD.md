@@ -4,11 +4,19 @@ Actualizado: 14/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
-Avance posterior al push db227f4: usuario pide acelerar hacia el martes. Confirmó que todavía no comprobó persistencia del formulario y que no tiene proveedor IA. Se implementó preparación interna de candidatos Python (`schemas/candidates.py`, `services/candidate_preparation.py`), sin endpoint, persistencia, IA ni ejecución; contrato documentado para revisión B y 38 pruebas locales pasan. Siguiente: confirmar guardado real, configurar proveedor con cuota gratuita confirmada y conectar generación/persistencia con búsqueda previa; Fahida debe confirmar sandbox. No afirmar recorrido completo ni martes garantizado.
+Cierre solicitado por usuario: terminar este último bloque, commit detallado y push a miguel; luego continuar otro día. Nuevo flujo local en Capacidades → Crear: objetivo natural → búsqueda textual autorizada → aclaraciones/bloqueo/propuesta → cargar formulario → comprobar/guardar explícitamente. POST /api/objectives/interpret. No es planner de workflows ni ejecución. Validación: 62 pruebas, lint/build y roundtrip propuesta/formulario correctos. Gemini real devolvió define con contratos/ejemplo consistentes (hash 0af15b07bc660cdc43f1cbc2f7b4fe8e26ed8754e9fb0c76292acdd5c7cb1cab). Falta recorrido autenticado de objetivos en navegador y privacidad real con segunda cuenta. No empezar otro módulo durante el cierre.
 
-La organización solicitada antes de probar el formulario ya se entregó en `db227f4`. Después el usuario autorizó avanzar hacia generación; sigue pendiente comprobar persistencia del formulario. El nuevo bloque de preparación de candidatos está autorizado para commit/push detallado a `miguel`. El usuario prevé configurar Gemini; todavía no hay clave ni cuota verificadas en esta implementación. Guardar la clave solo en backend/.env, nunca en chat o Git.
+Bloqueo confirmado por usuario: Fahida todavía no tiene sandbox. No probar código generado en host/API como sustituto. Guía preparada en ENTREGA_A_B_CANDIDATOS.md: contrato, casos independientes y evidencia por verificar; no implementa infraestructura ni envía mensajes a Fahida. Mantener propiedad B. A puede continuar privacidad real y comprensión/planner. Ejecución, habilitación y recorrido completo del martes siguen en riesgo hasta integrar aislamiento real.
 
-Al finalizar, retomar **la prueba autenticada de definición estructurada**:
+Evidencia más reciente: usuario confirma recuperación después de recargar del candidato Python privado generado con Gemini (id abreviado 452d1c47, SHA-256 07cef1a8d62fafdeb4f2cb57bfda7e208a7ebb150b81f6f874de1477d032e301), mismo código/hash y status borrador/pruebas pendientes. Código visible valida inputs dict, parameters vacío y campo texto string; devuelve resultado=texto.strip(). Generación, guardado y relectura contra Supabase real confirmados por usuario. No confirma corrección funcional/aislamiento. Siguiente: privacidad con segunda cuenta y entrega a sandbox/laboratorio B, sin ejecutar código dentro de FastAPI ni en el host.
+
+Usuario aplicó SQL 06 y reportó lectura=true, insertar=true, editar=false, borrar=false. No repetir migración. Corregido esDuenio ausente en detalle: Mis capacidades pasa propiedad del listado y backend valida dueño real. Editar/Eliminar solo aparecen con callbacks funcionales. Generación/guardado/recarga ya confirmados por usuario; falta matriz RLS real de candidatos.
+
+El usuario confirmó persistencia de definición estructurada y posteriormente generación/guardado/recarga del candidato 452d1c47. SQL 06 aplicado por usuario con permisos true,true,false,false; no repetirlo. Adaptador, API y panel implementados; 52 pruebas locales, lint/build y auditorías pasan. Fahida debe confirmar sandbox; no hay ejecución/habilitación. Matriz RLS remota completa pendiente.
+
+Organización entregada en `db227f4`; contrato inicial de candidatos entregado en `711eacf`, ambos subidos a origin/miguel. Usuario autorizó commit/push detallado del bloque posterior completo (Gemini/candidatos/objetivos/documentación); confirmar hash y sincronización en Git al retomar. Claves solo .env ignorados, sin mostrarlas ni subirlas. Acceso real/modelo comprobado; cuota/nivel de facturación concretos no inspeccionados. No registrar secretos.
+
+Checklist de definición estructurada confirmado por el usuario (conservar para regresión):
 
 1. Abrir `http://127.0.0.1:5173` e iniciar sesión.
 2. Ir a **Capacidades → Crear → Cargar ejemplo editable**.
@@ -17,7 +25,7 @@ Al finalizar, retomar **la prueba autenticada de definición estructurada**:
 5. Comprobar la copia en **Mis capacidades**, recargar y abrir **Ver → Ver contratos y definición guardada**.
 6. Confirmar persistencia de contratos, parámetros y ejemplo. Validar el ejemplo no equivale a ejecutar una implementación.
 
-**Esta prueba nueva sigue pendiente.** No pedir claves/tokens ni desactivar protecciones de DevTools. No necesita más SQL: usa permisos 04/05 ya aplicados por el usuario.
+**Prueba confirmada por el usuario.** No pedir claves/tokens ni desactivar protecciones de DevTools. El formulario usa permisos 04/05; el nuevo almacenamiento separado de candidatos requiere 06, todavía no aplicado.
 
 ## Visión y autorización vigentes
 
@@ -36,7 +44,8 @@ Al finalizar, retomar **la prueba autenticada de definición estructurada**:
 | Catálogo | GET reales 200 y usuario confirma listas. | Matriz remota de RLS completa. |
 | Clonación | POST real 201 y usuario confirma copia, también tras activar contratos. | Comparar contratos remotos no vacíos. |
 | Privacidad de listas | Segunda cuenta no ve borrador privado, según usuario. | Acceso directo ajeno real debe dar 404; cubierto en simulación. |
-| Definición estructurada | API/editor implementados, 32 pruebas HTTP simuladas y Playwright aislado. | Prueba autenticada del formulario nuevo. No genera ni ejecuta código. |
+| Definición estructurada | API/editor implementados y usuario confirma guardado, recarga y detalle. | Formulario no ejecuta código. |
+| Gemini/candidatos | Generación real de ejemplo público y AST/hash correctos. API/UI y persistencia por repositorio implementadas localmente. | Aplicar/revisar SQL 06 y probar persistencia real/RLS con dos cuentas. Sin ejecución de código. |
 
 ## Implementación y datos actuales
 
@@ -45,7 +54,7 @@ Al finalizar, retomar **la prueba autenticada de definición estructurada**:
 - Catálogo PostgREST con clave pública y token de usuario; lecturas con visible_to en origen/resultados y RLS. Sin service_role.
 - input_schema/output_schema JSONB existentes; permissions text[]; contadores no nulos default 0.
 - Usuario aplicó SQL **03** (lectura), **04** (INSERT por columnas de borradores privados propios) y **05** (contratos). Reportó contratos=true; contador/UPDATE/DELETE=false.
-- No habilitados: edición/borrado remotos, publicación, generación, versiones/builds ni motor real integrado. El código heredado no prueba esas funciones.
+- No habilitados: edición/borrado remotos, publicación, versiones/builds ni motor real integrado. Generación Gemini probada aisladamente; flujo persistente pendiente de SQL 06/prueba autenticada. El código heredado no prueba esas funciones.
 - Definición: POST /api/capabilities/definitions/check y /api/capabilities/definitions. Entrada/salida en columnas; parámetros, restricciones, recursos, errores y ejemplos en config.definition. Privado/draft, sin adaptador.
 - Validación compartida: backend/services/contract_validation.py. Búsqueda/guardado: definition_service.py. jsonschema==4.26.0 instalado en .venv y declarado en requirements.
 - Formulario A: DefinirCapacidad.jsx; HTTP en src/services/definiciones.js; helpers en src/utils/definiciones.js. Laboratorio B CrearCapacidad.jsx conservado y sin integrar.
@@ -63,6 +72,8 @@ Al finalizar, retomar **la prueba autenticada de definición estructurada**:
 
 ## Entorno, Git y validación
 
+- Cierre del bloque Gemini: API reiniciada fuera del sandbox con configuración actual; health healthy y tres rutas de candidatos presentes en OpenAPI (check, colección GET/POST y detalle). Vite incorpora panel por HMR. No se certificó el recorrido visual ni persistencia de candidatos contra Supabase real; SQL 06 preparado/no aplicado. Cambios de este bloque sin commit/push nuevo.
+
 - Tras el push `db227f4`, las listas devolvieron 503 con la API iniciada dentro del sandbox. Comprobación de catálogo: fallo de transporte dentro del sandbox; fuera, Supabase responde HTTP 401 a la consulta sin sesión (no certifica permisos ni lectura autenticada). API reiniciada con red autorizada y health healthy. El usuario indicó «listo» después del reinicio; la prueba de persistencia sigue pendiente. No cambiar SQL/RLS por este fallo de red.
 
 - 14/11/2026: el usuario autorizó commit y push del trabajo local a `miguel`, con mensaje de organización de carpetas. Incluye definición estructurada y limpieza; la prueba autenticada sigue pendiente. Frontend/API arrancados y comprobados (HTTP 200). Validación de entrega: lint/build y auditorías de imports/enlaces correctos; no se incluyen secretos ni artefactos locales. Confirmar el hash y el estado remoto en Git después del push.
@@ -76,10 +87,10 @@ Al finalizar, retomar **la prueba autenticada de definición estructurada**:
 - Tras limpiar: 32 pruebas HTTP simuladas, lint/build y git diff --check pasan. Auditoría de imports sin rutas rotas; enlaces locales correctos en 14 documentos. API reiniciada con módulos actuales: health healthy/200 y ambas rutas de definición presentes en OpenAPI. No se ejecutó la prueba autenticada nueva ni se modificaron datos remotos. Advertencias conocidas: bundle >500 kB y deprecación Starlette/httpx.
 - Build .NET de referencia falló **antes de retirar plantillas**, NETSDK1045: SDK instalado 9.0.305 frente a proyecto net10.0. No se cambió target ni instaló SDK; compilación .NET sin validar.
 
-## IA propuesta, todavía no configurada
+## IA configurada y límites actuales
 
-Usuario sin proveedor; pidió recomendación. Se propuso probar Gemini API/Google AI Studio con gemini-4-hydrogen, cuyo [nivel gratuito](https://aistudio.google.com/docs/pricing#gemini-4-hydrogen) estaba publicado al consultar el 14/11/2026. Es recomendación, no aceptación/disponibilidad/cuota confirmadas.
+Gemini configurado solo en backend: SecretStr, modelo gemini-4-hydrogen configurable, timeout 45 s y salida 4096 tokens. Consulta de metadatos 200 y una generación real de ejemplo público correctas. La primera clave fue rechazada; tras sincronizar la reemplazada desde raíz a backend, se verificó acceso. No se imprimen valores. Modelo con [nivel gratuito publicado](https://aistudio.google.com/docs/pricing#gemini-4-hydrogen); cuota/nivel de facturación concretos no inspeccionados. No se activó facturación.
 
-[Términos gratuitos](https://aistudio.google.com/docs/terms#data-use-unpaid): contenido puede usarse para mejorar productos, usar datos no privados. Clave solo backend, nunca chat/frontend. No se crearon claves, activó facturación ni hicieron llamadas IA.
+[Términos gratuitos](https://aistudio.google.com/docs/terms#data-use-unpaid): contenido puede usarse para mejorar productos; panel exige confirmar ejemplos sin datos privados y envío a proveedor. Una llamada por intento, sin reintentos automáticos. Límite local por proceso: 10 intentos/hora, intervalo 30 s y una generación simultánea por usuario; se reinicia con API y no es cuota distribuida ni límite de facturación. Antes de producción/múltiples workers requiere almacenamiento compartido. No genera permisos/recursos externos.
 
-Después de la prueba pendiente, elegir/configurar proveedor, comprobar cuota y avanzar interpretación/generación con sandbox de Fahida. No empezar ese bloque durante la organización.
+Nuevas rutas y migración documentadas en CONTRATO_INTEGRACION.md. No consumir IA si la tabla/permisos de candidatos faltan: preflight sin filas antes de generación. Código guardado como datos privados en tabla separada, sin publicación ni ejecución; B debe revalidar hashes y probar aislamiento. La preparación sintáctica no acredita seguridad o corrección.

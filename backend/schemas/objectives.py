@@ -1,0 +1,115 @@
+"""Interpretación editable de una necesidad; no es un workflow ni un plan ejecutable."""
+import json
+from typing import Annotated, Literal
+
+from fastapi import HTTPException
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from schemas.capabilities import CapabilityListResponse, TipoDato
+from schemas.definitions import CapabilityDefinition, TextItem
+from services.contract_validation import validate_definition
+
+FieldType = Literal["string", "number", "integer", "boolean", "array", "object"]
+ItemType = Literal["string", "number", "integer", "boolean", "object"]
+
+
+class ClarificationAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    question: str = Field(min_length=1, max_length=500)
+    answer: str = Field(min_length=1, max_length=1000)
+
+
+class ObjectiveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    objective: str = Field(min_length=10, max_length=2000)
+    clarifications: list[ClarificationAnswer] = Field(default_factory=list, max_length=6)
+    consent_to_provider: bool = False
+
+
+class DraftField(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
+    description: str = Field(default="", max_length=500)
+    type: FieldType
+    required: bool = True
+    items_type: ItemType = "string"
+
+
+class DefinitionDraft(BaseModel):
+    """Formato visual acotado: no se pierden reglas al cargar el editor existente."""
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=3, max_length=80)
+    description: str = Field(min_length=5, max_length=500)
+    category: str = Field(min_length=1, max_length=50)
+    input_type: TipoDato
+    output_type: TipoDato
+    inputs: list[DraftField] = Field(max_length=16)
+    parameters: list[DraftField] = Field(max_length=16)
+    outputs: list[DraftField] = Field(max_length=16)
+    constraints: list[TextItem] = Field(default_factory=list, max_length=20)
+    required_permissions: list[TextItem] = Field(default_factory=list, max_length=20)
+    resources: list[TextItem] = Field(default_factory=list, max_length=20)
+    failure_cases: list[TextItem] = Field(default_factory=list, max_length=20)
+    example_inputs_json: str = Field(max_length=16000)
+    example_parameters_json: str = Field(max_length=16000)
+    example_output_json: str = Field(max_length=16000)
+
+
+class ObjectiveInterpretation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["clarify", "define", "blocked"]
+    explanation: str = Field(min_length=1, max_length=500)
+    questions: list[Annotated[str, Field(min_length=1, max_length=500)]] = Field(default_factory=list, max_length=3)
+    draft: DefinitionDraft | None = None
+
+    @model_validator(mode="after")
+    def consistent_decision(self):
+        if self.decision == "define":
+            if self.draft is None or self.questions:
+                raise ValueError("Define requiere borrador sin preguntas pendientes")
+        elif self.draft is not None or (self.decision == "clarify" and not self.questions):
+            raise ValueError("Aclarar/bloquear no puede inventar una definición completa")
+        return self
+
+
+class ObjectiveResponse(BaseModel):
+    interpretation: ObjectiveInterpretation
+    definition: CapabilityDefinition | None = None
+    definition_hash: str | None = None
+    matches: CapabilityListResponse
+    search_kind: Literal["text"] = "text"
+    search_queries: list[str]
+    search_truncated: bool = False
+    implementation_verified: Literal[False] = False
+
+
+def draft_to_definition(draft: DefinitionDraft) -> CapabilityDefinition:
+    def contract(fields):
+        names = [field.name for field in fields]
+        if len(names) != len(set(names)):
+            raise ValueError("Nombres de campo repetidos")
+        return {
+            "type": "object",
+            "properties": {field.name: {
+                "type": field.type,
+                **({"description": field.description} if field.description else {}),
+                **({"items": {"type": field.items_type}} if field.type == "array" else {}),
+            } for field in fields},
+            "required": [field.name for field in fields if field.required],
+            "additionalProperties": False,
+        }
+    data = draft.model_dump(exclude={"inputs", "parameters", "outputs", "example_inputs_json", "example_parameters_json", "example_output_json"})
+    data.update(
+        input_schema=contract(draft.inputs), parameter_schema=contract(draft.parameters),
+        output_schema=contract(draft.outputs), examples=[{
+            "inputs": json.loads(draft.example_inputs_json),
+            "parameters": json.loads(draft.example_parameters_json),
+            "expected_output": json.loads(draft.example_output_json),
+        }],
+    )
+    try:
+        definition = CapabilityDefinition(**data)
+        validate_definition(definition)
+    except HTTPException:
+        raise ValueError("El borrador no cumple sus contratos") from None
+    return definition

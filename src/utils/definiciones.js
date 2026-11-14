@@ -1,4 +1,23 @@
 // Construcción de contratos y ejemplos del formulario; sin llamadas HTTP.
+// Solo para propuestas del formato visual acotado del intérprete, no esquemas arbitrarios.
+export function definicionAFormulario(definition) {
+  const fields = (schema) => Object.entries(schema.properties).map(([name, property]) => ({
+    id: crypto.randomUUID(), name, type: property.type, description: property.description || '',
+    required: schema.required.includes(name),
+    ...(property.type === 'array' ? { itemsType: property.items.type } : {}),
+  }));
+  const example = definition.examples[0];
+  return {
+    name: definition.name, description: definition.description, category: definition.category,
+    input_type: definition.input_type, output_type: definition.output_type,
+    inputs: fields(definition.input_schema), parameters: fields(definition.parameter_schema), outputs: fields(definition.output_schema),
+    ...Object.fromEntries(['constraints', 'required_permissions', 'resources', 'failure_cases'].map((key) => [key, definition[key].join('\n')])),
+    example_inputs: JSON.stringify(example.inputs, null, 2),
+    example_parameters: JSON.stringify(example.parameters, null, 2),
+    example_output: JSON.stringify(example.expected_output, null, 2),
+  };
+}
+
 export function camposAContrato(campos) {
   const names = campos.map((campo) => campo.name.trim());
   if (names.some((name) => !/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(name))) {

@@ -1,8 +1,9 @@
 import { cloneElement, useId, useState } from 'react';
 import { ejemploDefinicion } from '../../mocks/definiciones';
 import { comprobarDefinicion, guardarDefinicion } from '../../services/definiciones';
-import { prepararDefinicion } from '../../utils/definiciones';
+import { prepararDefinicion, definicionAFormulario } from '../../utils/definiciones';
 import { clonarCapacidad } from '../../services/capacidades';
+import InterpretarObjetivo from './InterpretarObjetivo';
 
 const INPUT = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100';
 const SECONDARY = 'rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
@@ -76,6 +77,9 @@ export default function DefinirCapacidad({ onGuardado }) {
           setForm(structuredClone(ejemploDefinicion)); setChecked(null); setAcknowledge(false); setError('');
         }}>Cargar ejemplo editable</button>
       </div>
+      <InterpretarObjetivo disabled={busy} onBusy={setBusy} onClonar={reutilizar} onPropuesta={(definition) => {
+        setForm(definicionAFormulario(definition)); setChecked(null); setAcknowledge(false); setError('');
+      }} />
       <form onSubmit={comprobar}>
         <fieldset disabled={busy} className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">

@@ -1,4 +1,5 @@
 // Detalle reutilizable de una capacidad del catálogo.
+import CandidatosCapacidad from './CandidatosCapacidad';
 
 export default function DetalleCapacidad({
   capacidad,
@@ -110,6 +111,10 @@ export default function DetalleCapacidad({
           }, null, 2)}</pre>
         </details>
 
+        {esDuenio && capacidad.visibility === 'private' && capacidad.status === 'draft' && capacidad.config?.definition && (
+          <CandidatosCapacidad key={capacidad.id} capacidad={capacidad} />
+        )}
+
         {/* Permisos requeridos */}
         <div className="space-y-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -149,20 +154,20 @@ export default function DetalleCapacidad({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
           {esDuenio ? (
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
+              {onEditar && <button
                 type="button"
                 onClick={() => onEditar && onEditar(capacidad)}
                 className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-full transition cursor-pointer"
               >
                 Editar
-              </button>
-              <button
+              </button>}
+              {onEliminar && <button
                 type="button"
                 onClick={() => onEliminar && onEliminar(capacidad)}
                 className="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-full transition cursor-pointer"
               >
                 Eliminar
-              </button>
+              </button>}
             </div>
           ) : (
             <button

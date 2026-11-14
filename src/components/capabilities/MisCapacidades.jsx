@@ -157,6 +157,7 @@ export default function MisCapacidades({
       {capacidadSeleccionada && (
         <DetalleCapacidad
           capacidad={capacidadSeleccionada}
+          esDuenio={esMisCapacidades}
           onCerrar={() => setCapacidadSeleccionada(null)}
           onUsar={handleUsar}
           onClonar={handleClonar}

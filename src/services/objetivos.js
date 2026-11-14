@@ -1,0 +1,7 @@
+import { api } from '../api';
+
+export function interpretarObjetivo(objective, clarifications, consent) {
+  return api('/objectives/interpret', {
+    method: 'POST', body: { objective, clarifications, consent_to_provider: consent },
+  });
+}

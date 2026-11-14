@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.definitions import CapabilityDefinition
+from datetime import datetime
 
 
 class PythonSourceProposal(BaseModel):
@@ -27,3 +28,24 @@ class CandidateManifest(BaseModel):
     proposal: PythonSourceProposal
     status: Literal["draft"] = "draft"
     implementation_verified: Literal[False] = False
+
+
+class CandidateGenerateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    definition_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    acknowledge_similar: bool = False
+    consent_to_provider: bool = False
+
+
+class CandidateResponse(BaseModel):
+    id: UUID
+    capability_id: UUID
+    manifest: CandidateManifest
+    provider: Literal["gemini"]
+    model: str
+    created_at: datetime
+
+
+class CandidateListResponse(BaseModel):
+    items: list[CandidateResponse]
+    next_cursor: str | None = None

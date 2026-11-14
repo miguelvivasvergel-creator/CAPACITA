@@ -14,7 +14,23 @@ Ejecutar desde la raíz con el Python de `.venv/`. No muestran claves ni aplican
 
 Los SQL numerados para permisos están en db/, no son scripts de arranque. No ejecutar los esquemas históricos automáticamente sobre un proyecto existente.
 
-## Mantenimiento de solo lectura
+## Gemini
+
+`ai/check_gemini.py` consulta metadatos del modelo, sin generar contenido ni imprimir claves. `--generate-example` realiza una única generación con un ejemplo público y comprueba sintaxis/firma/hash, sin ejecutar código ni persistir candidatos. Esta opción consume cuota del proveedor; no activa facturación. Configuración solo en backend/.env. La consulta de metadatos no confirma cuota ni nivel de facturación.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/ai/check_gemini.py
+# Solo cuando se quiera consumir una generación acotada:
+.\.venv\Scripts\python.exe scripts/ai/check_gemini.py --generate-example
+```
+
+## Auditorías
+
+`node scripts/maintenance/check_definition_roundtrip.mjs` comprueba que cargar una
+propuesta visual en el formulario conserva contratos, campos opcionales, listas,
+objetos y ejemplo. `ai/check_gemini.py --interpret-example` consume una llamada
+de interpretación con ejemplo público; valida contratos sin consultar catálogo,
+persistir ni ejecutar código. Es prueba aislada del proveedor.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/maintenance/audit_structure.py

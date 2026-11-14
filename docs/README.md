@@ -9,6 +9,8 @@ Leer al iniciar, en orden:
 
 Guías de trabajo:
 
+- [Entrega de candidatos a Fahida: sandbox y pruebas pendientes](ENTREGA_A_B_CANDIDATOS.md).
+
 - [Organización y movimientos de archivos](ESTRUCTURA.md).
 - [Identidad y catálogo: contrato e integración](modulo-a-identidad-catalogo.md).
 - [Contrato de integración A/B: definición estructurada](CONTRATO_INTEGRACION.md).

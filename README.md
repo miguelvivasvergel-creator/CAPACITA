@@ -132,6 +132,33 @@ antes de reiniciarlo, incluida `jsonschema`.
 
 ## Trabajo en equipo
 
+### Generación de candidatos Python (bloque local nuevo)
+
+El detalle de una definición privada propia incluye **Preparar implementación Python**.
+Permite revisar coincidencias, confirmar envío de ejemplos sin datos privados a Gemini
+y generar/guardar un candidato privado. Requiere revisar/aplicar
+[`06_private_candidates.sql`](db/06_private_candidates.sql); el script está preparado,
+no aplicado automáticamente. Crea una tabla privada independiente con RLS, sin
+modificar capacidades existentes ni habilitar ejecución. Hasta que exista el
+almacenamiento, la generación se detiene antes de llamar a IA.
+
+Configurar `GEMINI_API_KEY` solo en `backend/.env` (sin prefijo VITE), modelo y límites
+según `backend/.env.example`, y reiniciar API. Comprobación sin mostrar claves:
+`.venv\Scripts\python.exe scripts/ai/check_gemini.py`. La opción `--generate-example`
+consume una generación con un ejemplo público; no ejecuta código ni guarda un candidato.
+Revisar cuotas/nivel gratuito en la cuenta y no activar facturación sin autorización.
+Una propuesta con sintaxis válida aún requiere pruebas aisladas de Fahida.
+
+### Coordinación
+
+En **Capacidades → Crear**, **Empieza describiendo lo que necesitas** busca en el
+catálogo y usa Gemini para pedir aclaraciones o proponer una definición editable.
+Requiere confirmar objetivo/respuestas sin datos privados; el catálogo no se envía
+al modelo. **Usar propuesta en el formulario** permite revisar y comprobar antes
+de guardar. No guarda automáticamente ni ejecuta código; no es un planner de workflows.
+La interpretación Gemini se probó con ejemplo público; recorrido autenticado de
+esta nueva pantalla pendiente. No necesita otro SQL.
+
 Una rama por persona y cambios hacia `main` por PR revisado. Miguel trabaja en
 `miguel`. Los dueños de archivos e hitos están en el plan de dos personas.
 Actualizar estado y continuidad al cerrar cada bloque, distinguiendo código,

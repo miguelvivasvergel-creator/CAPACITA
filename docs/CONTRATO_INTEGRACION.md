@@ -4,6 +4,8 @@ Actualizado: 14/11/2026. Implementación local del frente A; pendiente revisión
 
 ## Identidad y catálogo existentes
 
+Actualización de cierre: usuario confirmó SQL 06 (true,true,false,false) y generación/guardado/recarga del candidato 452d1c47 con mismo código/hash. No repetir SQL. Fahida aún no tiene sandbox; no hay ejecución/habilitación. Las notas de SQL pendiente más abajo describen la preparación inicial y quedan superadas por esta confirmación. Total actual: 62 pruebas locales, lint/build y roundtrip correctos. Nuevo flujo de objetivos descrito al final.
+
 - Consumir FastAPI desde `src/api.js`; envelope `{success, message, data, timestamp}`, errores `{detail}`, listas en `data: {items, next_cursor}`.
 - Toda operación nueva usa el usuario verificado por `get_current_user`. No aceptar propietario de la petición ni usar credenciales de servicio en código generado.
 - `CapabilityRepository` usa token de usuario y clave pública. Sus lecturas pasan por `visible_to`; otra cuenta recibe 404 para una fila privada.
@@ -87,7 +89,7 @@ Clonar conserva esquemas y config. No se modifican filas previas. No hay nueva t
 
 ### Preparación local de candidato Python (14/11/2026)
 
-Implementados `schemas.candidates.PythonSourceProposal`, `CandidateManifest` y `services.candidate_preparation.prepare_candidate(capability_id, definition, proposal)`. Pendiente revisión de Fahida. Es una función interna sin endpoint, proveedor ni persistencia; no representa un candidato generado o guardado.
+Implementados `schemas.candidates.PythonSourceProposal`, `CandidateManifest` y `services.candidate_preparation.prepare_candidate(capability_id, definition, proposal)`. Pendiente revisión de Fahida. La preparación es una función interna; el nuevo bloque siguiente añade proveedor/API/repositorio y panel. El almacenamiento remoto requiere SQL 06, todavía no aplicado.
 
 El paquete incluye UUID de candidato/capacidad, definición completa (contratos, permisos declarativos y ejemplos), código en `proposal.source`, dependencias vacías, runtime Python, entrypoint `main.run`, hash de definición y hash del artefacto. Solo admite estado draft e implementation_verified=false. El primer entorno declara únicamente biblioteca estándar; esto no inspecciona imports ni demuestra aislamiento.
 
@@ -95,13 +97,48 @@ Preparación: revalida definición/ejemplos, limita código a 64 KiB UTF-8 y ana
 
 Hash SHA-256 del JSON UTF-8 con ensure_ascii=false, allow_nan=false, sort_keys=true y separadores compactos, de `{format_version: 1, runtime: "python", entrypoint: "main.run", definition: <model_dump JSON>, proposal: <model_dump JSON>}`. Conserva código exacto y excluye ids/estado. B debe revalidar contenido y recalcular hash antes de vincular evidencia; ni los hashes ni los campos de estado recibidos habilitan ejecución. Objetos anidados pueden mutar en memoria: verificar al persistir y al consumir.
 
-Pendiente: proveedor, búsqueda previa integrada a generación, almacenamiento privado/artefact_ref, autorización de lectura, límites de consumo, builds y ejecución aislada. No hay nuevos endpoints `/candidates` ni tablas. Seis pruebas nuevas verifican integridad, serialización, firma, límites, ejemplos y ausencia de ejecución; total 38 pruebas locales.
+La preparación inicial añadió seis pruebas (38 en ese bloque). El bloque siguiente eleva el total a 52 pruebas. Builds y ejecución aislada siguen pendientes; no hay artifact_ref de almacenamiento de archivos: el artefacto es el JSON manifest inmutable de la tabla privada, leído mediante API autorizada.
 
-- A: proveedor IA, comprensión de objetivos, generación real y almacenamiento de candidatos/artefactos privados. Ninguna llamada a IA se realiza en este bloque.
+### Generación Gemini y candidatos privados (bloque posterior a 711eacf)
+
+Implementación local A: proveedor `providers/gemini.py`, orquestación `services/candidate_generation.py`, repositorio `repositories/candidates.py`, router `api/candidates.py` y panel `CandidatosCapacidad.jsx` dentro del detalle de borradores privados propios con definición estructurada. No se modifica laboratorio B. Consumir siempre mediante `src/api.js` y `src/services/candidatos.js`; mocks solo de desarrollo y nunca fallback.
+
+| Operación | Resultado |
+| --- | --- |
+| POST /api/capabilities/{id}/candidates/check | Sin IA: definición vigente/hash y coincidencias textuales autorizadas, excluyendo origen; preflight de tabla con cero filas. |
+| POST /api/capabilities/{id}/candidates | Petición `{definition_hash, acknowledge_similar, consent_to_provider}`. Búsqueda y validación nuevas; una llamada IA y guardado privado. HTTP 201 con CandidateResponse. |
+| GET /api/capabilities/{id}/candidates?limit=20&cursor=uuid | Lista propia `{items, next_cursor}`, orden id.asc, límite 1–100. |
+| GET /api/candidates/{id} | CandidateResponse del dueño; ajeno/inexistente 404. |
+
+CandidateResponse: `{id, capability_id, manifest: CandidateManifest, provider: "gemini", model, created_at}`. El id coincide con manifest.candidate_id. El manifest contiene definición completa y proposal.source/dependencies, sin credenciales. Cada generación guarda una fila nueva; no actualiza el catálogo, no marca capacidad disponible ni modifica candidatos anteriores. El hash y estado de la definición se revalidan antes y después de IA. No se guarda una respuesta si cambió la definición durante la llamada. No hay reintentos automáticos ni promesa de idempotencia ante reintentos manuales después de una respuesta perdida.
+
+SQL preparado: `db/06_private_candidates.sql`, NO aplicado. Crea capability_candidates con UUID, dueño FK profiles, origen FK capabilities, manifest JSONB y proveedor/modelo/fecha. RLS SELECT/INSERT solo del dueño; INSERT exige origen propio/private/draft; sin UPDATE/DELETE para authenticated/anon, sin publicación ni estados de habilitación. Índices por owner/id y capability/id; cambios a este esquema requieren revisión A/B. Tabla existente provoca parada para inspección, no se sobrescribe. Hasta aplicar y verificar, la aplicación falla antes de consumir IA por falta de almacenamiento. Validación de permisos esperada: true,true,false,false; faltan prueba PostgreSQL/RLS real y dos cuentas.
+
+El usuario tiene acceso INSERT directo por RLS: un manifest o texto provider/model insertado por su dueño NO es evidencia emitida por el laboratorio. B debe validar el paquete, recalcular hashes y emitir sus propios registros de build/pruebas ligados al contenido. No confiar en el estado recibido para habilitar o publicar. La ejecución experimental también requiere sandbox; el API no importa ni ejecuta source.
+
+Gemini: clave SecretStr solo backend, URL fija oficial, modelo configurable (por defecto gemini-4-hydrogen), una respuesta JSON, sin herramientas ni ejecución del proveedor, timeout 45 s, máximo 4096 tokens y 256 KiB de respuesta. Definiciones con recursos/permisos externos se bloquean para este primer entorno. Prompt solicita biblioteca estándar, pero AST no demuestra que se cumpla ni sustituye aislamiento. 429/errores del proveedor se traducen a 503 (nunca 401 de usuario); respuestas incompletas/inválidas a 502. No se imprimen cuerpos o credenciales.
+
+El panel requiere confirmación de definición/ejemplos sin datos privados y envío a Google. La cuota gratuita concreta y facturación se revisan en la cuenta; no se activó cobro. Límites locales por proceso: 30 s entre intentos, máximo 10/hora y una generación simultánea por dueño. Los fallos consumen intento; reiniciar borra contadores. Antes de múltiples workers o exposición pública se necesita cuota durable/compartida. El control local no limita la factura del proveedor.
+
+Evidencia real: metadatos 200; un ejemplo público produjo 509 bytes de código y hash válido, sin ejecutar ni guardar. 52 pruebas locales totales; HTTP/proveedor simulado cubren búsqueda previa, consentimiento, propiedad/404, preflight sin cuota, guardado/relectura simulados, hashes obsoletos, cambios durante generación, paginación, límites y errores. Lint/build correctos. Persistencia de candidatos e interfaz completas todavía no verificadas con Supabase real. El usuario confirmó por separado persistencia del formulario de definición.
+
+- A: comprensión de objetivos/planner y verificación real del flujo persistente de candidatos después de SQL 06. Generación Gemini aislada ya probada; aún no equivale a habilitación.
 - B: laboratorio, aislamiento, builds y evidencias. Una definición consistente no autoriza a ejecutar código.
 - A/B: acordar y luego implementar CandidateManifest, CapabilityVersion y contratos de workflows/builds propuestos en el reparto. No utilizar endpoints futuros como si existieran.
 - No activar publicación ni declarar una capacidad disponible hasta verificar implementación, versión y evidencia del ejecutor.
 
-Validación local: pruebas HTTP con proveedor simulado cubren autenticación, privacidad de coincidencias, contratos/ejemplos inválidos, límites, búsqueda previa al guardado, 409 sin reconocimiento de coincidencias y persistencia/clonado privado del paquete. Falta validación autenticada de este nuevo flujo contra Supabase real.
+Validación local de definición: pruebas HTTP con proveedor simulado cubren autenticación, privacidad de coincidencias, contratos/ejemplos inválidos, límites, búsqueda previa al guardado, 409 sin reconocimiento de coincidencias y persistencia/clonado privado del paquete. El usuario confirmó posteriormente guardado/recarga/detalle de definición contra Supabase real. La persistencia de candidatos de generación sigue pendiente de SQL 06 y prueba autenticada.
 
-32 pruebas HTTP en total pasan; lint/build pasan con advertencia de tamaño de bundle. Playwright verificó el componente en un navegador aislado con respuestas interceptadas, incluido guardado simulado, invalidación al editar, JSON mal formado, parámetro entero y móvil. Esto no certifica persistencia remota ni ejecución de una implementación. La API local reiniciada expone ambas rutas y responde 401 sin token con CORS correcto.
+El bloque inicial de definición tuvo 32 pruebas HTTP y Playwright aislado con respuestas interceptadas. El usuario confirmó después la persistencia real de definición y candidato. Esas pruebas visuales iniciales no cubren el nuevo intérprete ni ejecución de código. La cifra actual es 62 pruebas locales, con advertencia conocida de tamaño de bundle.
+
+## Interpretación de objetivos (bloque de cierre)
+
+POST /api/objectives/interpret, con sesión, recibe `{objective, clarifications: [{question, answer}], consent_to_provider}`. Objetivo 10–2000 caracteres, hasta 6 respuestas (pregunta hasta 500, respuesta hasta 1000). Busca primero frase/términos relevantes (hasta cuatro consultas, seis filas cada una) con visible_to en origen/resultados; después busca también por nombre si hay definición. Hasta 20 coincidencias deduplicadas, search_queries, search_kind=text y search_truncated. next_cursor=null en esta agregación: ampliar en catálogo. No es búsqueda semántica ni selección automática de versiones disponibles.
+
+Gemini recibe únicamente objetivo/respuestas consentidos: nunca resultados del catálogo, secretos ni tokens. Devuelve clarify (hasta tres preguntas), blocked o define (borrador visual). Formato de hasta 16 campos por grupo, un ejemplo y contratos de un nivel/listas de un tipo/objetos internos libres, compatibles con el editor actual. Se validan decisión, campos, contratos y ejemplos en backend. Respuesta: interpretation, definition/hash opcionales, matches e implementation_verified=false. No escribe filas ni genera código, candidatos, versiones o workflows.
+
+El esquema anidado enviado como responseJsonSchema fue rechazado HTTP 400 en prueba real. Para interpretación se usa modo application/json con esquema en instrucciones y validación local estricta, sin reintentos automáticos. Generación de código conserva responseJsonSchema. Prueba real posterior: define y contratos/ejemplo válidos. No afirmar que modo JSON garantice por sí solo el esquema.
+
+UI en Crear: consentimiento, aclaraciones, coincidencias clonables como borrador y **Usar propuesta en el formulario**. Esa acción explícita reemplaza campos y obliga a comprobar/guardar con las rutas existentes. Roundtrip probado con listas, objetos y campos opcionales. Límites compartidos con generación: 10 intentos/hora, 30 s y uno simultáneo por dueño, solo por proceso. No requiere migración nueva.
+
+10 pruebas nuevas cubren sesión/consentimiento, búsqueda antes de IA, no envío de catálogo, privacidad simulada, aclaraciones/bloqueo, ejemplos inválidos, duplicados, límites e historial. Falta recorrido completo con sesión en navegador y privacidad real de candidatos con segunda cuenta. Es comprensión para definir una capacidad, no planner de workflows. Guía B en ENTREGA_A_B_CANDIDATOS.md.

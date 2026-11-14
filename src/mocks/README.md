@@ -5,6 +5,8 @@ Los mocks no prueban que exista una implementación. Las rutas reales de catálo
 | Archivo | Consumidor / situación |
 | --- | --- |
 | definiciones.js | Ejemplo editable que el usuario carga en el formulario; no es respuesta de API. |
+| objetivos.js | Necesidad de ejemplo cargada explícitamente; la interpretación siempre llama a IA real, sin fallback. |
+| candidatos.js | Fixture visual de desarrollo para candidatos Python; sin fallback ni consumidor en el recorrido real. |
 | home.js y users.js | Inicio de desarrollo; planner/estadísticas reales pendientes. |
 | profile.js | Fallback heredado de perfiles; migración pendiente, no aceptación de datos reales. |
 | runs.js | Ejecución de desarrollo; integración persistente real pendiente. |

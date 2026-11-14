@@ -17,7 +17,7 @@ class SupabaseGateway:
         self.api_key = api_key
 
     async def request(self, method: str, path: str, token: str, *, params=None, json=None):
-        if path not in {"/auth/v1/user", "/rest/v1/capabilities", "/rest/v1/profiles"}:
+        if path not in {"/auth/v1/user", "/rest/v1/capabilities", "/rest/v1/profiles", "/rest/v1/capability_candidates"}:
             raise ValueError("Ruta Supabase no permitida")
         headers = {"apikey": self.api_key, "Authorization": f"Bearer {token}"}
         if method != "GET":
