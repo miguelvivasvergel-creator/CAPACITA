@@ -1,17 +1,6 @@
 // src/components/common/FileUpload.jsx
 import { useState, useRef } from 'react';
 
-const TIPOS_PERMITIDOS_DEFECTO = [
-  'application/pdf',
-  'text/plain',
-  'text/csv',
-  'application/json',
-  'image/png',
-  'image/jpeg',
-  'audio/mpeg',
-  'audio/wav',
-];
-
 const EXTENSIONES_PERMITIDAS = '.pdf,.png,.jpg,.jpeg,.mp3,.wav,.csv,.txt,.json';
 const MAX_TAMANO_MB_DEFECTO = 10;
 

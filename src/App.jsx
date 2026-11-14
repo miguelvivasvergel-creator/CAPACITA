@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import NetworkCanvas from './components/NetworkCanvas';
-import HeroSection from './components/HeroSection';
-import AuthCard from './components/AuthCard';
-import Toast from './components/Toast';
+import NetworkCanvas from './components/landing/NetworkCanvas';
+import HeroSection from './components/landing/HeroSection';
+import AuthCard from './components/auth/AuthCard';
+import Toast from './components/common/Toast';
 import AppLayout from './components/layout/AppLayout';
 import Inicio from './pages/Inicio';
 import Capacidades from './pages/Capacidades/Capacidades';

@@ -69,7 +69,7 @@ export default function CapacidadesEmptyState({ onCrearClick, onSeleccionarPlant
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 text-xs">
-          {plantillas.map((pl, idx) => (
+          {plantillas.map((pl) => (
             <button
               key={pl.id}
               type="button"

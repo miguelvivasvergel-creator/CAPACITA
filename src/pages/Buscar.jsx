@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { buscarTodo } from '../services/capacitaApi';
+import { useState } from 'react';
+import { useBusqueda } from '../hooks/useBusqueda';
 
 const PESTAÑAS = [
   { id: 'todo', label: 'Todo' },
@@ -9,23 +9,13 @@ const PESTAÑAS = [
 ];
 
 export default function Buscar({ texto, onCambiarSeccion }) {
-  const [entrada, setEntrada] = useState(texto);
-  const [res, setRes] = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState(false);
-  const [pestaña, setPestaña] = useState('todo');
+  return <ResultadosBusqueda key={texto} texto={texto} onCambiarSeccion={onCambiarSeccion} />;
+}
 
-  useEffect(() => {
-    if (texto.trim().length < 2) { setRes(null); return; }
-    let vigente = true;
-    setCargando(true);
-    setError(false);
-    buscarTodo(texto.trim(), 24)
-      .then((r) => { if (vigente) setRes(r); })
-      .catch(() => { if (vigente) setError(true); })
-      .finally(() => { if (vigente) setCargando(false); });
-    return () => { vigente = false; };
-  }, [texto]);
+function ResultadosBusqueda({ texto, onCambiarSeccion }) {
+  const [entrada, setEntrada] = useState(texto);
+  const { res, cargando, error } = useBusqueda(texto, { limite: 24, delay: 0 });
+  const [pestaña, setPestaña] = useState('todo');
 
   const buscar = () => {
     if (entrada.trim().length >= 1) {

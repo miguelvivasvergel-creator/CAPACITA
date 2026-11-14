@@ -15,7 +15,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
  *   api('/runs', { method: 'POST', body: { workflow_id, text } })
  *   api('/users/me/avatar', { method: 'POST', body: formData })
  */
-export async function api(ruta, { method = 'GET', body } = {}) {
+export async function api(ruta, { method = 'GET', body, signal } = {}) {
   const { data: { session } } = await supabase.auth.getSession();
 
   const headers = {};
@@ -32,6 +32,7 @@ export async function api(ruta, { method = 'GET', body } = {}) {
   const respuesta = await fetch(`${API_URL}${ruta}`, {
     method,
     headers,
+    signal,
     body: body ? (esArchivo ? body : JSON.stringify(body)) : undefined,
   });
 
@@ -43,7 +44,12 @@ export async function api(ruta, { method = 'GET', body } = {}) {
   const json = await respuesta.json().catch(() => ({}));
 
   if (!respuesta.ok) {
-    throw new Error(json.detail || 'No se pudo conectar con el servidor.');
+    const mensaje = typeof json.detail === 'string'
+      ? json.detail
+      : Array.isArray(json.detail)
+        ? json.detail.map((error) => error.msg).join('. ')
+        : 'No se pudo conectar con el servidor.';
+    throw new Error(mensaje);
   }
 
   return json.data;

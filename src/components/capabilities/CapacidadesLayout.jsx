@@ -1,5 +1,5 @@
-// src/pages/Capacidades/CapacidadesLayout.jsx
-import CapacidadesSubNav from '../../components/capabilities/CapacidadesSubNav';
+// Marco y navegación del catálogo de capacidades.
+import CapacidadesSubNav from './CapacidadesSubNav';
 
 export default function CapacidadesLayout({
   seccion,

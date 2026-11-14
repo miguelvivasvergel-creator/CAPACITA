@@ -1,25 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { buscarTodo } from "../../services/capacitaApi";
+import { useBusqueda } from '../../hooks/useBusqueda';
 export default function BuscadorGlobal({ onCambiarSeccion }) {
   const [texto, setTexto] = useState('');
-  const [res, setRes] = useState(null);
-  const [error, setError] = useState(false);
+  const { res, error } = useBusqueda(texto);
   const [abierto, setAbierto] = useState(false);
   const contenedor = useRef(null);
   const input = useRef(null);
-
-  // Búsqueda con debounce de 300 ms (mínimo 2 letras)
-  useEffect(() => {
-    const t = texto.trim();
-    if (t.length < 2) { setRes(null); setError(false); return; }
-    let vigente = true;
-    const id = setTimeout(() => {
-      buscarTodo(t)
-        .then((r) => { if (vigente) { setRes(r); setError(false); } })
-        .catch(() => { if (vigente) { setRes(null); setError(true); } });
-    }, 300);
-    return () => { vigente = false; clearTimeout(id); };
-  }, [texto]);
 
   // Cerrar al hacer clic fuera
   useEffect(() => {
@@ -45,7 +31,6 @@ export default function BuscadorGlobal({ onCambiarSeccion }) {
   const ir = (seccion) => {
     setAbierto(false);
     setTexto('');
-    setRes(null);
     onCambiarSeccion?.(seccion);
   };
 

@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  mockComunidadItems,
-  mockCreadoresDestacados,
-  mockCapacidadesPopulares,
-} from '../mocks/community';
-import { getComunidad, getCreadores, getPopulares } from '../services/capacitaApi';
+import { listarCapacidades, clonarCapacidad } from '../services/capacidades';
 
 const PAGINA = 4;
 
@@ -26,20 +21,35 @@ export default function Comunidad({ _usuario }) {
 
   const [datos, setDatos] = useState({ items: [], creadores: [], populares: [], deEjemplo: false });
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+  const [cursor, setCursor] = useState(null);
+  const [recarga, setRecarga] = useState(0);
+  const [clonando, setClonando] = useState(null);
 
   useEffect(() => {
-    Promise.all([getComunidad(), getCreadores(), getPopulares()])
-      .then(([items, creadores, populares]) =>
-        setDatos({ items, creadores, populares, deEjemplo: false }))
-      .catch(() =>
-        setDatos({
-          items: mockComunidadItems,
-          creadores: mockCreadoresDestacados,
-          populares: mockCapacidadesPopulares,
-          deEjemplo: true,
-        }))
-      .finally(() => setCargando(false));
-  }, []);
+    const controller = new AbortController();
+    listarCapacidades('community', { signal: controller.signal })
+      .then(({ items, next_cursor }) => {
+        setDatos({ items: items.map(itemComunidad), creadores: [], populares: items });
+        setCursor(next_cursor);
+      })
+      .catch((err) => { if (!controller.signal.aborted) setError(err.message); })
+      .finally(() => { if (!controller.signal.aborted) setCargando(false); });
+    return () => controller.abort();
+  }, [recarga]);
+
+  async function cargarMas() {
+    if (mostrar < items.length) { setMostrar(mostrar + PAGINA); return; }
+    setCargando(true);
+    setError('');
+    try {
+      const pagina = await listarCapacidades('community', { cursor });
+      setDatos((actual) => ({ ...actual, items: [...actual.items, ...pagina.items.map(itemComunidad)] }));
+      setCursor(pagina.next_cursor);
+      setMostrar(mostrar + PAGINA);
+    } catch (err) { setError(err.message); }
+    finally { setCargando(false); }
+  }
 
 
 
@@ -60,11 +70,17 @@ export default function Comunidad({ _usuario }) {
   });
 
   const visibles = items.slice(0, mostrar);
-  const hayMas = mostrar < items.length;
+  const hayMas = mostrar < items.length || (cursor && filtro !== 'workflows');
 
-  const handleClonar = (item) => {
-    setToast(`"${item.name}" clonado a tu cuenta ✓`);
-    setTimeout(() => setToast(''), 2500);
+  const handleClonar = async (item) => {
+    setClonando(item.id);
+    setToast('');
+    setError('');
+    try {
+      await clonarCapacidad(item.id);
+      setToast(`"${item.name}" guardada como borrador privado en Mis capacidades.`);
+    } catch (err) { setError(err.message); }
+    finally { setClonando(null); }
   };
 
   return (
@@ -88,10 +104,11 @@ export default function Comunidad({ _usuario }) {
       )}
 
 
-            {datos.deEjemplo && !cargando && (
-        <p className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-2 inline-block font-body">
-          No se pudo conectar con la API. Mostrando datos de ejemplo.
-        </p>
+            {error && (
+        <div role="alert" className="mt-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 font-body">
+          {error}
+          <button className="ml-3 underline" disabled={cargando} onClick={() => { setError(''); setCargando(true); setRecarga(recarga + 1); }}>Reintentar</button>
+        </div>
       )}
 
 
@@ -104,7 +121,7 @@ export default function Comunidad({ _usuario }) {
         <div className="lg:col-span-2">
           {visibles.length === 0 ? (
             <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center text-sm text-slate-500 font-body">
-              No hay publicaciones con ese filtro.
+              {cargando ? 'Cargando comunidad…' : error ? 'No se pudo cargar la comunidad.' : filtro === 'workflows' ? 'Los workflows comunitarios aún no están disponibles.' : 'No hay capacidades publicadas con ese filtro.'}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -112,6 +129,7 @@ export default function Comunidad({ _usuario }) {
                 <TarjetaComunidad
                   key={item.id}
                   item={item}
+                  deshabilitado={clonando !== null}
                   onClonar={() => handleClonar(item)}
                 />
               ))}
@@ -121,7 +139,8 @@ export default function Comunidad({ _usuario }) {
           {hayMas && (
             <div className="mt-6 text-center">
               <button
-                onClick={() => setMostrar(mostrar + PAGINA)}
+                onClick={cargarMas}
+                disabled={cargando}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-full cursor-pointer transition-colors font-body shadow-soft"
               >
                 <span>🔄</span>
@@ -138,7 +157,7 @@ export default function Comunidad({ _usuario }) {
               Creadores destacados
             </h3>
             <ul className="space-y-3">
-              {mockCreadoresDestacados.map((c) => (
+              {datos.creadores.map((c) => (
                 <li key={c.username} className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center font-body shrink-0">
                     {c.nombre.split(' ').map((n) => n[0]).slice(0, 2).join('')}
@@ -157,14 +176,15 @@ export default function Comunidad({ _usuario }) {
                 </li>
               ))}
             </ul>
+            <p className="text-xs text-slate-500">El ranking de creadores aún no está disponible.</p>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
             <h3 className="text-sm font-extrabold text-slate-900 tracking-tight font-sans mb-4">
-              Capacidades más populares
+              Capacidades de esta página
             </h3>
             <ol className="space-y-2.5 font-body">
-              {mockCapacidadesPopulares.map((c, idx) => (
+              {datos.populares.map((c, idx) => (
                 <li key={c.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="text-xs text-slate-400 font-semibold w-4">{idx + 1}</span>
@@ -208,7 +228,11 @@ function CheckVerificado() {
   );
 }
 
-function TarjetaComunidad({ item, onClonar }) {
+function itemComunidad(item) {
+  return { ...item, tipo: 'capacidad', owner_name: item.owner_username || 'Usuario' };
+}
+
+function TarjetaComunidad({ item, onClonar, deshabilitado }) {
   const esCapacidad = item.tipo === 'capacidad';
   const tipos = esCapacidad
     ? [item.input_type, item.output_type]
@@ -262,7 +286,6 @@ function TarjetaComunidad({ item, onClonar }) {
             <span className="text-xs font-semibold text-slate-800 truncate font-body">
               {item.owner_name}
             </span>
-            <CheckVerificado />
           </div>
           <span className="text-xs text-slate-400 font-body shrink-0">
             ▶ {item.uses_count}
@@ -270,12 +293,13 @@ function TarjetaComunidad({ item, onClonar }) {
         </div>
         <button
           onClick={onClonar}
+          disabled={deshabilitado}
           className="boton-primario inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-full cursor-pointer font-body shrink-0"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
-          <span>Clonar y usar</span>
+          <span>Clonar borrador</span>
         </button>
       </div>
     </article>

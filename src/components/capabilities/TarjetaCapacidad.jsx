@@ -64,7 +64,7 @@ export default function TarjetaCapacidad({ capacidad, onVer, onUsar }) {
                 {capacidad.name}
               </h3>
               <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                {capacidad.version} • {capacidad.engine}
+                {capacidad.version} • {capacidad.status === 'draft' ? 'Borrador' : 'Implementación por verificar'}
               </p>
             </div>
           </div>

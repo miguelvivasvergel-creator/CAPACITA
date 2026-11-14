@@ -1,4 +1,4 @@
-// src/pages/Capacidades/DetalleCapacidad.jsx
+// Detalle reutilizable de una capacidad del catálogo.
 
 export default function DetalleCapacidad({
   capacidad,
@@ -8,6 +8,8 @@ export default function DetalleCapacidad({
   onEditar,
   onEliminar,
   esDuenio = false,
+  clonando = false,
+  accionError = '',
 }) {
   if (!capacidad) return null;
 
@@ -31,7 +33,7 @@ export default function DetalleCapacidad({
                 {isPublic ? 'Pública' : 'Privada'}
               </span>
               <span className="text-xs text-slate-400 font-medium">
-                {capacidad.version || 'v1.0.0'} • {capacidad.engine || 'Adaptador Python'}
+                {capacidad.version || '1.0.0'} • {capacidad.status === 'draft' ? 'Borrador' : 'Implementación por verificar'}
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
@@ -40,10 +42,10 @@ export default function DetalleCapacidad({
             <p className="text-xs text-slate-500">
               Creado por{' '}
               <a
-                href={`#u/${capacidad.owner_username || 'franklin_dev'}`}
+                href={`#u/${encodeURIComponent(capacidad.owner_username || capacidad.owner_id)}`}
                 className="text-blue-600 font-semibold hover:underline"
               >
-                @{capacidad.owner_username || capacidad.owner_name || 'franklin_dev'}
+                {capacidad.owner_username ? `@${capacidad.owner_username}` : 'Autor sin nombre de usuario'}
               </a>
             </p>
           </div>
@@ -132,6 +134,7 @@ export default function DetalleCapacidad({
         </div>
 
         {/* Botones de Acción */}
+        {accionError && <p role="alert" className="text-sm text-red-700">{accionError}</p>}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
           {esDuenio ? (
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -154,12 +157,13 @@ export default function DetalleCapacidad({
             <button
               type="button"
               onClick={() => onClonar && onClonar(capacidad)}
+              disabled={clonando}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-full transition cursor-pointer"
             >
               <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
-              Clonar a mi cuenta
+              {clonando ? 'Guardando copia…' : 'Clonar a mi cuenta'}
             </button>
           )}
 

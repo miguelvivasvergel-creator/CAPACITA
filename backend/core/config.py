@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -26,13 +27,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
-    # Supabase (solo backend: la service key nunca va al frontend)
+    # La autorización procede del JWT del usuario, no de una service key.
     SUPABASE_URL: str = ""
-    SUPABASE_SERVICE_KEY: str = ""
-    SUPABASE_JWT_SECRET: str = ""
+    SUPABASE_ANON_KEY: str = ""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=Path(__file__).resolve().parents[1] / ".env",
         env_file_encoding="utf-8",
         extra="ignore"
     )

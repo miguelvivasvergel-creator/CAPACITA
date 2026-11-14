@@ -22,6 +22,20 @@ __pycache__/
 .venv/
 venv/
 ENV/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Archivos locales de agentes y resultados de navegador
+.claude/
+.playwright-cli/
+output/playwright/
+test-results/
+
+# Compilación de .NET
+**/bin/
+**/obj/
 
 # Editor directories and files
 .vscode/*

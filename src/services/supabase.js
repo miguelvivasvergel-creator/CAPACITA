@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Se leen del .env (ver .env.example). Los valores por defecto son la llave
-// pública (anon) del proyecto, para que nadie se quede sin poder correr la app.
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL || "https://ideubwvlffbapneqftwj.supabase.co";
-const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_Q5ynxzxEh3b5ildr02QEXQ_eTx9xmXZ";
+// El proyecto se configura en .env; no conectar silenciosamente a otra cuenta.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en .env. Consulta README.md.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -21,8 +22,8 @@ export function extraerDatosUsuario(authUser, perfil = null) {
   // 1. Detección exhaustiva del nombre real de la cuenta
   let nombre = null;
 
-  if (perfil?.nombre_completo && perfil.nombre_completo.trim() !== '' && perfil.nombre_completo !== 'Usuario') {
-    nombre = perfil.nombre_completo.trim();
+  if (perfil?.display_name && perfil.display_name.trim() !== '' && perfil.display_name !== 'Usuario') {
+    nombre = perfil.display_name.trim();
   } else if (meta.nombre_completo && meta.nombre_completo.trim() !== '') {
     nombre = meta.nombre_completo.trim();
   } else if (meta.full_name && meta.full_name.trim() !== '') {
@@ -31,8 +32,8 @@ export function extraerDatosUsuario(authUser, perfil = null) {
     nombre = meta.name.trim();
   } else if (meta.display_name && meta.display_name.trim() !== '') {
     nombre = meta.display_name.trim();
-  } else if (perfil?.nombre_completo && perfil.nombre_completo.trim() !== '') {
-    nombre = perfil.nombre_completo.trim();
+  } else if (perfil?.display_name && perfil.display_name.trim() !== '') {
+    nombre = perfil.display_name.trim();
   } else if (authUser.email) {
     // Si no tiene nombre explícito, formatear desde el prefijo del correo (ej: 'juan.perez' -> 'Juan Perez')
     const raw = authUser.email.split('@')[0];
@@ -105,7 +106,7 @@ export async function loginUsuario({ email, password }) {
 
     // Consultar el perfil del usuario autenticado
     const { data: perfil } = await supabase
-      .from('perfiles')
+      .from('profiles')
       .select('*')
       .eq('id', authData.user.id)
       .maybeSingle();
@@ -161,7 +162,7 @@ export async function obtenerUsuarioActual() {
     if (!session?.user) return null;
 
     const { data: perfil } = await supabase
-      .from('perfiles')
+      .from('profiles')
       .select('*')
       .eq('id', session.user.id)
       .maybeSingle();

@@ -1,71 +1,106 @@
-// src/pages/Capacidades/Capacidades.jsx
-import { useState } from 'react';
-import CapacidadesLayout from './CapacidadesLayout';
-import MisCapacidades from './MisCapacidades';
+import { useEffect, useState } from 'react';
+import CapacidadesLayout from '../../components/capabilities/CapacidadesLayout';
+import MisCapacidades from '../../components/capabilities/MisCapacidades';
 import CrearCapacidad from './CrearCapacidad';
-import { mockCapabilities } from '../../mocks/capabilities';
+import { listarCapacidades, clonarCapacidad } from '../../services/capacidades';
+
+const EMPTY_PAGE = { items: [], next_cursor: null };
+
+function totalCargado(page, loaded) {
+  if (!loaded) return '—';
+  return `${page.items.length}${page.next_cursor ? '+' : ''}`;
+}
 
 export default function Capacidades() {
-  // Pestañas: 'mis' | 'comunidad' | 'crear'
   const [seccion, setSeccion] = useState('mis');
+  const [pages, setPages] = useState({ mine: EMPTY_PAGE, community: EMPTY_PAGE });
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState('');
+  const [revision, setRevision] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Por defecto el usuario no tiene capacidades creadas (array vacío)
-  const [misCapacidades, setMisCapacidades] = useState([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    Promise.all([
+      listarCapacidades('mine', { signal: controller.signal }),
+      listarCapacidades('community', { signal: controller.signal }),
+    ]).then(([mine, community]) => {
+      if (controller.signal.aborted) return;
+      setPages({ mine, community });
+      setError('');
+      setLoaded(true);
+    }).catch((cause) => {
+      if (!controller.signal.aborted) {
+        setError(cause.message);
+        setLoaded(true);
+      }
+    });
+    return () => controller.abort();
+  }, [revision]);
 
-  const handleGuardarCapacidad = (nuevaCapacidad) => {
-    // Formatear la nueva capacidad para que coincida con la estructura de tarjetas
-    const itemGuardado = {
-      id: `cap-user-${Date.now()}`,
-      name: nuevaCapacidad.nombre,
-      version: 'v1.0.0',
-      engine: nuevaCapacidad.adapterKey || 'Motor Custom',
-      description: nuevaCapacidad.descripcion || 'Sin descripción',
-      input_type: nuevaCapacidad.inputType,
-      output_type: nuevaCapacidad.outputType,
-      visibility: nuevaCapacidad.visibilidad || 'private',
-      category: nuevaCapacidad.categoria || 'Texto',
-      icon: 'document',
-      uses_count: '0',
-      owner_name: 'Yo',
-      owner_username: 'mi_usuario',
-    };
+  const retry = () => {
+    setLoaded(false);
+    setError('');
+    setRevision((value) => value + 1);
+  };
 
-    // Al agregarla, misCapacidades ya no estará vacío y el frame vacío ya no volverá a aparecer
-    setMisCapacidades((prev) => [itemGuardado, ...prev]);
+  const scope = seccion === 'comunidad' ? 'community' : 'mine';
+  const page = pages[scope];
+
+  const loadMore = async () => {
+    if (!page.next_cursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const next = await listarCapacidades(scope, { cursor: page.next_cursor });
+      setPages((previous) => {
+        const ids = new Set(previous[scope].items.map((item) => item.id));
+        return { ...previous, [scope]: {
+          items: [...previous[scope].items, ...next.items.filter((item) => !ids.has(item.id))],
+          next_cursor: next.next_cursor,
+        } };
+      });
+    } catch (cause) {
+      setError(cause.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const clone = async (capacidad) => {
+    await clonarCapacidad(capacidad.id);
     setSeccion('mis');
+    retry();
   };
 
   return (
     <CapacidadesLayout
       seccion={seccion}
       onCambiarSeccion={setSeccion}
-      totalMis={misCapacidades.length}
-      totalComunidad={mockCapabilities.length}
+      totalMis={totalCargado(pages.mine, loaded && !error)}
+      totalComunidad={totalCargado(pages.community, loaded && !error)}
       onNuevaCapacidad={() => setSeccion('crear')}
     >
-      {/* 1. Mis Capacidades (Muestra Frame 2 vacío si length === 0, o tarjetas si ya creó una) */}
-      {seccion === 'mis' && (
+      {seccion === 'crear' ? (
+        <>
+          <p className="my-4 text-sm text-slate-600">El estudio de creación está pendiente de integración. Las nuevas capacidades se guardarán como borradores hasta superar sus pruebas.</p>
+          <CrearCapacidad onCancelar={() => setSeccion('mis')} />
+        </>
+      ) : error ? (
+        <div role="alert" className="my-6 rounded-2xl border border-red-200 bg-white p-6">
+          <p className="text-sm text-red-700">No se pudo cargar el catálogo: {error}</p>
+          <button type="button" onClick={retry} className="mt-3 rounded-xl border px-4 py-2 text-sm focus-visible:outline-blue-600">Reintentar</button>
+        </div>
+      ) : !loaded ? (
+        <p role="status" className="py-8 text-sm text-slate-600">Cargando catálogo…</p>
+      ) : (
         <MisCapacidades
-          capacidades={misCapacidades}
-          esMisCapacidades={true}
+          key={scope}
+          capacidades={page.items}
+          esMisCapacidades={scope === 'mine'}
           onCrearClick={() => setSeccion('crear')}
-        />
-      )}
-
-      {/* 2. Comunidad (Muestra el catálogo de 6 tarjetas con el filtro desplegable) */}
-      {seccion === 'comunidad' && (
-        <MisCapacidades
-          capacidades={mockCapabilities}
-          esMisCapacidades={false}
-          onCrearClick={() => setSeccion('crear')}
-        />
-      )}
-
-      {/* 3. Crear Nueva Capacidad */}
-      {seccion === 'crear' && (
-        <CrearCapacidad
-          onCancelar={() => setSeccion('mis')}
-          onGuardar={handleGuardarCapacidad}
+          onClonar={clone}
+          onCargarMas={page.next_cursor ? loadMore : undefined}
+          cargandoMas={loadingMore}
         />
       )}
     </CapacidadesLayout>

@@ -1,7 +1,7 @@
 // src/services/perfil.js
 // carga todo lo que se ve en la pantalla de perfil
 // Si algún endpoint todavía no existe o falla usa los datos falsos de la api de vs community
-import { getPerfil } from './capacitaApi';
+import { getPerfil } from './dotnet';
 import { api } from '../api';
 import { obtenerPerfilMock } from '../mocks/profile';
 
