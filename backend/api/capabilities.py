@@ -9,6 +9,8 @@ from core.responses import APIResponse
 from core.supabase import SupabaseGateway, get_supabase_gateway
 from repositories.capabilities import CapabilityRepository
 from schemas.capabilities import CapabilityCreate, CapabilityUpdate, CapabilityResponse, CapabilityListResponse, TipoDato
+from schemas.definitions import CapabilityDefinition, DefinitionCheckResponse, DefinitionSaveRequest
+from services.definition_service import check_definition, save_definition
 
 router = APIRouter(prefix="/capabilities", tags=["Capacidades"])
 
@@ -41,6 +43,16 @@ async def list_capabilities(
 ):
     data = await repository.list(scope=scope, q=q, data_type=type, owner=owner, cursor=cursor, limit=limit)
     return APIResponse(message="Capacidades obtenidas", data=data)
+
+
+@router.post("/definitions/check", response_model=APIResponse[DefinitionCheckResponse])
+async def check_capability_definition(payload: CapabilityDefinition, repository: Repository):
+    return APIResponse(message="Contratos y ejemplos comprobados; implementación sin verificar", data=await check_definition(payload, repository))
+
+
+@router.post("/definitions", response_model=APIResponse[CapabilityResponse], status_code=201)
+async def create_capability_definition(payload: DefinitionSaveRequest, repository: Repository):
+    return APIResponse(message="Definición guardada como borrador privado", data=await save_definition(payload, repository))
 
 
 @router.get("/similar", response_model=APIResponse[CapabilityListResponse])

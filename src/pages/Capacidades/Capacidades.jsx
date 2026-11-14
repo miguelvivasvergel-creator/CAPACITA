@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import CapacidadesLayout from '../../components/capabilities/CapacidadesLayout';
 import MisCapacidades from '../../components/capabilities/MisCapacidades';
-import CrearCapacidad from './CrearCapacidad';
+import DefinirCapacidad from '../../components/capabilities/DefinirCapacidad';
 import { listarCapacidades, clonarCapacidad } from '../../services/capacidades';
 
 const EMPTY_PAGE = { items: [], next_cursor: null };
@@ -18,6 +18,7 @@ export default function Capacidades() {
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [aviso, setAviso] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -80,10 +81,14 @@ export default function Capacidades() {
       totalComunidad={totalCargado(pages.community, loaded && !error)}
       onNuevaCapacidad={() => setSeccion('crear')}
     >
+      {aviso && <p role="status" className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{aviso}</p>}
       {seccion === 'crear' ? (
         <>
-          <p className="my-4 text-sm text-slate-600">El estudio de creación está pendiente de integración. Las nuevas capacidades se guardarán como borradores hasta superar sus pruebas.</p>
-          <CrearCapacidad onCancelar={() => setSeccion('mis')} />
+          <DefinirCapacidad onGuardado={(capacidad) => {
+            setAviso(`“${capacidad.name}” guardada como borrador privado. Su implementación y pruebas siguen pendientes.`);
+            setSeccion('mis');
+            retry();
+          }} />
         </>
       ) : error ? (
         <div role="alert" className="my-6 rounded-2xl border border-red-200 bg-white p-6">

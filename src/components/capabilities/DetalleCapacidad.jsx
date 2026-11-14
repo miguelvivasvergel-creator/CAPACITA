@@ -99,6 +99,17 @@ export default function DetalleCapacidad({
           </div>
         </div>
 
+        <details className="rounded-2xl border border-slate-200 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-800">Ver contratos y definición guardada</summary>
+          <p className="mt-3 text-xs text-slate-500">Estos contratos describen datos. No acreditan una implementación ni pruebas de ejecución.</p>
+          <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-slate-50 p-3 text-xs text-slate-700">{JSON.stringify({
+            input_schema: capacidad.input_schema || {},
+            parameter_schema: capacidad.config?.definition?.parameter_schema || {},
+            output_schema: capacidad.output_schema || {},
+            ...(capacidad.config?.definition ? { definition: capacidad.config.definition } : {}),
+          }, null, 2)}</pre>
+        </details>
+
         {/* Permisos requeridos */}
         <div className="space-y-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">

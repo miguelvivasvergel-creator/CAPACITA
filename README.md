@@ -113,14 +113,22 @@ políticas RLS remotas ni sustituyen el recorrido real con dos usuarios.
 | --- | --- | --- |
 | Interfaz | `src/` | React, Vite y Tailwind. Catálogo conectado a FastAPI. |
 | API principal | `backend/` | FastAPI: Auth verificada y repositorio PostgREST del catálogo. |
-| Persistencia y Auth | Supabase | Configuración local unificada; inspección administrativa de tablas/permisos pendiente. |
-| API .NET existente | `backend-dotnet/` | Se conserva: comunidad, búsqueda y consulta de perfiles aún tienen consumidores. |
+| Persistencia y Auth | Supabase | Catálogo inspeccionado; lectura/clonación y permisos mínimos confirmados por el usuario. Otros módulos pendientes. |
+| API .NET existente | `backend-dotnet/` | Se conserva: búsqueda y consulta de perfiles aún tienen consumidores. Requiere SDK .NET 10 según su csproj. |
 | SQL de referencia | `db/` | Scripts numerados; su existencia no prueba que estén aplicados. |
 | Ejecución y workflows | Frente B | Motor/datos de desarrollo pendientes de integración con catálogo/versiones reales. |
 
 Consulta [el contrato de identidad y catálogo](docs/modulo-a-identidad-catalogo.md)
 antes de conectar nuevas pantallas. Mocks y placeholders siguen presentes en
 otros módulos; no se consideran funcionalidades verificadas.
+
+En **Capacidades → Crear**, el componente de definición permite declarar entradas,
+salidas, parámetros y ejemplos, comprobarlos, buscar coincidencias y guardar un
+borrador privado. La comprobación no ejecuta código ni genera una implementación.
+El [contrato de integración A/B](docs/CONTRATO_INTEGRACION.md) documenta las nuevas
+rutas y el paquete guardado. Este bloque usa los permisos SQL 04/05 existentes;
+no requiere tablas nuevas. Instalar las dependencias actualizadas del backend
+antes de reiniciarlo, incluida `jsonschema`.
 
 ## Trabajo en equipo
 
