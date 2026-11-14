@@ -18,6 +18,7 @@ El usuario pidió organizar antes de probar el nuevo formulario. Después, retom
 | Definición estructurada | Implementada localmente. | Prueba autenticada del formulario pendiente. No genera ni ejecuta. |
 | Organización | Aplicada y validada localmente. | Imports/enlaces correctos; 32 pruebas, lint/build pasan; trabajo B conservado. |
 | IA/planner/generación | Pendiente. | Sin proveedor configurado ni cuota confirmada; Gemini recomendado. |
+| Contrato de candidato Python | Preparación interna implementada; pendiente revisión B. | AST/firma, hash de código+definición y paquete draft; 6 pruebas nuevas. Sin IA, endpoint, persistencia ni ejecución. |
 | Versiones/publicación | Pendiente. | Requiere implementación/evidencia de pruebas B. |
 | Perfil/dashboard/búsqueda semántica | Integración pendiente. | Persisten consumidores .NET y mocks. |
 

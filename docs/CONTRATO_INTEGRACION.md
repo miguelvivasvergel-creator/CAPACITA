@@ -85,6 +85,18 @@ Clonar conserva esquemas y config. No se modifican filas previas. No hay nueva t
 
 ## Pendiente para B y para el siguiente bloque A
 
+### Preparación local de candidato Python (14/11/2026)
+
+Implementados `schemas.candidates.PythonSourceProposal`, `CandidateManifest` y `services.candidate_preparation.prepare_candidate(capability_id, definition, proposal)`. Pendiente revisión de Fahida. Es una función interna sin endpoint, proveedor ni persistencia; no representa un candidato generado o guardado.
+
+El paquete incluye UUID de candidato/capacidad, definición completa (contratos, permisos declarativos y ejemplos), código en `proposal.source`, dependencias vacías, runtime Python, entrypoint `main.run`, hash de definición y hash del artefacto. Solo admite estado draft e implementation_verified=false. El primer entorno declara únicamente biblioteca estándar; esto no inspecciona imports ni demuestra aislamiento.
+
+Preparación: revalida definición/ejemplos, limita código a 64 KiB UTF-8 y analiza sintaxis con AST. Exige una función síncrona `run(inputs, parameters)` sin decoradores, valores por defecto ni argumentos adicionales. No importa, compila ni ejecuta el código. La revisión sintáctica no demuestra seguridad, cumplimiento de restricciones ni corrección funcional.
+
+Hash SHA-256 del JSON UTF-8 con ensure_ascii=false, allow_nan=false, sort_keys=true y separadores compactos, de `{format_version: 1, runtime: "python", entrypoint: "main.run", definition: <model_dump JSON>, proposal: <model_dump JSON>}`. Conserva código exacto y excluye ids/estado. B debe revalidar contenido y recalcular hash antes de vincular evidencia; ni los hashes ni los campos de estado recibidos habilitan ejecución. Objetos anidados pueden mutar en memoria: verificar al persistir y al consumir.
+
+Pendiente: proveedor, búsqueda previa integrada a generación, almacenamiento privado/artefact_ref, autorización de lectura, límites de consumo, builds y ejecución aislada. No hay nuevos endpoints `/candidates` ni tablas. Seis pruebas nuevas verifican integridad, serialización, firma, límites, ejemplos y ausencia de ejecución; total 38 pruebas locales.
+
 - A: proveedor IA, comprensión de objetivos, generación real y almacenamiento de candidatos/artefactos privados. Ninguna llamada a IA se realiza en este bloque.
 - B: laboratorio, aislamiento, builds y evidencias. Una definición consistente no autoriza a ejecutar código.
 - A/B: acordar y luego implementar CandidateManifest, CapabilityVersion y contratos de workflows/builds propuestos en el reparto. No utilizar endpoints futuros como si existieran.

@@ -4,7 +4,9 @@ Actualizado: 14/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
-El usuario pidió **organizar la carpeta antes de probar el formulario nuevo**, retirar lo que no sirve y después continuar desde ese mismo punto. Este bloque es de organización: no continuar con generación, IA, laboratorio ni funciones nuevas durante la limpieza.
+Avance posterior al push db227f4: usuario pide acelerar hacia el martes. Confirmó que todavía no comprobó persistencia del formulario y que no tiene proveedor IA. Se implementó preparación interna de candidatos Python (`schemas/candidates.py`, `services/candidate_preparation.py`), sin endpoint, persistencia, IA ni ejecución; contrato documentado para revisión B y 38 pruebas locales pasan. Siguiente: confirmar guardado real, configurar proveedor con cuota gratuita confirmada y conectar generación/persistencia con búsqueda previa; Fahida debe confirmar sandbox. No afirmar recorrido completo ni martes garantizado.
+
+La organización solicitada antes de probar el formulario ya se entregó en `db227f4`. Después el usuario autorizó avanzar hacia generación; sigue pendiente comprobar persistencia del formulario. El nuevo bloque de preparación de candidatos está autorizado para commit/push detallado a `miguel`. El usuario prevé configurar Gemini; todavía no hay clave ni cuota verificadas en esta implementación. Guardar la clave solo en backend/.env, nunca en chat o Git.
 
 Al finalizar, retomar **la prueba autenticada de definición estructurada**:
 
@@ -60,6 +62,8 @@ Al finalizar, retomar **la prueba autenticada de definición estructurada**:
 - Después de limpiar, usuario reportó diagnósticos `owner=mssql` en SQL 04/05 y en inspect_catalog_write.sql. Confirmada extensión MSSQL 1.47.0; analiza T-SQL, no PostgreSQL. Se añadió .vscode/settings.json con mssql.intelliSense.enableIntelliSense=false y enableErrorChecking=false solo para el workspace (claves/scope window verificados en manifiesto), y excepción precisa en .gitignore. No se alteró SQL ni Supabase; tampoco añade validador PostgreSQL. Pendiente recargar ventana para retirar diagnósticos anteriores. La prueba de definición sigue siendo el siguiente punto.
 
 ## Entorno, Git y validación
+
+- Tras el push `db227f4`, las listas devolvieron 503 con la API iniciada dentro del sandbox. Comprobación de catálogo: fallo de transporte dentro del sandbox; fuera, Supabase responde HTTP 401 a la consulta sin sesión (no certifica permisos ni lectura autenticada). API reiniciada con red autorizada y health healthy. El usuario indicó «listo» después del reinicio; la prueba de persistencia sigue pendiente. No cambiar SQL/RLS por este fallo de red.
 
 - 14/11/2026: el usuario autorizó commit y push del trabajo local a `miguel`, con mensaje de organización de carpetas. Incluye definición estructurada y limpieza; la prueba autenticada sigue pendiente. Frontend/API arrancados y comprobados (HTTP 200). Validación de entrega: lint/build y auditorías de imports/enlaces correctos; no se incluyen secretos ni artefactos locales. Confirmar el hash y el estado remoto en Git después del push.
 

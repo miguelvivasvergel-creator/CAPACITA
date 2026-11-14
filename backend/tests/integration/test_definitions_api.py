@@ -9,19 +9,7 @@ from fastapi.testclient import TestClient
 from api.capabilities import router
 from core.supabase import SupabaseGateway, get_supabase_gateway
 from tests.fixtures.supabase_catalog import SupabaseFixture, MIGUEL, PRIVATE_ID
-
-
-def definition():
-    return {
-        "name": "Limpiar datos", "description": "Quita espacios sobrantes del texto recibido.",
-        "category": "Texto", "input_type": "texto", "output_type": "texto",
-        "input_schema": {"type": "object", "properties": {"texto": {"type": "string"}}, "required": ["texto"], "additionalProperties": False},
-        "parameter_schema": {"type": "object", "properties": {"mayusculas": {"type": "boolean"}}, "additionalProperties": False},
-        "output_schema": {"type": "object", "properties": {"resultado": {"type": "string"}}, "required": ["resultado"], "additionalProperties": False},
-        "constraints": ["Conservar los acentos"], "required_permissions": [],
-        "resources": [], "failure_cases": ["Rechazar entradas sin texto"],
-        "examples": [{"inputs": {"texto": "  Árbol "}, "parameters": {"mayusculas": False}, "expected_output": {"resultado": "Árbol"}}],
-    }
+from tests.fixtures.definitions import definition
 
 
 class DefinitionAPITests(unittest.TestCase):
