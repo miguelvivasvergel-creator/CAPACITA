@@ -1,0 +1,2 @@
+# Los scripts ejecutados dentro de WSL necesitan finales de línea Linux.
+scripts/maintenance/*_wsl.sh text eol=lf

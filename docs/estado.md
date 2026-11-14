@@ -33,6 +33,11 @@ Seguimiento acumulativo propio: [CONTEXTO_Y_CONTINUIDAD_FAHIDA.md](CONTEXTO_Y_CO
 Bloque 1 iniciado por instrucción del usuario: revisión de contrato y diagnóstico
 local. Docker 28.5.1 accesible fuera del entorno restringido, sin runtime runsc;
 WSL solo docker-desktop. Aislamiento y ejecución de candidatos aún no verificados.
+Actualización posterior: Ubuntu 24.04 instalado en WSL2, con Docker Engine
+29.1.3 y runsc 20261109.0 propios. Prueba de referencia real pasa transformación,
+usuario sin privilegios, raíz de solo lectura, red externa bloqueada y ausencia
+de montajes del host. Faltan pruebas de excesos/timeout y runner integrado;
+el diagnóstico anterior corresponde a Docker Desktop, no al Engine de Ubuntu.
 Cada bloque deja pruebas, pendientes y commit local; no se declara completado por
 tener documentación o por existir Docker.
 
