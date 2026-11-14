@@ -29,6 +29,13 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
+Seguimiento acumulativo propio: [CONTEXTO_Y_CONTINUIDAD_FAHIDA.md](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
+Bloque 1 iniciado por instrucción del usuario: revisión de contrato y diagnóstico
+local. Docker 28.5.1 accesible fuera del entorno restringido, sin runtime runsc;
+WSL solo docker-desktop. Aislamiento y ejecución de candidatos aún no verificados.
+Cada bloque deja pruebas, pendientes y commit local; no se declara completado por
+tener documentación o por existir Docker.
+
 Usuario confirma que aún no tiene sandbox (14/11/2026). Bloqueo de pruebas aisladas, habilitación y ejecución de candidatos. Guía preparada: [ENTREGA_A_B_CANDIDATOS.md](ENTREGA_A_B_CANDIDATOS.md), con casos propuestos y evidencia requerida, sin declarar controles implementados/probados. Infraestructura y créditos por confirmar. No ejecutar candidatos en host/API como alternativa.
 
 Propiedad: laboratorio, pruebas aisladas, archivos, workflows, builds, motor, resultados e historial. CrearCapacidad.jsx y FileUpload.jsx se conservan para integración; no se implementaron aquí.
