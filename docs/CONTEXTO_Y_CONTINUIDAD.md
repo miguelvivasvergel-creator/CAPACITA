@@ -4,6 +4,14 @@ Actualizado: 14/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Actualización del frente B (Fahida, 14/11/2026): infraestructura local del bloque
+1 verificada con Ubuntu/WSL2, Docker Engine y gVisor. Diez comprobaciones pasan,
+incluidos límites, timeout y limpieza. Ver [continuidad propia de Fahida](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
+Las notas históricas siguientes sobre ausencia de sandbox quedan superadas para
+infraestructura local; laboratorio integrado, candidatos y habilitación siguen
+pendientes. El siguiente bloque de B es laboratorio/reportes, sin cambios al
+punto de reanudación del frente A descrito abajo.
+
 Cierre solicitado por usuario: terminar este último bloque, commit detallado y push a miguel; luego continuar otro día. Nuevo flujo local en Capacidades → Crear: objetivo natural → búsqueda textual autorizada → aclaraciones/bloqueo/propuesta → cargar formulario → comprobar/guardar explícitamente. POST /api/objectives/interpret. No es planner de workflows ni ejecución. Validación: 62 pruebas, lint/build y roundtrip propuesta/formulario correctos. Gemini real devolvió define con contratos/ejemplo consistentes (hash 0af15b07bc660cdc43f1cbc2f7b4fe8e26ed8754e9fb0c76292acdd5c7cb1cab). Falta recorrido autenticado de objetivos en navegador y privacidad real con segunda cuenta. No empezar otro módulo durante el cierre.
 
 Bloqueo confirmado por usuario: Fahida todavía no tiene sandbox. No probar código generado en host/API como sustituto. Guía preparada en ENTREGA_A_B_CANDIDATOS.md: contrato, casos independientes y evidencia por verificar; no implementa infraestructura ni envía mensajes a Fahida. Mantener propiedad B. A puede continuar privacidad real y comprensión/planner. Ejecución, habilitación y recorrido completo del martes siguen en riesgo hasta integrar aislamiento real.

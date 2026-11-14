@@ -30,18 +30,19 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 ## Fahida — Persona B
 
 Seguimiento acumulativo propio: [CONTEXTO_Y_CONTINUIDAD_FAHIDA.md](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
-Bloque 1 iniciado por instrucción del usuario: revisión de contrato y diagnóstico
-local. Docker 28.5.1 accesible fuera del entorno restringido, sin runtime runsc;
-WSL solo docker-desktop. Aislamiento y ejecución de candidatos aún no verificados.
-Actualización posterior: Ubuntu 24.04 instalado en WSL2, con Docker Engine
-29.1.3 y runsc 20261109.0 propios. Prueba de referencia real pasa transformación,
-usuario sin privilegios, raíz de solo lectura, red externa bloqueada y ausencia
-de montajes del host. Faltan pruebas de excesos/timeout y runner integrado;
-el diagnóstico anterior corresponde a Docker Desktop, no al Engine de Ubuntu.
-Cada bloque deja pruebas, pendientes y commit local; no se declara completado por
-tener documentación o por existir Docker.
+Bloque 1 de infraestructura local verificado el 14/11/2026: Ubuntu 24.04 en
+WSL2, Docker Engine 29.1.3 y runsc 20261109.0 propios. Diez comprobaciones reales
+pasan: admisión única, aislamiento/temporales independientes, timeout, salida
+limitada a 64 KiB, OOM a 256 MiB, CPU limitada según cgroup del host, máximo de
+8 procesos invitados, error y limpieza. Ocho contenedores de prueba eliminados.
+Scripts de referencia y verificación bajo scripts/maintenance; reporte local
+ignorado y evidencia resumida en el documento acumulativo.
 
-Usuario confirma que aún no tiene sandbox (14/11/2026). Bloqueo de pruebas aisladas, habilitación y ejecución de candidatos. Guía preparada: [ENTREGA_A_B_CANDIDATOS.md](ENTREGA_A_B_CANDIDATOS.md), con casos propuestos y evidencia requerida, sin declarar controles implementados/probados. Infraestructura y créditos por confirmar. No ejecutar candidatos en host/API como alternativa.
+Esto supera el bloqueo inicial de infraestructura para pruebas locales; todavía
+no hay laboratorio integrado, ejecución de candidatos, builds persistentes ni
+habilitación. Siguiente: bloque 2 con contratos/hashes, harness y reportes privados.
+Guía de consumo A: [ENTREGA_A_B_CANDIDATOS.md](ENTREGA_A_B_CANDIDATOS.md).
+Cada bloque deja pruebas, pendientes y commit local. Sin gastos ni publicación.
 
 Propiedad: laboratorio, pruebas aisladas, archivos, workflows, builds, motor, resultados e historial. CrearCapacidad.jsx y FileUpload.jsx se conservan para integración; no se implementaron aquí.
 

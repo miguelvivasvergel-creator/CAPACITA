@@ -2,6 +2,8 @@
 # Prueba de infraestructura con código fijo mantenido por B, nunca candidatos.
 # No habilita versiones ni acredita todos los controles del laboratorio.
 set -euo pipefail
+exec 9>/run/lock/capacita-sandbox.lock
+flock --nonblock --conflict-exit-code 75 9
 unset DOCKER_HOST DOCKER_CONTEXT
 docker_local() { /usr/bin/docker --host unix:///var/run/docker.sock "$@"; }
 docker_local info --format '{{json .Runtimes}}' | /usr/bin/python3 -c \
@@ -17,6 +19,7 @@ trap cleanup EXIT
 limits=(--runtime runsc --network none --read-only --cap-drop ALL
     --security-opt no-new-privileges --user 65534:65534
     --memory 256m --memory-swap 256m --cpus 0.5 --pids-limit 64
+    --ulimit nproc=8:8 --ulimit nofile=64:64 --ulimit fsize=1048576:1048576
     --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m --log-driver none)
 timeout --kill-after=5s 30s /usr/bin/docker --host unix:///var/run/docker.sock run \
     --name "$container_name" -i "${limits[@]}" "$image_ref" python -I -B - <<'PY'

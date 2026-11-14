@@ -4,6 +4,15 @@ Documento único y acumulativo del frente B. Leerlo al retomar, junto con el
 contexto global y el contrato compartido. Conservar aquí cada bloque, su evidencia,
 bloqueos y siguiente paso; no crear una continuidad nueva por sesión.
 
+## Punto actual para retomar
+
+Bloque 1 (base local y controles de infraestructura) verificado el 14/11/2026:
+10 comprobaciones pasan, con 8 contenedores propios eliminados. El siguiente
+trabajo es el bloque 2: laboratorio que consume candidatos privados de A,
+revalida contratos/hashes y persiste reportes. Aún no hay ejecución de candidatos,
+API de builds, habilitación ni publicación. Leer el cierre al final para reproducir
+la prueba. Las secciones iniciales conservan el diagnóstico histórico.
+
 ## Acuerdos de trabajo
 
 - Usuario autoriza trabajar por bloques, probar y hacer un commit por bloque.
@@ -22,7 +31,7 @@ bloqueos y siguiente paso; no crear una continuidad nueva por sesión.
 
 | Bloque | Estado | Evidencia / dependencia |
 | --- | --- | --- |
-| 1. Base y sandbox | En curso; controles iniciales comprobados | Ubuntu/Engine/runsc instalados; transformación y controles básicos pasan. Faltan pruebas de excesos de recursos y timeout. |
+| 1. Base y sandbox | Verificado localmente | Ubuntu/Engine/runsc y 10 comprobaciones reales pasan; controles de recursos, salida, timeout y limpieza. |
 | 2. Laboratorio y reportes | Pendiente | Consume candidato y sandbox del bloque 1. |
 | 3. Ejecución persistente | Pendiente | Trabajador, repositorios y versiones habilitadas. |
 | 4. Workflows | Pendiente | Contratos compartidos, validación y mapeo entre pasos. |
@@ -196,3 +205,106 @@ Para comprobar la ruta nueva usar el comando WSL anterior.
 El bloque 1 sigue abierto: faltan pruebas efectivas de exceso de memoria,
 CPU/procesos/salida, timeout, limpieza en fallos y concurrencia acotada. No hay
 todavía runner del producto, API de builds ni habilitación de candidatos.
+
+## Cierre de controles del bloque 1 — pruebas de infraestructura
+
+Continuación solicitada por el usuario después de `fe18034`. El alcance de este
+bloque es la base local aislada; el laboratorio, candidatos reales, reportes
+persistentes y habilitación pertenecen al bloque 2, no están implementados aquí.
+
+### Implementación de verificación
+
+- `scripts/maintenance/verify_sandbox_wsl.py`, stdlib dentro de Ubuntu:
+  orquesta únicamente fixtures fijas en contenedores gVisor. No acepta código,
+  imágenes o rutas arbitrarias del usuario y no está conectado a FastAPI.
+- Imagen fijada al digest de la prueba inicial; no descarga ni actualiza imágenes.
+- Perfil: runtime runsc, red none, usuario 65534, raíz de solo lectura, sin
+  capabilities ni nuevos privilegios, sin montajes del host, temporal tmpfs
+  de 16 MiB, 256 MiB de memoria, memoria+swap total 256 MiB, 0,5 CPU,
+  64 tareas del host y RLIMIT_NPROC de 8 para procesos invitados. Archivos
+  individuales hasta 1 MiB y 64 descriptores abiertos configurados.
+- Controlador conserva como máximo 65536 bytes agregados de stdout/stderr,
+  descarta el exceso y detiene el contenedor. Docker no guarda logs de la tarea.
+- Timeout de prueba por contenedor: 12 s, salvo bucle infinito a 3 s. No incluye
+  creación/limpieza: esas operaciones tienen sus propios timeouts acotados.
+- Limpieza por nombre UUID creado por la llamada; eliminación forzada y consulta
+  posterior al daemon para comprobar ausencia. No borrar contenedores ajenos.
+- Lock del host `/run/lock/capacita-sandbox.lock`: una suite/prueba a la vez;
+  una segunda solicitud recibe código 75 antes de crear contenedores. El smoke
+  inicial usa el mismo lock. Este control no es una cola durable del producto.
+- Entorno de procesos host reducido a PATH/LANG; se prueba un canario público
+  sin usar secretos reales. El contenedor no recibe las variables del host.
+- Reporte local `output/sandbox/block1-latest.json`, ignorado por Git. Incluye
+  fecha, versiones, digest, casos, códigos, tiempos, contadores del host y limpieza.
+  La evidencia del cierre se resume en este documento acumulativo.
+
+### Fallos encontrados y correcciones
+
+1. La primera prueba de salida excesiva expuso bloqueo del cliente attach al
+   llenarse su pipe. Se corrigió desconectando ese cliente antes de detener el
+   contenedor; también se hace en la limpieza de excepciones. Se comprobó que
+   no quedaron contenedores de esa verificación.
+2. La prueba con muchos intérpretes Python falló por errno 12 antes de acreditar
+   el límite de procesos. No se aceptó como prueba de RLIMIT_NPROC: se cambió
+   a hijos pequeños con fork y se redujo el límite a 8. La pasada final permite
+   siete hijos, rechaza el siguiente con EAGAIN y recoge todos los hijos.
+
+Referencias técnicas: [modelo de recursos gVisor](https://gvisor.dev/docs/architecture_guide/resources/)
+y [compatibilidad](https://gvisor.dev/docs/user_guide/compatibility/). Los procesos
+del invitado no equivalen a los del host; la evidencia del límite de procesos
+debe venir de un intento real, además de los flags de Docker.
+
+### Cómo repetir las pruebas
+
+Desde PowerShell en la raíz:
+
+```powershell
+wsl --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3 /mnt/c/Users/Fahida/Desktop/CAPACITA/scripts/maintenance/verify_sandbox_wsl.py
+$LASTEXITCODE
+```
+
+Esperado para aceptar el cierre: todos los casos PASS y código 0. Un código 75
+significa que otra prueba ocupa el lock. Cualquier FAIL o infraestructura
+inaccesible impide dar la verificación por superada. No hace falta iniciar Vite,
+FastAPI, Supabase ni disponer de claves para esta prueba.
+
+### Resultado final verificado
+
+Batería iniciada el 14/11/2026 a las 17:35:37 UTC (12:35:37 Bogotá), terminó
+con código 0 y `passed=true`. Docker Server 29.1.3, runsc release-20261109.0,
+imagen fijada al digest indicado. Todas las comprobaciones pasaron:
+
+| Caso | Evidencia observada |
+| --- | --- |
+| Admisión única | Segundo proceso recibe 75 antes de ejecutar trabajo. |
+| Aislamiento/temporal 1 | Transformación correcta, sin canario del host, sin montajes/socket, raíz bloqueada y red externa denegada. |
+| Aislamiento/temporal 2 | Nuevo entorno no conserva el archivo temporal del primero. |
+| Bucle infinito | Timeout de 3 s, exit 137; 3,647 s incluyendo creación/control hasta inspección. |
+| Salida excesiva | Se retienen exactamente 65536 bytes, se corta ejecución, exit 137. |
+| Memoria excesiva | Exit 137 y OOMKilled=true bajo límite de 268435456 bytes. |
+| CPU | Kernel host informa cpu.max=50000 100000 y nr_throttled=45 durante carga real. |
+| Procesos invitados | Siete hijos más padre; siguiente fork rechazado por EAGAIN con RLIMIT_NPROC=8. |
+| Error provocado | Exit 1, error identificado, limpieza confirmada. |
+| Liberación de admisión | El lock permite una nueva adquisición al terminar. |
+
+En los ocho casos con contenedores se verificó su eliminación consultando al
+daemon, incluidos timeout, exceso de salida, OOM y excepción. Los límites de
+archivo/descriptores están configurados; no se presentan como pruebas separadas.
+La batería prueba la infraestructura con fixtures y no demuestra corrección o
+seguridad universal de candidatos; el producto aún no tiene runner integrado.
+
+Cambios de cierre: nueva batería de verificación, lock y límites alineados en
+smoke, exclusión Git de reportes locales y actualización del seguimiento. Commit
+identificable por `test(sandbox): verificar limites y cerrar bloque de infraestructura`.
+Las verificaciones de sintaxis/enlaces y el estado final de Git se revisan antes
+del commit. No hay cambios de frontend/API, BD remota ni consumo de IA.
+
+### Siguiente paso — bloque 2
+
+Revisar con A la interfaz de builds y persistencia; implementar revalidación del
+CandidateManifest, definición y hash, harness controlado y pruebas independientes
+antes de probar un candidato propio. Diseñar reportes privados con acceso ajeno
+404. El laboratorio utilizará un trabajador y los controles comprobados; no
+convertir este script diagnóstico en un endpoint que acepte código arbitrario.
+Definir también recuperación ante caída del controlador: la batería acredita
+limpieza en los errores probados, no recuperación después de apagar Windows.

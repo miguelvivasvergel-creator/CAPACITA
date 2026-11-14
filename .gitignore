@@ -31,6 +31,7 @@ htmlcov/
 .claude/
 .playwright-cli/
 output/playwright/
+output/sandbox/
 test-results/
 
 # Compilación de .NET
