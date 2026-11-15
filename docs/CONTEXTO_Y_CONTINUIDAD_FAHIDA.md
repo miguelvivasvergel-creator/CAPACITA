@@ -1,5 +1,10 @@
 # Fahida — contexto y continuidad
 
+Entrega confirmada: commit B4 5844a8e y commit B3 873131a subidos a
+origin/feature/Fahida-backend-setup el 15/11/2026. Push correcto, sin merge
+a main. Siguiente: revision con Miguel y planificar B5. Eliminacion local
+previa de backend/.env.example excluida deliberadamente del commit.
+
 Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
 Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.
 Su proceso real tiene UN paso; lectura propia 200, resultado correcto y datos
