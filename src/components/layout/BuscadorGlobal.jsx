@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useBusqueda } from '../../hooks/useBusqueda';
 export default function BuscadorGlobal({ onCambiarSeccion }) {
   const [texto, setTexto] = useState('');
-  const { res, error } = useBusqueda(texto);
+  const { res, error, cargando } = useBusqueda(texto);
   const [abierto, setAbierto] = useState(false);
   const contenedor = useRef(null);
   const input = useRef(null);
@@ -35,7 +35,7 @@ export default function BuscadorGlobal({ onCambiarSeccion }) {
   };
 
   const hayResultados = res && (res.usuarios.length || res.capacidades.length || res.workflows.length);
-  const mostrarPanel = abierto && texto.trim().length >= 2 && (res || error);
+  const mostrarPanel = abierto && texto.trim().length >= 2 && (res || error || cargando);
 
   return (
     <div ref={contenedor} className="relative w-56 sm:w-72 lg:w-80">
@@ -52,12 +52,14 @@ export default function BuscadorGlobal({ onCambiarSeccion }) {
           onFocus={() => setAbierto(true)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') { setAbierto(false); e.target.blur(); }
-            if (e.key === 'Enter' && texto.trim().length >= 1) {
+            if (e.key === 'Enter' && texto.trim().length >= 2) {
               ir(`buscar/${encodeURIComponent(texto.trim())}`);
               e.target.blur();
             }
           }}
-          placeholder="Buscar capacidades, workflows..."
+          aria-label="Buscar capacidades y personas"
+          maxLength={200}
+          placeholder="Buscar capacidades y personas..."
           className="w-full pl-9 pr-12 py-1.5 text-[13px] bg-slate-50/70 hover:bg-slate-100/60 focus:bg-white border border-slate-200/90 rounded-lg text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#1a56db] transition"
         />
         <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono font-medium text-slate-500 bg-white border border-slate-200/90 rounded px-1.5 py-0.5 shadow-2xs">
@@ -66,30 +68,27 @@ export default function BuscadorGlobal({ onCambiarSeccion }) {
       </div>
 
       {mostrarPanel && (
-        <div className="absolute right-0 z-50 mt-2 w-full min-w-[20rem] max-h-96 overflow-auto rounded-xl border border-slate-100 bg-white p-1.5 shadow-lg">
-          {error && <p className="p-3 text-xs text-red-600">No se pudo conectar con la API.</p>}
+        <div role="region" aria-label="Sugerencias de búsqueda" className="absolute right-0 z-50 mt-2 w-full min-w-[20rem] max-h-96 overflow-auto rounded-xl border border-slate-100 bg-white p-1.5 shadow-lg">
+          {cargando && <p role="status" className="p-3 text-xs text-slate-500">Buscando…</p>}
+          {error && <p role="alert" className="p-3 text-xs text-red-600">{error}</p>}
           {res && !hayResultados && (
             <p className="p-3 text-xs text-slate-500">Sin resultados para "{texto.trim()}".</p>
           )}
 
           {res?.usuarios.length > 0 && <Seccion titulo="Usuarios" />}
           {res?.usuarios.map((u) => (
-            <Fila key={u.username} onClick={() => ir(`perfil/${u.username}`)}
+            <Fila key={u.username} onClick={() => ir(`perfil/${encodeURIComponent(u.username)}`)}
               titulo={u.display_name}
-              detalle={`@${u.username} · ${u.public_capabilities} capacidades · ${u.public_workflows} workflows`} />
+              detalle={`@${u.username}`} />
           ))}
 
           {res?.capacidades.length > 0 && <Seccion titulo="Capacidades" />}
           {res?.capacidades.map((c) => (
-            <Fila key={c.id} onClick={() => ir('comunidad')}
+            <Fila key={c.id} onClick={() => ir(`buscar/${encodeURIComponent(texto.trim())}/${c.id}`)}
               titulo={c.name} detalle={`por @${c.owner_username}`} />
           ))}
 
-          {res?.workflows.length > 0 && <Seccion titulo="Workflows" />}
-          {res?.workflows.map((w) => (
-            <Fila key={w.id} onClick={() => ir('comunidad')}
-              titulo={w.name} detalle={`por @${w.owner_username}`} />
-          ))}
+          {res && <button type="button" onClick={() => ir(`buscar/${encodeURIComponent(texto.trim())}`)} className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-blue-700 hover:bg-blue-50">Ver todos los resultados</button>}
         </div>
       )}
     </div>

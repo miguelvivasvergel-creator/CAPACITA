@@ -1,8 +1,120 @@
 # Capacita — contexto y continuidad
 
-Actualizado: 14/11/2026, America/Bogota. Estado actual; las sesiones anteriores se conservan en [historial](historial/README.md).
+Actualizado: 15/11/2026, America/Bogota. Estado actual; las sesiones anteriores se conservan en [historial](historial/README.md).
 
 ## Punto exacto para retomar
+
+Cierre solicitado por usuario, 15/11/2026: terminar el bloque y subirlo a
+origin/miguel con commit detallado. Alcance: integración ya probada B1/B2,
+Inicio real, perfil persistente/SQL 07 aplicado y búsqueda textual/semántica
+local. No iniciar tareas nuevas ni B3 durante este cierre. 104 pruebas backend,
+lint/build/imports y navegador/modelo correctos; comprobar enlaces, secretos,
+archivos incluidos y sincronización Git al entregar.
+
+Búsqueda A, 15/11/2026, implementada y validada: autocompletado/Buscar usan
+POST /api/search de FastAPI con sesión, perfiles/capacidades paginados, filtros,
+detalle/perfil correctos y texto/significado local. .NET conservado e inactivo.
+E5 CPU opcional, 384 dimensiones, unos 136 MB por revisión/hash; sin enviar
+catálogo/consultas a terceros, Gemini ni SQL nuevo. Instalado aquí; otro equipo
+usa requirements-search.txt y setup_search_model.py si desea semántica.
+
+Límite semántico: primeras 200 autorizadas, caché local por usuario/contenido/
+modelo; no índice pgvector global. Truncado explícito, permisos revalidados tras
+inferencia y cursores ligados al contexto. Una inferencia por proceso, 429 a
+otra simultánea; cancelar navegador no para trabajo nativo inmediatamente.
+Recarga duplicada de prueba solapó consultas; se corrigió la secuencia de prueba.
+
+104 pruebas backend (14 nuevas), siete grupos visuales y E5 real 6/6 pasan.
+A: semántica 200, siete filas sin truncar, Quitar fondo primero; sugerencias
+abren capacidad propia/perfil y móvil correcto. B: privada A ausente en texto/
+semántica, cuatro autorizadas, perfil público encontrado y GET ajeno 404.
+Modelos/caché/reportes output/search ignorados por Git. Lint/build/imports pasan,
+bundle >500 kB conocido. BUSQUEDA_A.md conserva instalación/límites. Siguiente A:
+dashboard/comunidad y entrega Git; planner/publicación dependen de contrato B.
+Extras semánticos requieren Python >=3.12 (NumPy); texto no los necesita.
+Git antes del cierre: HEAD 7ad07e0, merge de Fahida. Usuario autoriza commit/push
+del bloque A local; registrar hash y verificación remota al finalizar. Sin despliegue.
+
+Perfil A, 15/11/2026, bloque implementado y validado: backend conectado
+a profiles real, PATCH propio persistente, foto PNG/JPG normalizada con Pillow
+13.0.0/Storage, perfil sin .NET ni fallback; capacidades públicas paginadas y
+métricas no integradas como —. No toca archivos de B. Causa verificada del fallo
+anterior: writes solo en memoria y Supabase devuelve 403/42501 a prueba de cero
+filas en columnas de perfil; no había permisos efectivos de edición.
+Usuario confirma SQL 07 aplicado: true,true,true,false,false. No repetirlo.
+No hay conexión administrativa disponible; lo ejecutó el usuario en SQL Editor.
+Aceptación real completada por Playwright: PATCH nombre/bio 200, persisten tras
+recargar; avatar normalizado guardado y recuperado tras recargar, imagen pública
+HTTP 200. Perfil original restaurado y foto sintética retirada. Segunda cuenta
+autenticada distinta: UPDATE al perfil ajeno afecta cero filas; subir avatar a
+su carpeta devuelve 403 por RLS y cambiar id devuelve 42501. Lectura pública por
+username corregida tras prueba real: PostgREST interpreta comillas añadidas como
+parte del valor; se usan parámetros literales codificados y verificación de fila.
+Prueba de regresión añadida. 90 pruebas backend completas pasan, seis grupos
+visuales interceptados pasan, lint/build/imports/diff --check correctos (bundle
+>500 kB y deprecación Starlette/httpx conocidas). API con código actual.
+Referencia: PERFIL_A.md. Siguiente A: búsqueda/dashboard restante y planner
+cuando B entregue contrato. No implementar motor/workflows/versiones de Fahida.
+
+Frente A, 15/11/2026: usuario solicita avanzar autónomamente con mínima
+intervención y confirma que Fahida trabaja en B3. Mantener tareas separadas:
+no implementar versiones, motor, workflows ni habilitación de B en esta rama.
+Se retiró la propuesta inicial de avanzar en habilitación antes de cambiar código.
+
+Inicio A conectado a catálogo autorizado e interpretación real de objetivos.
+Se retiraron del recorrido los contadores/personas/capacidades/workflows de mock
+y el plan fijo. Búsqueda textual, filtro propio/comunidad, paginación, detalle,
+clonación explícita y propuesta al formulario sin autoguardado. Reutiliza
+InterpretarObjetivo/DefinirCapacidad; no es planner de workflows. Encabezado A
+adaptado para móvil al reproducir desborde del buscador de ancho fijo. Detalle
+sin callback de ejecución muestra botón deshabilitado «Ejecución pendiente».
+
+Verificación real automatizada con sesión: catálogo HTTP 200, Gemini HTTP 200
+con decisión define, una coincidencia autorizada y propuesta cargada en formulario;
+sin guardar registros. Primer intento tuvo fallo de transporte 503 correctamente
+mostrado; metadatos 200 y un único intento adicional superado. Sin bucle de reintentos.
+Privacidad real A completada sobre capacidad efe6b264 y candidato 452d1c47:
+dueño GET 200/200, segunda cuenta autenticada GET 404/404 y catálogo sin esa
+capacidad privada (sin página siguiente). No extiende evidencia a todos los datos.
+Siguiente A: perfil/dashboard restantes y búsqueda; planner espera contrato de B.
+Validación visual interceptada reproducible en scripts/maintenance/verify_home_browser.js;
+ocho grupos de comprobaciones pasan, sin IA ni escrituras reales. Lint sin
+advertencias nuevas, build y auditoría de imports correctos; diff --check pasa.
+Capturas reales escritorio/móvil inspeccionadas, sin desborde. Advertencia
+conocida de bundle >500 kB. No hubo cambios de backend, SQL ni archivos de B.
+
+Prueba integrada en equipo Miguel, 15/11/2026: usuario autorizó preparar sandbox
+local. Instalado Ubuntu-24.04/WSL2, Docker Engine 29.1.3 y runsc 20261109.0
+mediante scripts B; socket exclusivo `/run/capacita-docker.sock` e imagen Python
+fijada al digest del laboratorio. Las diez comprobaciones reales B1 pasan
+(aislamiento, temporales, timeout, salida, memoria, CPU, procesos y limpieza).
+Reporte local ignorado: `output/sandbox/block1-latest.json`. Batería B2 completa:
+12 escenarios reales pasan, incluidos errores esperados y limpieza; reporte
+`output/laboratory/block2-latest.json` ignorado. Usuario confirma ver Laboratorio
+privado; trabajador iniciado y prueba real
+`57ea2b3a-673f-4ee1-a42e-bb0a415fe866` superada. Usuario confirma en interfaz dos
+salidas correctas y entrada sin texto rechazada antes de ejecutar. Relectura
+independiente de SQLite confirma estado passed, limpieza en ambos casos ejecutados
+y `implementation_enabled=false`; no habilita/publica. Usuario confirma recuperación
+tras recargar mediante listado: «Casos superados · 11/15/2026, 9:13:12 AM · 57ea2b3a».
+API y Vite responden en 8000/5173; rutas builds presentes y
+401 sin sesión. Supabase falló por transporte dentro del sandbox de la herramienta;
+fuera respondió 401 sin credenciales, por lo que API se reinició con red autorizada.
+Usuario confirma prueba negativa `a50239fb-3b55-4337-917b-2e720ec38eed`:
+expectativa incorrecta produce «Prueba fallida», caso 1 con salida distinta de
+lo esperado/contrato incorrecto (2.182 s). Detección de resultado incorrecto
+confirmada en interfaz. Privacidad del reporte verificada con segunda cuenta.
+Comprobación automatizada Playwright completada: dos sesiones autenticadas
+validadas por Supabase y distintas (comparación de huellas, sin guardar tokens).
+Sesión propietaria recupera
+GET del build 57ea2b3a con HTTP 200, status passed e implementation_enabled=false;
+lista propia HTTP 200 contiene ese build y no tiene página siguiente. Segunda
+cuenta: GET del mismo build devuelve HTTP 404 «Prueba no encontrada»; lista
+HTTP 200 no contiene el build y no tiene página siguiente. Verificación real
+local del reporte 57ea2b3a, sin atribuir cobertura a todos los datos/endpoints.
+Siguiente: revisión de evidencia/contrato A-B y decidir siguiente bloque según
+instrucción del usuario; B3 no iniciado. Prueba de apagado abrupto aún pendiente.
+No se inició B3. Servicios API/Vite/trabajador dejados en ejecución para continuar.
 
 Integración Miguel, 15/11/2026: a petición del usuario se incorporó
 `origin/feature/Fahida-backend-setup` hasta `65a5739` en `miguel`, conservando

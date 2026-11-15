@@ -3,7 +3,7 @@ import BuscadorGlobal from './BuscadorGlobal';
 
 export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSeccion, onCerrarSesion }) {
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  const [failedAvatar, setFailedAvatar] = useState(null);
   const menuRef = useRef(null);
 
   const navLinks = [
@@ -42,7 +42,7 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
       <div className="max-w-7xl mx-auto h-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
         
         {/* Izquierda: Logo y Enlaces */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4 lg:gap-8">
           {/* Logo Capacita */}
           <button
             onClick={() => onCambiarSeccion?.('inicio')}
@@ -63,7 +63,7 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
           </button>
 
           {/* Enlaces de Navegación */}
-          <nav className="hidden md:flex items-center gap-7 h-16">
+          <nav className="hidden md:flex items-center gap-4 lg:gap-7 h-16">
             {navLinks.map(({ id, label }) => {
               const activo = seccionActiva === id;
               return (
@@ -87,21 +87,25 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
         </div>
 
         {/* Derecha: Buscador, Botón Crear y Avatar */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           
                    {/* Buscador global */}
-          <BuscadorGlobal onCambiarSeccion={onCambiarSeccion} />
+          <div className="hidden xl:block"><BuscadorGlobal onCambiarSeccion={onCambiarSeccion} /></div>
+          <button type="button" aria-label="Buscar" onClick={() => onCambiarSeccion?.('buscar')} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 xl:hidden">
+            <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+          </button>
 
           {/* Botón "+ Crear" arreglado */}
           <button
             onClick={() => onCambiarSeccion?.('workflows')}
             className="flex items-center gap-1.5 bg-[#1a56db] hover:bg-blue-700 active:scale-[0.98] text-white text-[13px] font-semibold px-3.5 py-2 rounded-lg transition-all shadow-xs shrink-0 cursor-pointer"
             title="Crear workflow o capacidad"
+            aria-label="Crear"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
-            <span>Crear</span>
+            <span className="hidden sm:inline">Crear</span>
           </button>
 
           {/* Avatar del usuario con menú desplegable */}
@@ -112,11 +116,11 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
               aria-label="Menú de usuario"
               title={`Cuenta: ${nombreUsuario}`}
             >
-              {!imgError && avatarUrl ? (
+              {failedAvatar !== avatarUrl && avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt={nombreUsuario}
-                  onError={() => setImgError(true)}
+                  onError={() => setFailedAvatar(avatarUrl)}
                   className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs"
                 />
               ) : (

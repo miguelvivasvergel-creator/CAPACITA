@@ -1,136 +1,80 @@
-// src/pages/Perfil.jsx
-
 import { useState, useEffect } from 'react';
 import PerfilEncabezado from '../components/profile/PerfilEncabezado';
 import PerfilTarjetas from '../components/profile/PerfilTarjetas';
-import PerfilActividad from '../components/profile/PerfilActividad';
 import EditarPerfilModal from '../components/profile/EditarPerfilModal';
-import { ListaCapacidades, ListaWorkflows, EstadoVacio } from '../components/profile/PerfilListas';
-import { cargarPerfil } from '../services/perfil';
+import { ListaCapacidades, EstadoVacio } from '../components/profile/PerfilListas';
+import { cargarPerfil, listarCapacidadesPerfil } from '../services/perfil';
 
-const PESTANAS = [
-  { id: 'capacidades', label: 'Capacidades' },
-  { id: 'workflows', label: 'Workflows' },
-  { id: 'actividad', label: 'Actividad' },
-];
+const PESTANAS = [{ id: 'capacidades', label: 'Capacidades' }, { id: 'workflows', label: 'Workflows' }, { id: 'actividad', label: 'Actividad' }];
 
-function PerfilCargando() {
-  return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6 animate-pulse">
-      <div className="h-64 rounded-2xl bg-slate-100" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((n) => <div key={n} className="h-20 rounded-2xl bg-slate-100" />)}
-      </div>
-      <div className="h-40 rounded-2xl bg-slate-100" />
-    </div>
-  );
-}
-
-export default function Perfil({ usuario, username, onCambiarSeccion, onConfigurar }) {
-  const [datos, setDatos] = useState(undefined); // undefined = cargando, null = no existe
+export default function Perfil({ usuario, username, onConfigurar, onPerfilActualizado }) {
+  const [datos, setDatos] = useState(undefined);
+  const [error, setError] = useState('');
+  const [revision, setRevision] = useState(0);
   const [pestana, setPestana] = useState('capacidades');
   const [editando, setEditando] = useState(false);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const userId = usuario?.id;
+  const userUsername = usuario?.username;
 
   useEffect(() => {
-    let activo = true;
-    cargarPerfil(username, usuario).then((resultado) => {
-      if (activo) setDatos(resultado);
-    });
-    return () => {
-      activo = false;
-    };
-  }, [username, usuario]);
+    const controller = new AbortController();
+    cargarPerfil(username, { id: userId, username: userUsername }, { signal: controller.signal })
+      .then((result) => { if (!controller.signal.aborted) setDatos(result); })
+      .catch((cause) => { if (!controller.signal.aborted) setError(cause.message); });
+    return () => controller.abort();
+  }, [username, userId, userUsername, revision]);
 
-  if (datos === undefined) return <PerfilCargando />;
-
-  if (datos === null) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <EstadoVacio
-          icono="🔍"
-          titulo="Perfil no encontrado"
-          texto={`No existe ningún usuario con el nombre @${username}.`}
-        />
-      </div>
-    );
+  function retry() {
+    setDatos(undefined);
+    setError('');
+    setRevision(value => value + 1);
   }
 
-  const { perfil, deEjemplo } = datos;
-  const esPropio = username === usuario?.username;
+  async function loadMore() {
+    if (!datos?.next_cursor || cargandoMas) return;
+    setCargandoMas(true);
+    try {
+      const next = await listarCapacidadesPerfil(datos.perfil.username, { cursor: datos.next_cursor });
+      setDatos(previous => {
+        const ids = new Set(previous.perfil.capabilities.map(item => item.id));
+        const capabilities = [...previous.perfil.capabilities, ...next.items.filter(item => !ids.has(item.id))];
+        return { ...previous, next_cursor: next.next_cursor, capacidadesError: '', perfil: {
+          ...previous.perfil, capabilities, stats: { ...previous.perfil.stats, public_capabilities: next.next_cursor ? null : capabilities.length },
+        } };
+      });
+    } catch (cause) { setDatos(previous => ({ ...previous, capacidadesError: cause.message })); }
+    finally { setCargandoMas(false); }
+  }
 
-  const contadores = {
-    capacidades: perfil.capabilities.length,
-    workflows: perfil.workflows.length,
-    actividad: perfil.activity.length,
-  };
+  if (error) return <div role="alert" className="mx-auto max-w-5xl p-8"><p className="text-sm text-red-700">No se pudo cargar el perfil: {error}</p><button onClick={retry} className="mt-4 rounded-xl border px-4 py-2 text-sm">Reintentar</button></div>;
+  if (datos === undefined) return <p role="status" className="mx-auto max-w-5xl p-8 text-sm text-slate-600">Cargando perfil…</p>;
+  if (datos === null) return <div className="mx-auto max-w-5xl p-8"><EstadoVacio icono="🔍" titulo="Perfil no encontrado" texto={`No encontramos el perfil @${username}.`} /></div>;
 
-  const alGuardar = (actualizado) => {
-    setDatos({ ...datos, perfil: { ...perfil, ...actualizado } });
-    setEditando(false);
-  };
-
+  const { perfil } = datos;
+  const esPropio = perfil.id === userId;
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
-      {deEjemplo && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          Algunos datos son de ejemplo mientras se conectan todos los módulos.
-        </p>
-      )}
-
-      <PerfilEncabezado
-        perfil={perfil}
-        esPropio={esPropio}
-        onEditar={() => setEditando(true)}
-        onConfigurar={onConfigurar}
-      />
-
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <PerfilEncabezado perfil={perfil} esPropio={esPropio} onEditar={() => setEditando(true)} onConfigurar={onConfigurar} />
       <PerfilTarjetas stats={perfil.stats} />
-
-      {/* Pestañas */}
-      <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/60">
-        {PESTANAS.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setPestana(id)}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all cursor-pointer ${
-              pestana === id
-                ? 'bg-white text-blue-600 shadow-xs font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            {label}
-            <span
-              className={`text-[11px] px-1.5 rounded-md ${
-                pestana === id ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
-              }`}
-            >
-              {contadores[id]}
-            </span>
-          </button>
-        ))}
+      <p className="text-xs text-slate-500">El perfil muestra capacidades públicas. Las métricas sin datos integrados aparecen como —.</p>
+      <div className="inline-flex flex-wrap gap-1 rounded-xl border border-slate-200/60 bg-slate-100/90 p-1" aria-label="Secciones del perfil">
+        {PESTANAS.map(({ id, label }) => <button key={id} type="button" aria-pressed={pestana === id} onClick={() => setPestana(id)} className={`rounded-lg px-3 py-2 text-sm font-medium ${pestana === id ? 'bg-white font-semibold text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
+          {label}{id === 'capacidades' && <span className="ml-2 text-xs">{datos.capacidadesError ? '—' : `${perfil.capabilities.length}${datos.next_cursor ? '+' : ''}`}</span>}
+        </button>)}
       </div>
-
-      {pestana === 'capacidades' && <ListaCapacidades capacidades={perfil.capabilities} />}
-      {pestana === 'workflows' && (
-        <ListaWorkflows
-          workflows={perfil.workflows}
-          onEjecutar={(id) => onCambiarSeccion?.(`ejecutar/workflow/${id}`)}
-        />
-      )}
-      {pestana === 'actividad' && (
-        <PerfilActividad
-          actividad={perfil.activity}
-          onVerWorkflow={() => onCambiarSeccion?.('workflows')}
-        />
-      )}
-
-      {editando && (
-        <EditarPerfilModal
-          perfil={perfil}
-          onCerrar={() => setEditando(false)}
-          onGuardado={alGuardar}
-        />
-      )}
+      {pestana === 'capacidades' && <>
+        {datos.capacidadesError && <div role="alert" className="rounded-xl border border-red-200 p-4 text-sm text-red-700"><p>No se pudieron cargar las capacidades: {datos.capacidadesError}</p><button onClick={retry} className="mt-3 rounded-lg border px-3 py-1 text-slate-700">Reintentar</button></div>}
+        {!datos.capacidadesError && <ListaCapacidades capacidades={perfil.capabilities} />}
+        {datos.next_cursor && <button onClick={loadMore} disabled={cargandoMas} className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50">{cargandoMas ? 'Cargando…' : 'Cargar más capacidades públicas'}</button>}
+      </>}
+      {pestana === 'workflows' && <EstadoVacio icono="🔗" titulo="Workflows del perfil pendientes de integración" texto="Aquí aparecerán los workflows públicos cuando esté disponible su integración." />}
+      {pestana === 'actividad' && <EstadoVacio icono="📋" titulo="Actividad del perfil pendiente de integración" texto="Las entradas, salidas y archivos de tus ejecuciones siguen siendo privados." />}
+      {editando && esPropio && <EditarPerfilModal perfil={perfil} onCerrar={() => setEditando(false)} onGuardado={updated => {
+        setDatos(previous => ({ ...previous, perfil: { ...previous.perfil, ...updated, stats: previous.perfil.stats } }));
+        setEditando(false);
+        onPerfilActualizado?.(updated);
+      }} />}
     </div>
   );
 }

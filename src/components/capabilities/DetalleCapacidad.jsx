@@ -195,9 +195,10 @@ export default function DetalleCapacidad({
             <button
               type="button"
               onClick={() => onUsar && onUsar(capacidad)}
-              className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-full shadow-md shadow-blue-500/25 transition active:scale-[0.99] cursor-pointer"
+              disabled={!onUsar}
+              className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-full shadow-md shadow-blue-500/25 transition active:scale-[0.99] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span>Usar capacidad →</span>
+              <span>{onUsar ? 'Usar capacidad →' : 'Ejecución pendiente'}</span>
             </button>
           </div>
         </div>

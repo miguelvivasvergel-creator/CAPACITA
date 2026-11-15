@@ -1,298 +1,147 @@
-import { useState } from 'react';
-import {
-  mockStats,
-  mockCapacidadesDestacadas,
-  mockWorkflowsActivos,
-} from '../mocks/home';
-import { mockUsuarios } from '../mocks/users';
-import PlanProposal from '../components/common/PlanProposal';
+import { useEffect, useRef, useState } from 'react';
+import { listarCapacidades, clonarCapacidad } from '../services/capacidades';
+import InterpretarObjetivo from '../components/capabilities/InterpretarObjetivo';
+import DefinirCapacidad from '../components/capabilities/DefinirCapacidad';
+import DetalleCapacidad from '../components/capabilities/DetalleCapacidad';
+
+const EMPTY_PAGE = { items: [], next_cursor: null };
+const BUTTON = 'rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 
 export default function Inicio({ usuario, onCambiarSeccion }) {
-  const nombre = usuario?.name || 'Creador';
-
-  // Buscador: dos modos (buscar / ia)
-  const [modoBuscador, setModoBuscador] = useState('buscar');
-  const [filtroBuscar, setFiltroBuscar] = useState('popularidad'); // popularidad | persona | capacidades
+  const [modo, setModo] = useState('objetivo');
   const [consulta, setConsulta] = useState('');
-  const [plan, setPlan] = useState(null);
+  const [search, setSearch] = useState({ q: '', scope: 'available', revision: 0 });
+  const [page, setPage] = useState(EMPTY_PAGE);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [propuesta, setPropuesta] = useState(null);
+  const [detalle, setDetalle] = useState(null);
+  const [cloning, setCloning] = useState(false);
+  const [cloneError, setCloneError] = useState('');
+  const request = useRef(null);
 
-  // Resultados filtrados por personas (modo Buscar + filtro Persona)
-  const consultaMin = consulta.trim().toLowerCase();
-  const resultadosPersonas =
-    modoBuscador === 'buscar' && filtroBuscar === 'persona' && consultaMin.length >= 1
-      ? mockUsuarios.filter(
-          (u) =>
-            u.username.toLowerCase().includes(consultaMin) ||
-            u.nombre.toLowerCase().includes(consultaMin)
-        ).slice(0, 5)
-      : [];
+  useEffect(() => {
+    const controller = new AbortController();
+    request.current = controller;
+    listarCapacidades(search.scope, { q: search.q, signal: controller.signal })
+      .then((result) => { if (!controller.signal.aborted) setPage(result); })
+      .catch((cause) => { if (!controller.signal.aborted) setError(cause.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [search]);
 
-  const handleConectarCapacidad = () => {
-    if (!consulta.trim()) return;
-    // Mock: en producción llamará POST /planner/propose (Luis Miguel).
-    const planFalso = {
-      explanation: `Propuesta para: "${consulta.trim()}"`,
-      steps: [
-        { capability_id: 'cap-002', name: 'Extraer texto', input_type: 'pdf',    output_type: 'texto' },
-        { capability_id: 'cap-003', name: 'Traducir',      input_type: 'texto',  output_type: 'texto' },
-        { capability_id: 'cap-004', name: 'Resumir',       input_type: 'texto',  output_type: 'texto' },
-      ],
-    };
-    setPlan(planFalso);
-  };
+  function changeSearch(changes = {}) {
+    request.current?.abort();
+    setLoading(true);
+    setLoadingMore(false);
+    setError('');
+    setPage(EMPTY_PAGE);
+    setSearch((previous) => ({ ...previous, ...changes, revision: previous.revision + 1 }));
+  }
+
+  const refresh = () => changeSearch();
+
+  async function loadMore() {
+    if (!page.next_cursor || loading || loadingMore) return;
+    const controller = request.current;
+    setLoadingMore(true);
+    setError('');
+    try {
+      const next = await listarCapacidades(search.scope, { q: search.q, cursor: page.next_cursor, signal: controller.signal });
+      if (!controller.signal.aborted) setPage((previous) => {
+        const ids = new Set(previous.items.map((item) => item.id));
+        return { items: [...previous.items, ...next.items.filter((item) => !ids.has(item.id))], next_cursor: next.next_cursor };
+      });
+    } catch (cause) {
+      if (!controller.signal.aborted) setError(cause.message);
+    } finally {
+      if (!controller.signal.aborted) setLoadingMore(false);
+    }
+  }
+
+  async function clone(item) {
+    if (cloning) return;
+    setCloning(true);
+    setCloneError('');
+    try {
+      const saved = await clonarCapacidad(item.id);
+      setNotice(`“${saved.name}” guardada en Mis capacidades como borrador privado.`);
+      setDetalle(null);
+      refresh();
+    } catch (cause) { setCloneError(cause.message); }
+    finally { setCloning(false); }
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-
-      {/* Encabezado centrado estilo mockup */}
-      <div className="text-center max-w-3xl mx-auto">
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight font-sans leading-tight">
-          Tu talento también es una{' '}
-          <span className="text-blue-600">capacidad</span>
-        </h1>
-        <p className="mt-4 text-base text-slate-500 font-body">
-          Conecta, comparte y accede a las habilidades que necesitas para hacer realidad cualquier proyecto.
-        </p>
-      </div>
-
-      {/* Hola usuario */}
-      <p className="mt-6 text-center text-sm text-slate-500 font-body">
-        ¡Hola, <span className="font-semibold text-slate-700">{nombre}</span>! 👋
-      </p>
-
-      {/* Buscador grande con selector Buscar / IA */}
-      <div className="mt-8 max-w-3xl mx-auto">
-
-        {/* Selector de modo */}
-        <div className="flex justify-center mb-4">
-          <div className="inline-flex items-center bg-white border border-slate-200 shadow-soft p-1 rounded-full">
-            <button
-              onClick={() => { setModoBuscador('buscar'); setPlan(null); }}
-              className={`px-5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors font-body ${
-                modoBuscador === 'buscar'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              🔍 Buscar
-            </button>
-            <button
-              onClick={() => setModoBuscador('ia')}
-              className={`px-5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors font-body ${
-                modoBuscador === 'ia'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              ✨ IA
-            </button>
-          </div>
-        </div>
-
-        {/* Caja de búsqueda grande con botón adentro */}
-        <div className="relative bg-white border border-slate-200 rounded-full shadow-card p-2 flex items-center">
-          <svg className="w-5 h-5 text-slate-400 ml-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-          </svg>
-          <input
-            type="text"
-            value={consulta}
-            onChange={(e) => setConsulta(e.target.value)}
-            placeholder={
-              modoBuscador === 'buscar'
-                ? 'Diseño UX...'
-                : 'Ej: tengo un PDF en inglés y lo quiero resumido en español'
-            }
-            className="flex-1 px-3 py-2 text-base bg-transparent !border-0 !outline-none !ring-0 focus:!outline-none focus:!ring-0 focus:!border-0 focus:!shadow-none text-slate-900 placeholder-slate-400 font-body rounded-full"
-          />
-          <button
-            onClick={handleConectarCapacidad}
-            className="boton-primario px-5 py-2.5 text-white text-sm font-semibold rounded-full cursor-pointer font-body shrink-0 flex items-center gap-2"
-          >
-            <span>Conectar capacidad</span>
-            <span>→</span>
-          </button>
-        </div>
-
-        {/* Panel de filtros (solo en modo Buscar) */}
-        {modoBuscador === 'buscar' && (
-          <div className="mt-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="text-xs text-slate-500 font-body mr-2">Filtrar por:</span>
-              <ChipFiltro activo={filtroBuscar === 'popularidad'} onClick={() => setFiltroBuscar('popularidad')}>
-                📈 Popularidad
-              </ChipFiltro>
-              <ChipFiltro activo={filtroBuscar === 'persona'} onClick={() => setFiltroBuscar('persona')}>
-                👤 Persona
-              </ChipFiltro>
-              <ChipFiltro activo={filtroBuscar === 'capacidades'} onClick={() => setFiltroBuscar('capacidades')}>
-                ⚡ Capacidades creadas
-              </ChipFiltro>
-            </div>
-
-            {/* Contenido según filtro */}
-            {filtroBuscar === 'popularidad' && (
-              <>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 font-body mb-2">📈 POPULARIDAD</p>
-                <div className="flex flex-wrap gap-2">
-                  <EtiquetaConteo nombre="Diseño UX" cantidad={25} />
-                  <EtiquetaConteo nombre="Machine Learning" cantidad={13} />
-                  <EtiquetaConteo nombre="Estrategia" cantidad={18} />
-                </div>
-              </>
-            )}
-
-            {filtroBuscar === 'persona' && (
-              <>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 font-body mb-2">👤 PERSONA</p>
-                {resultadosPersonas.length > 0 ? (
-                  <ul className="space-y-2">
-                    {resultadosPersonas.map((u) => (
-                      <li
-                        key={u.username}
-                        className="px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-full cursor-pointer flex items-center justify-between font-body"
-                      >
-                        <span className="text-sm font-semibold text-slate-800">{u.nombre}</span>
-                        <span className="text-xs text-slate-500">@{u.username}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-slate-400 font-body">
-                    Escribe un nombre o usuario arriba para buscar personas.
-                  </p>
-                )}
-              </>
-            )}
-
-            {filtroBuscar === 'capacidades' && (
-              <>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 font-body mb-2">⚡ CAPACIDADES CREADAS</p>
-                <div className="flex flex-wrap gap-2">
-                  <EtiquetaConteo nombre="Desarrollo Web" cantidad={31} />
-                  <EtiquetaConteo nombre="Data" cantidad={9} />
-                  <EtiquetaConteo nombre="IA" cantidad={22} />
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Resultado modo IA */}
-        {modoBuscador === 'ia' && plan && (
-          <PlanProposal
-            plan={plan}
-            onAbrir={() => onCambiarSeccion?.('workflows')}
-            onEjecutar={() => alert('Abriendo pantalla de ejecución (lo entrega Fahida).')}
-            onDescartar={() => setPlan(null)}
-          />
-        )}
-      </div>
-
-      {/* Tarjeta de estadísticas */}
-      <div className="mt-14 max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <TarjetaStat label="Usuarios activos"     valor={mockStats.usuarios_activos} />
-        <TarjetaStat label="Ejecuciones hoy"      valor={mockStats.ejecuciones_hoy} />
-        <TarjetaStat label="Capacidades públicas" valor={mockStats.capacidades_publicas} />
-        <TarjetaStat label="Workflows públicos"   valor={mockStats.workflows_publicos} />
-      </div>
-
-      {/* Capacidades destacadas */}
-      <section className="mt-14 max-w-6xl mx-auto">
-        <div className="flex items-end justify-between mb-4">
-          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight font-sans">
-            Capacidades destacadas
-          </h2>
-          <button className="text-sm text-blue-600 hover:text-blue-700 font-semibold font-body cursor-pointer">
-            Ver todas →
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockCapacidadesDestacadas.map((cap) => (
-            <article
-              key={cap.id}
-              className="pillar-card bg-white border border-slate-200 rounded-2xl p-5 shadow-soft"
-            >
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 font-body">
-                por {cap.owner_name}
-              </p>
-              <h3 className="mt-1 text-base font-extrabold text-slate-900 tracking-tight font-sans">
-                {cap.name}
-              </h3>
-              <p className="mt-1.5 text-xs text-slate-500 font-body line-clamp-2">
-                {cap.description}
-              </p>
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-500 font-body">
-                <span>{cap.input_type} → {cap.output_type}</span>
-                <span className="font-semibold text-slate-600">{cap.uses_count} usos</span>
-              </div>
-            </article>
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <header className="mx-auto max-w-3xl text-center">
+        <p className="text-sm text-slate-500">Hola, {usuario?.name || 'Creador'}</p>
+        <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">¿Qué quieres resolver hoy?</h1>
+        <p className="mt-4 text-base text-slate-600">Encuentra capacidades y define las herramientas que te faltan para avanzar en tu trabajo.</p>
+      </header>
+      <div className="mx-auto mt-8 max-w-4xl">
+        <div className="mb-5 flex flex-wrap justify-center gap-2" aria-label="Cómo empezar">
+          {[['objetivo', 'Describir un objetivo'], ['buscar', 'Buscar capacidades']].map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={modo === value} onClick={() => setModo(value)} className={`${BUTTON} ${modo === value ? '!border-blue-600 !bg-blue-600 !text-white' : ''}`}>{label}</button>
           ))}
         </div>
-      </section>
-
-      {/* Workflows activos */}
-      <section className="mt-10 mb-6 max-w-6xl mx-auto">
-        <h2 className="text-xl font-extrabold text-slate-900 tracking-tight font-sans mb-4">
-          Workflows activos
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {mockWorkflowsActivos.map((wf) => (
-            <article
-              key={wf.id}
-              className="pillar-card bg-white border border-slate-200 rounded-2xl p-5 shadow-soft"
-            >
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 font-body">
-                por {wf.owner_name}
-              </p>
-              <h3 className="mt-1 text-base font-extrabold text-slate-900 tracking-tight font-sans">
-                {wf.name}
-              </h3>
-              <p className="mt-2 text-xs text-slate-500 font-body">
-                {wf.pasos.join(' → ')}
-              </p>
-              <p className="mt-3 text-xs text-slate-500 font-body font-semibold">
-                {wf.uses_count} usos
-              </p>
-            </article>
-          ))}
+        {notice && <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+        {cloneError && !detalle && <p role="alert" className="mb-4 text-sm text-red-700">{cloneError}</p>}
+        <div hidden={modo !== 'objetivo'}>
+          <InterpretarObjetivo disabled={cloning} onClonar={clone} onPropuesta={(definition) => {
+            setPropuesta({ id: crypto.randomUUID(), definition });
+            setNotice('Propuesta cargada. Revisa el formulario y comprueba la definición antes de guardarla.');
+          }} />
+          {propuesta && <DefinirCapacidad key={propuesta.id} initialDefinition={propuesta.definition} mostrarInterprete={false} onGuardado={(saved) => {
+            setNotice(`“${saved.name}” guardada como borrador privado. Su implementación y pruebas siguen pendientes.`);
+            setPropuesta(null);
+            refresh();
+          }} />}
         </div>
+        <form hidden={modo !== 'buscar'} onSubmit={(event) => {
+          event.preventDefault();
+          changeSearch({ q: consulta.trim() });
+        }} className="rounded-2xl border border-slate-200 bg-white p-5">
+          <label htmlFor="inicio-busqueda" className="text-sm font-semibold text-slate-800">Buscar en el catálogo autorizado</label>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input id="inicio-busqueda" maxLength={200} value={consulta} onChange={(event) => setConsulta(event.target.value)} placeholder="Nombre o descripción de la capacidad" className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            <button type="submit" className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white">Buscar</button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">Búsqueda textual por nombre y descripción.</p>
+        </form>
+      </div>
+      <section aria-label="Capacidades del catálogo" className="mt-10">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{search.q ? `Resultados para “${search.q}”` : 'Explora capacidades'}</h2>
+            {!loading && !error && <p className="mt-1 text-sm text-slate-500">{page.items.length}{page.next_cursor ? '+' : ''} resultados cargados</p>}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-700">Mostrar
+            <select value={search.scope} onChange={(event) => changeSearch({ scope: event.target.value })} className="rounded-xl border border-slate-300 py-2 pl-3 pr-8 text-sm">
+              <option value="available">Visibles para mi cuenta</option><option value="mine">Mis capacidades</option><option value="community">Comunidad</option>
+            </select>
+          </label>
+        </div>
+        {loading && <p role="status" className="py-8 text-sm text-slate-600">Cargando catálogo…</p>}
+        {error && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-white p-4">
+          <p className="text-sm text-red-700">No se pudo cargar el catálogo: {error}</p><button type="button" onClick={refresh} className={`${BUTTON} mt-3`}>Reintentar</button>
+        </div>}
+        {!loading && !error && !page.items.length && <p className="mt-4 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">No hay capacidades para esta búsqueda. Puedes describir tu objetivo o cambiar los filtros.</p>}
+        {!loading && <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {page.items.map((item) => <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+            <p className="text-xs text-slate-500">{item.visibility === 'private' ? 'Privada' : 'Pública'} · {item.status === 'draft' ? 'Borrador' : 'Implementación por verificar'}</p>
+            <h3 className="mt-2 break-words text-base font-bold text-slate-900">{item.name}</h3>
+            <p className="mt-2 break-words text-sm text-slate-600">{item.description}</p>
+            <p className="mt-3 text-xs text-slate-500">{item.input_type} → {item.output_type}</p>
+            <button type="button" onClick={() => { setDetalle(item); setCloneError(''); }} className="mt-4 text-sm font-semibold text-blue-700 underline">Ver {item.name}</button>
+          </article>)}
+        </div>}
+        {!loading && page.next_cursor && <button type="button" onClick={loadMore} disabled={loadingMore} className={`${BUTTON} mt-5`}>{loadingMore ? 'Cargando más…' : 'Cargar más capacidades'}</button>}
+        <button type="button" onClick={() => onCambiarSeccion?.('capacidades')} className="mt-5 block text-sm font-semibold text-blue-700 underline">Ir a Mis capacidades y crear manualmente</button>
       </section>
-    </div>
-  );
-}
-
-function TarjetaStat({ label, valor }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-soft">
-      <p className="text-3xl font-extrabold text-blue-600 tracking-tight font-sans">{valor}</p>
-      <p className="mt-1 text-xs text-slate-500 font-body">{label}</p>
-    </div>
-  );
-}
-
-function ChipFiltro({ activo, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3.5 py-1.5 text-xs font-semibold rounded-full border cursor-pointer transition-colors font-body ${
-        activo
-          ? 'bg-blue-50 text-blue-700 border-blue-200'
-          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function EtiquetaConteo({ nombre, cantidad }) {
-  return (
-    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full">
-      <span className="text-sm font-semibold text-slate-800 font-body">{nombre}</span>
-      <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-        {cantidad}
-      </span>
+      {detalle && <DetalleCapacidad capacidad={detalle} esDuenio={detalle.owner_id === usuario?.id} onCerrar={() => setDetalle(null)} onClonar={() => clone(detalle)} clonando={cloning} accionError={cloneError} />}
     </div>
   );
 }

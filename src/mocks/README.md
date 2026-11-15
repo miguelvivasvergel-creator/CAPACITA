@@ -8,8 +8,11 @@ Los mocks no prueban que exista una implementación. Las rutas reales de catálo
 | objetivos.js | Necesidad de ejemplo cargada explícitamente; la interpretación siempre llama a IA real, sin fallback. |
 | candidatos.js | Fixture visual de desarrollo para candidatos Python; sin fallback ni consumidor en el recorrido real. |
 | laboratorio.js | Casos visuales de desarrollo del laboratorio; no sustituyen respuestas de builds ni se ejecutan automáticamente. |
-| home.js y users.js | Inicio de desarrollo; planner/estadísticas reales pendientes. |
-| profile.js | Fallback heredado de perfiles; migración pendiente, no aceptación de datos reales. |
+| inicio.js | Fixtures visuales para pruebas interceptadas de Inicio; no fallback. |
+| home.js y users.js | Mocks históricos sin consumidor actual; Inicio usa catálogo autorizado e interpretación real. |
+| profile.js | Fixture histórica sin consumidor: perfil conectado a FastAPI, sin fallback. |
+| perfil-real.js | Fixture de contrato para pruebas interceptadas de perfil; no se usa en producción. |
+| busqueda.js | Fixture de búsqueda para pruebas interceptadas; sin fallback ni consumidor de producción. |
 | runs.js | Ejecución de desarrollo; integración persistente real pendiente. |
 | catalog/capabilities.js | Fixture antigua del catálogo, sin consumidor actual. Conservada para desarrollo, fuera del recorrido real. |
 | catalog/community.js | Fixture antigua de comunidad/rankings, sin consumidor actual. No reintroducir como fallback de producción. |

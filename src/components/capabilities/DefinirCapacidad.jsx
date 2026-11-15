@@ -24,8 +24,8 @@ function formularioVacio() {
 }
 
 // Componente de A. B puede reutilizarlo en su estudio mediante onGuardado(capacidad).
-export default function DefinirCapacidad({ onGuardado }) {
-  const [form, setForm] = useState(formularioVacio);
+export default function DefinirCapacidad({ onGuardado, initialDefinition, mostrarInterprete = true }) {
+  const [form, setForm] = useState(() => initialDefinition ? definicionAFormulario(initialDefinition) : formularioVacio());
   const [checked, setChecked] = useState(null);
   const [acknowledge, setAcknowledge] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -77,9 +77,9 @@ export default function DefinirCapacidad({ onGuardado }) {
           setForm(structuredClone(ejemploDefinicion)); setChecked(null); setAcknowledge(false); setError('');
         }}>Cargar ejemplo editable</button>
       </div>
-      <InterpretarObjetivo disabled={busy} onBusy={setBusy} onClonar={reutilizar} onPropuesta={(definition) => {
+      {mostrarInterprete && <InterpretarObjetivo disabled={busy} onBusy={setBusy} onClonar={reutilizar} onPropuesta={(definition) => {
         setForm(definicionAFormulario(definition)); setChecked(null); setAcknowledge(false); setError('');
-      }} />
+      }} />}
       <form onSubmit={comprobar}>
         <fieldset disabled={busy} className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">

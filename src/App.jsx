@@ -253,6 +253,9 @@ export default function App() {
             username={parametros[0] || usuarioActual.username}
             onCambiarSeccion={handleCambiarSeccion}
             onConfigurar={() => handleCambiarSeccion('configuracion')}
+            onPerfilActualizado={(perfil) => setUsuarioActual((previous) => previous?.id === perfil.id
+              ? { ...previous, name: perfil.display_name, avatar_url: perfil.avatar_url }
+              : previous)}
           />
         )}
         {seccion === 'ejecutar' && (
@@ -262,6 +265,10 @@ export default function App() {
           <Buscar
             key={vista}
             texto={decodeURIComponent(parametros[0] || '')}
+            capacidadId={parametros[1]}
+            metodo={parametros[2]}
+            alcance={parametros[3]}
+            usuario={usuarioActual}
             onCambiarSeccion={handleCambiarSeccion}
           />
         )}

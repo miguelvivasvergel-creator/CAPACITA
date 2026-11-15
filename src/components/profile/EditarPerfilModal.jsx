@@ -11,23 +11,26 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }) {
   const [foto, setFoto] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
+  const [fotoError, setFotoError] = useState('');
 
   // Cerrar con la tecla Escape
   useEffect(() => {
-    const alPresionar = (e) => e.key === 'Escape' && onCerrar();
+    const alPresionar = (e) => e.key === 'Escape' && !guardando && onCerrar();
     document.addEventListener('keydown', alPresionar);
     return () => document.removeEventListener('keydown', alPresionar);
-  }, [onCerrar]);
+  }, [onCerrar, guardando]);
 
   const elegirFoto = (archivo) => {
     setError('');
+    setFotoError('');
+    setFoto(null);
     if (!archivo) return;
     if (!['image/png', 'image/jpeg'].includes(archivo.type)) {
-      setError('La foto debe ser PNG o JPG.');
+      setFotoError('La foto debe ser PNG o JPG.');
       return;
     }
     if (archivo.size > MAX_FOTO_BYTES) {
-      setError('La foto supera el límite de 2 MB.');
+      setFotoError('La foto supera el límite de 2 MB.');
       return;
     }
     setFoto(archivo);
@@ -49,7 +52,7 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
-      onClick={onCerrar}
+      onClick={() => { if (!guardando) onCerrar(); }}
     >
       <form
         role="dialog"
@@ -69,6 +72,7 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }) {
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             maxLength={60}
+            disabled={guardando}
             required
             className="mt-1.5 w-full px-3.5 py-2 text-sm bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#1a56db] transition"
           />
@@ -85,6 +89,7 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }) {
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             maxLength={MAX_BIO}
+            disabled={guardando}
             rows={3}
             placeholder="Cuéntale a la comunidad qué haces..."
             className="mt-1.5 w-full px-3.5 py-2 text-sm bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#1a56db] transition resize-none"
@@ -99,26 +104,29 @@ export default function EditarPerfilModal({ perfil, onCerrar, onGuardado }) {
           <input
             type="file"
             accept="image/png,image/jpeg"
+            disabled={guardando}
             className="sr-only"
             onChange={(e) => elegirFoto(e.target.files[0])}
           />
         </label>
 
-        {error && (
-          <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+        <p className="mt-2 text-xs text-slate-500">La foto de perfil será pública. Se guarda una copia reducida sin metadatos.</p>
+        {(error || fotoError) && (
+          <p role="alert" className="mt-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{fotoError || error}</p>
         )}
 
         <div className="mt-6 flex justify-end gap-2.5">
           <button
             type="button"
             onClick={onCerrar}
+            disabled={guardando}
             className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            disabled={guardando || !nombre.trim()}
+            disabled={guardando || !nombre.trim() || Boolean(fotoError)}
             className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#1a56db] hover:bg-blue-700 active:scale-[0.98] transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {guardando ? 'Guardando...' : 'Guardar cambios'}

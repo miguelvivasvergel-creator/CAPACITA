@@ -10,6 +10,7 @@ Inspeccionar el proyecto real antes de aplicar SQL. No ejecutar todos los archiv
 | 04_catalog_draft_insert.sql | INSERT por columnas y política de borradores privados propios, sin publicación/UPDATE/DELETE; usuario reportó aplicación. |
 | 05_catalog_contract_insert.sql | Añade INSERT solo de input_schema/output_schema existentes; usuario reportó aplicación. |
 | 06_private_candidates.sql | Usuario reportó aplicación y permisos true,true,false,false (SELECT/INSERT/UPDATE/DELETE): tabla privada capability_candidates, RLS por dueño e INSERT/SELECT mínimos. Falta prueba real de persistencia/RLS con dos cuentas. No repetir sin inspección; no habilita ejecución. |
+| 07_profile_edit_and_avatars.sql | Aplicado por usuario: grants true,true,true,false,false. Perfil/avatar propios persistentes verificados. Otra cuenta: UPDATE ajeno cero filas, upload ajeno 403 e id 42501. UPDATE por columnas y RLS restrictiva; bucket público avatars PNG hasta 2 MB. No repetir. |
 
 Nuevo formulario de definición: reutiliza columnas/grants de 04/05 y config.definition; no requiere migración adicional. Permisos de UPDATE/DELETE, publicación/versiones, builds y motor reales siguen pendientes.
 

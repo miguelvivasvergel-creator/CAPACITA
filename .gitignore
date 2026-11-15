@@ -33,6 +33,7 @@ htmlcov/
 output/playwright/
 output/sandbox/
 output/laboratory/
+output/search/
 test-results/
 
 # Compilación de .NET

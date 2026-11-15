@@ -50,7 +50,9 @@ export async function api(ruta, { method = 'GET', body, signal, idempotencyKey }
       : Array.isArray(json.detail)
         ? json.detail.map((error) => error.msg).join('. ')
         : 'No se pudo conectar con el servidor.';
-    throw new Error(mensaje);
+    const error = new Error(mensaje);
+    error.status = respuesta.status;
+    throw error;
   }
 
   return json.data;

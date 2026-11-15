@@ -1,0 +1,5 @@
+# Opcional: búsqueda semántica local CPU. No requiere torch, CUDA ni servicio de pago.
+# Estos extras requieren Python >=3.12 (NumPy); el modo textual no los necesita.
+onnxruntime==1.32.0
+tokenizers==0.23.3
+numpy==2.5.4

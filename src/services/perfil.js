@@ -1,63 +1,32 @@
-// src/services/perfil.js
-// carga todo lo que se ve en la pantalla de perfil
-// Si algún endpoint todavía no existe o falla usa los datos falsos de la api de vs community
-import { getPerfil } from './dotnet';
 import { api } from '../api';
-import { obtenerPerfilMock } from '../mocks/profile';
 
-export async function cargarPerfil(username, usuarioActual) {
-  try {
-    const perfilReal = await getPerfil(username);
-    return {
-      perfil: {
-        capabilities: [],
-        workflows: [],
-        activity: [],
-        stats: { public_capabilities: 0, public_workflows: 0, runs: 0, clones: 0 },
-        ...perfilReal,
-      },
-      deEjemplo: false,
-    };
-  } catch {
-    
-  }
-  const usuario = encodeURIComponent(username);
-  const mock = obtenerPerfilMock(username, usuarioActual);
-
-  const [perfil, actividad, capacidades, workflows] = await Promise.allSettled([
-    api(`/users/${usuario}`),
-    api(`/users/${usuario}/activity`),
-    api(`/capabilities?scope=available&owner=${usuario}`), 
-    api(`/workflows?scope=available&owner=${usuario}`), 
-  ]);
-
-  // Sin perfil real ni de ejemplo: el usuario no existe
-  if (perfil.status === 'rejected' && !mock) return null;
-
-  const valorO = (resultado, respaldo) =>
-    resultado.status === 'fulfilled' ? resultado.value : respaldo;
-
-  return {
-    perfil: {
-      ...valorO(perfil, mock),
-      capabilities: valorO(capacidades, { items: mock?.capabilities ?? [] }).items,
-      workflows: valorO(workflows, { items: mock?.workflows ?? [] }).items,
-      activity: valorO(actividad, { items: mock?.activity ?? [] }).items,
-    },
-    // Avisa en pantalla si algo se está mostrando con datos de ejemplo
-    deEjemplo: [perfil, actividad, capacidades, workflows].some((r) => r.status === 'rejected'),
-  };
+export function listarCapacidadesPerfil(username, { cursor, signal } = {}) {
+  const params = new URLSearchParams({ limit: '20' });
+  if (cursor) params.set('cursor', cursor);
+  return api(`/users/${encodeURIComponent(username)}/capabilities?${params}`, { signal });
 }
 
-/** Guarda nombre y bio; si hay foto nueva, la sube después. Devuelve el perfil actualizado. */
-export async function guardarPerfil({ display_name, bio, foto }) {
-  let actualizado = await api('/users/me', { method: 'PATCH', body: { display_name, bio } });
-
-  if (foto) {
-    const formulario = new FormData();
-    formulario.append('file', foto);
-    actualizado = await api('/users/me/avatar', { method: 'POST', body: formulario });
+export async function cargarPerfil(username, usuarioActual, { signal } = {}) {
+  const target = username === usuarioActual?.username ? 'me' : username;
+  let profile;
+  try { profile = await api(`/users/${encodeURIComponent(target)}`, { signal }); }
+  catch (cause) { if (cause.status === 404) return null; throw cause; }
+  try {
+    const page = await listarCapacidadesPerfil(target, { signal });
+    return { perfil: { ...profile, capabilities: page.items,
+      stats: { ...profile.stats, public_capabilities: page.next_cursor ? null : page.items.length } }, next_cursor: page.next_cursor, capacidadesError: '' };
+  } catch (cause) {
+    if (signal?.aborted) throw cause;
+    return { perfil: { ...profile, capabilities: [] }, next_cursor: null, capacidadesError: cause.message };
   }
+}
 
-  return actualizado;
+export function guardarPerfil({ display_name, bio, foto }) {
+  if (!foto) return api('/users/me', { method: 'PATCH', body: { display_name, bio } });
+  // Una sola petición: la foto se carga antes de confirmar nombre/bio y su URL.
+  const body = new FormData();
+  body.append('file', foto);
+  body.append('display_name', display_name);
+  body.append('bio', bio);
+  return api('/users/me/avatar', { method: 'POST', body });
 }

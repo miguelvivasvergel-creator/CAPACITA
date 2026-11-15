@@ -13,6 +13,15 @@ IMPORTS = re.compile(r"(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['\"]([^'\"]+)['\"]")
 ASSETS = re.compile(r"(?:url\(\s*|(?:src|href)\s*=\s*)['\"]?([^\s'\"\)<>]+)")
 EXTENSIONS = (".js", ".jsx", ".css", ".json")
 EXPECTED_INACTIVE = {
+    "src/mocks/busqueda.js": "fixture de pruebas interceptadas; no fallback de búsqueda",
+    "src/services/dotnet.js": "cliente histórico conservado; búsqueda y perfil usan FastAPI",
+    "src/mocks/perfil-real.js": "fixture de contrato para pruebas interceptadas, sin fallback",
+    "src/mocks/profile.js": "fixture histórica; el perfil real no usa fallback",
+    "src/components/profile/PerfilActividad.jsx": "visualización conservada hasta contrato de historial B",
+    "src/mocks/inicio.js": "fixtures visuales de Inicio para pruebas interceptadas, sin fallback",
+    "src/mocks/home.js": "dashboard histórico; Inicio usa catálogo autorizado",
+    "src/mocks/users.js": "personas de ejemplo históricas, fuera de Inicio real",
+    "src/components/common/PlanProposal.jsx": "propuesta histórica; no usar como planner real ni contrato B",
     "src/mocks/laboratorio.js": "casos visuales del laboratorio B, sin fallback de red",
     "src/mocks/candidatos.js": "fixture visual de candidatos sin fallback en el flujo real",
     "src/components/common/FileUpload.jsx": "componente conservado para integración de archivos de B",

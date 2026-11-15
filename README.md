@@ -166,3 +166,18 @@ propuestas y validación real. No subir `.env`, sesiones, tokens ni archivos pri
 
 El [PDF histórico](docs/referencias/Plan_Maestro_Capacita_Supabase.pdf) se conserva
 como referencia; los acuerdos actuales están en los documentos enlazados al inicio.
+
+### Búsqueda semántica local opcional
+
+Autocompletado y Buscar usan FastAPI con sesión real. Texto no necesita extras.
+Para el modo por significado local se requiere Python 3.12 o posterior. Desde raíz:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r backend/requirements-search.txt
+.\.venv\Scripts\python.exe scripts/maintenance/setup_search_model.py
+```
+
+Reiniciar API. Descarga inicial de unos 136 MB, CPU, sin enviar consultas/catálogo
+a terceros. Hasta 200 capacidades autorizadas con truncado explícito; no índice
+pgvector global. Sin SQL nuevo; modelos/caché fuera de Git.
+Ver [contrato, pruebas y límites](docs/BUSQUEDA_A.md).

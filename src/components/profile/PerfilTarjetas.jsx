@@ -40,8 +40,8 @@ export default function PerfilTarjetas({ stats }) {
             </svg>
           </div>
           <div className="min-w-0">
-            <p className="text-2xl font-extrabold text-slate-900 leading-none">{stats?.[clave] ?? 0}</p>
-            <p className="mt-1 text-xs font-medium text-slate-500 truncate">{titulo}</p>
+            <p className="text-2xl font-extrabold text-slate-900 leading-none">{stats?.[clave] ?? '—'}</p>
+            <p className="mt-1 break-words text-xs font-medium text-slate-500">{titulo}</p>
           </div>
         </div>
       ))}

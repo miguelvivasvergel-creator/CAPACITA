@@ -1,30 +1,31 @@
 import { useEffect, useState } from 'react';
-import { buscarTodo } from '../services/dotnet';
+import { buscarTodo } from '../services/busqueda';
 
 /** Resultados vinculados a su consulta: descarta respuestas antiguas y cancela al salir. */
-export function useBusqueda(texto, { limite = 5, delay = 300 } = {}) {
+export function useBusqueda(texto, { limite = 5, delay = 300, modo = 'text', scope = 'available', revision = 0 } = {}) {
   const consulta = texto.trim();
+  const clave = JSON.stringify([consulta, limite, modo, scope, revision]);
   const [respuesta, setRespuesta] = useState(null);
 
   useEffect(() => {
     if (consulta.length < 2) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      buscarTodo(consulta, limite, { signal: controller.signal })
+      buscarTodo(consulta, limite, { signal: controller.signal, modo, scope })
         .then((data) => {
-          if (!controller.signal.aborted) setRespuesta({ consulta, limite, data, error: false });
+          if (!controller.signal.aborted) setRespuesta({ clave, data, error: '' });
         })
-        .catch(() => {
-          if (!controller.signal.aborted) setRespuesta({ consulta, limite, data: null, error: true });
+        .catch((cause) => {
+          if (!controller.signal.aborted) setRespuesta({ clave, data: null, error: cause.message });
         });
     }, delay);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [consulta, limite, delay]);
+  }, [consulta, limite, delay, modo, scope, revision, clave]);
 
-  const vigente = consulta.length >= 2 && respuesta?.consulta === consulta && respuesta?.limite === limite;
+  const vigente = consulta.length >= 2 && respuesta?.clave === clave;
   return {
     res: vigente ? respuesta.data : null,
     error: vigente ? respuesta.error : false,

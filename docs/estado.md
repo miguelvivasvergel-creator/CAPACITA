@@ -1,8 +1,37 @@
 # Estado del proyecto
 
-Actualizado: 14/11/2026. Estado actual; reportes anteriores completos en [historial](historial/README.md).
+Actualizado: 15/11/2026. Estado actual; reportes anteriores completos en [historial](historial/README.md).
 
 ## Reanudación inmediata
+
+Cierre autorizado: guardar Inicio/perfil/búsqueda y documentación, commit
+detallado y push a miguel. Sin tareas nuevas, despliegue ni cambios B3.
+Verificación de entrega Git en curso; no registrar push como hecho antes de comprobarlo.
+
+Búsqueda A lista: FastAPI para sugerencias/resultados y semántica local E5.
+Privada A ausente para B en ambos modos y GET ajeno 404. Ranking/navegación
+correctos en A. 104 pruebas backend, siete grupos visuales y seis casos E5 pasan.
+Semántica hasta 200 visibles, caché local, no pgvector global. Sin SQL nuevo ni
+envío de catálogo a terceros. Instalación/límites: BUSQUEDA_A.md.
+
+Perfil A implementado localmente; usuario confirma SQL 07 aplicado, grants
+true,true,true,false,false. Aceptación real de escrituras superada por Playwright:
+nombre/bio/foto persisten al recargar; perfil original restaurado y foto sintética
+retirada. Cuenta ajena: UPDATE cero filas, upload a carpeta ajena 403, editar id
+42501. 90 pruebas backend completas y seis grupos visuales interceptados correctos.
+Lectura de profiles,
+PATCH propio y avatar normalizado/Storage sustituyen memoria y fallback .NET/mocks.
+Antes de SQL 07, Supabase negó edición (403/42501, cero filas). SQL aplicado por
+usuario; pruebas remotas propias/ajenas superadas. Véase PERFIL_A.md.
+
+Usuario confirma Fahida en B3 y exige mantener reparto. Nuevo bloque solo A:
+Inicio usa catálogo autorizado e intérprete real, sin estadísticas ni plan
+ficticios. Sesión real: catálogo 200 e interpretación Gemini 200/define con
+coincidencia y propuesta al formulario sin guardar. Primer intento 503 de
+transporte; comprobación de metadatos y único intento adicional superado.
+Privacidad de capacidad efe6b264/candidato 452d1c47: dueño 200, otra cuenta
+autenticada 404; capacidad ausente del catálogo ajeno. Resto del dashboard y
+permanecen pendientes; versiones/ejecución/workflows permanecen con Fahida.
 
 Cierre solicitado con commit/push detallado. Nuevo flujo de objetivos: API y formulario implementados; busca antes de IA, aclara/bloquea/propone y carga formulario sin autoguardado. 62 pruebas locales, lint/build y roundtrip correctos. Prueba real de interpretación Gemini con ejemplo público devuelve define y contratos consistentes; falta recorrido autenticado completo en navegador. No afirmar planner/workflows implementados.
 
@@ -17,15 +46,19 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 | Identidad | Implementada; login real confirmado por usuario. | Auth + profiles, sin identidad demo. Otros recorridos pendientes. |
 | Catálogo | Lectura real confirmada. | PostgREST, RLS/visible_to, paginación. |
 | Clonación | Confirmada con API actual. | Privado/draft, propietario y origen reales. Comparar contratos remotos no vacíos. |
-| Privacidad de listas | Confirmada por usuario con dos cuentas. | Acceso directo ajeno real pendiente; 404 cubierto en simulación. |
+| Privacidad catálogo/candidato | Verificada por Playwright con dos cuentas reales. | Capacidad efe6b264 y candidato 452d1c47: dueño 200, ajeno 404; catálogo ajeno no contiene la capacidad. Resto de matriz RLS pendiente. |
 | Permisos | 03/04/05/06 aplicados según usuario. | Lectura e INSERT privado de candidatos confirmados por tabla de permisos; no UPDATE/DELETE. Matriz RLS real pendiente. |
 | Definición estructurada | Confirmada por usuario contra Supabase real. | Guardado/recarga/contratos y ejemplo conservados. No ejecuta. |
 | Organización | Aplicada y validada localmente. | Imports/enlaces correctos; 32 pruebas, lint/build pasan; trabajo B conservado. |
 | IA/generación | Generación, guardado y recarga reales confirmados por usuario. | Candidato 452d1c47 conserva código/hash. Planner/semántica, privacidad con segunda cuenta y ejecución pendientes. |
-| Interpretación de objetivos | API/formulario implementados; prueba real Gemini correcta. | Buscar, aclarar/bloquear/proponer y cargar formulario; sin autoguardado/ejecución. Total 62 pruebas; recorrido autenticado pendiente. |
+| Interpretación de objetivos | Recorrido autenticado automatizado desde Inicio verificado. | Gemini 200/define, coincidencia autorizada y carga de formulario; sin autoguardado/ejecución. API mantiene 62 pruebas del bloque A previo. |
 | Contrato de candidato Python | Implementado; pendiente revisión B y pruebas aisladas. | AST/firma/hash, API privada y repositorio; SQL 06 aplicado según usuario. Sin ejecución ni habilitación. |
 | Versiones/publicación | Pendiente. | Requiere implementación/evidencia de pruebas B. |
-| Perfil/dashboard/búsqueda semántica | Integración pendiente. | Persisten consumidores .NET y mocks. |
+| Inicio | Catálogo e interpretación reales integrados. | Filtros, paginación, estados vacíos/errores y propuesta al formulario. Sin métricas globales ficticias. |
+| Perfil | Datos/edición/avatar persistentes verificados con Supabase real. | Sin .NET ni fallback. SQL 07 aplicado, RLS propia/ajena comprobada; métricas/workflows/actividad no integradas se explicitan. |
+| Búsqueda global/textual | FastAPI verificado con sesiones reales. | Perfiles públicos/capacidades autorizadas, paginación, filtros y detalle, sin fallback. |
+| Búsqueda semántica | Local CPU, evaluación/privacidad reales pasan. | Hasta 200 visibles, truncado explícito y caché por usuario/contenido/modelo. No índice pgvector global. |
+| Resto dashboard/planner | Integración pendiente. | Dashboard/comunidad restantes; planner/publicación esperan contrato/evidencia B. |
 
 ## Fahida — Persona B
 
@@ -81,6 +114,44 @@ Hay código heredado de runs/perfiles/adaptadores y datos en memoria; no demuest
 Consumo de definición A en [CONTRATO_INTEGRACION.md](CONTRATO_INTEGRACION.md), pendiente revisión conjunta. Sandbox y laboratorio local probados; integración remota, habilitación y motor de ejecución pendientes según el [plan A/B](PLAN_DOS_PERSONAS_MARTES.md).
 
 ## Verificación y límites
+
+- Búsqueda A: 104 pruebas backend, siete grupos visuales y E5 real 6/6. A:
+  semántica 200 sobre siete filas; B: cuatro visibles, privada A ausente en
+  texto/semántica y GET ajeno 404. Modelos/caché fuera de Git, extras opcionales.
+  Sin migraciones nuevas, registros de negocio ni archivos B cambiados.
+
+- Perfil A, 15/11/2026: 90 pruebas backend completas pasan; 15 nuevas de perfil.
+  Seis grupos visuales interceptados pasan. Recorrido real nombre/bio/avatar
+  200 y persistencia al recargar; restauración original y retirada de imagen
+  sintética. Cuenta B distinta no edita filas A, upload ajeno 403 e id 42501.
+  SQL 07 aplicado por usuario, sin repetirlo. Sin cambios de motor/workflows B.
+
+- Inicio A, 15/11/2026: ocho grupos de comprobaciones visuales interceptadas
+  pasan; prueba autenticada real de búsqueda e interpretación 200/define y
+  carga de formulario sin guardar. Privacidad real capacidad/candidato
+  200 propio/404 ajeno. Lint sin advertencias nuevas, build, auditoría imports
+  y diff --check correctos. Capturas reales móvil/escritorio inspeccionadas.
+  Sin SQL/backend/archivos B modificados; bundle >500 kB sigue como advertencia.
+
+- 15/11/2026, equipo Miguel: instalado sandbox autorizado Ubuntu-24.04/WSL2,
+  Docker 29.1.3 y runsc 20261109.0 con socket exclusivo e imagen fijada por hash.
+  Diez comprobaciones reales B1 pasan; reporte local ignorado en
+  `output/sandbox/block1-latest.json`. Los 12 escenarios reales B2 pasan;
+  reporte ignorado `output/laboratory/block2-latest.json`. Usuario ve laboratorio
+  privado y confirma prueba real `57ea2b3a-673f-4ee1-a42e-bb0a415fe866` superada:
+  dos salidas correctas y entrada inválida rechazada antes de ejecutar. Relectura
+  SQLite confirma persistencia, limpieza e implementation_enabled=false. Usuario
+  confirma recuperación del reporte tras recargar en navegador (57ea2b3a).
+  Usuario confirma expectativa incorrecta detectada en prueba
+  `a50239fb-3b55-4337-917b-2e720ec38eed`: estado fallido y caso 1 con salida
+  distinta de lo esperado (2.182 s). Playwright verifica dos sesiones reales
+  autenticadas y distintas: GET propio 200 y listado propio 200 con build
+  57ea2b3a; GET ajeno 404 «Prueba no encontrada» y listado ajeno 200 sin ese
+  build (sin página siguiente). Privacidad de este reporte confirmada aquí;
+  no equivale a verificar todos los endpoints. Apagado abrupto pendiente.
+  API/Vite/trabajador
+  operativos; API reiniciada fuera del sandbox de la
+  herramienta por restricción de red a Supabase. No se inició B3.
 
 - Bloque Gemini/candidatos: 52 pruebas locales pasan (proveedores simulados para HTTP); lint/build, diff --check y auditorías imports/enlaces correctos. Gemini real: metadatos 200 y una generación pública válida, SHA-256 234e21f55ddf5f77ae740e9a042041fb9f1ecfdb53fe7ec1d2f87e7cbc5b54c4. Sin ejecución/persistencia de ese ejemplo. SQL 06 preparado sin aplicación ni validación remota; prueba de interfaz y RLS de candidatos pendiente.
 

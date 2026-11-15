@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatearMesAnio } from '../../utils/formato';
 
 export default function PerfilEncabezado({ perfil, esPropio, onEditar, onConfigurar }) {
-  const [imgError, setImgError] = useState(false);
+  const [failedAvatar, setFailedAvatar] = useState(null);
 
   const avatarUrl =
     perfil.avatar_url ||
@@ -16,11 +16,11 @@ export default function PerfilEncabezado({ perfil, esPropio, onEditar, onConfigu
       <div className="px-5 sm:px-8 pb-6">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-12">
           {/* Avatar */}
-          {!imgError ? (
+          {failedAvatar !== avatarUrl ? (
             <img
               src={avatarUrl}
               alt={perfil.display_name}
-              onError={() => setImgError(true)}
+              onError={() => setFailedAvatar(avatarUrl)}
               className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-md bg-white"
             />
           ) : (
@@ -57,12 +57,12 @@ export default function PerfilEncabezado({ perfil, esPropio, onEditar, onConfigu
 
         {/* Nombre, usuario y bio (siempre como texto, nunca como HTML) */}
         <div className="mt-4">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="break-words text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {perfil.display_name}
           </h1>
-          <p className="text-sm font-medium text-slate-500">@{perfil.username}</p>
+          <p className="break-all text-sm font-medium text-slate-500">@{perfil.username}</p>
           {perfil.bio && (
-            <p className="mt-3 text-sm sm:text-[15px] text-slate-600 max-w-2xl leading-relaxed">
+            <p className="mt-3 break-words text-sm sm:text-[15px] text-slate-600 max-w-2xl leading-relaxed">
               {perfil.bio}
             </p>
           )}

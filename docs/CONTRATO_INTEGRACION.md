@@ -1,6 +1,32 @@
 # Contrato de integración A/B
 
+Búsqueda A, 15/11/2026: POST /api/search recibe SearchRequest y devuelve páginas
+capabilities/profiles, metadatos semánticos y workflow_search_available=false.
+Autocompletado/Buscar consumen mediante src/services/busqueda.js. Texto por
+defecto; E5 local opcional sobre hasta 200 autorizadas, permisos revalidados tras
+inferencia y caché local. No modifica definición/objetivos/versiones/workflows/
+builds ni llama a generación. Sin SQL nuevo. Instalación/límites: BUSQUEDA_A.md.
+
 Actualizado: 14/11/2026. Implementación local del frente A; pendiente revisión conjunta con Fahida. Las interfaces aquí implementadas no congelan los contratos futuros de candidatos, versiones, workflows o builds.
+
+Actualización A, 15/11/2026: Inicio consume GET /api/capabilities con scope,
+q, limit y cursor mediante listarCapacidades, y el intérprete existente
+POST /api/objectives/interpret. La propuesta se carga en DefinirCapacidad
+con initialDefinition y mostrarInterprete=false; guardar sigue siendo explícito.
+Sin rutas/esquemas nuevos ni cambios de backend/BD. No crea ni ejecuta workflows.
+Usuario confirma que B desarrolla su bloque 3: mantener propiedad de B.
+Recorrido real autenticado de interpretación y privacidad directa de capacidad/
+candidato verificados; continuidad/estado contienen evidencia más reciente.
+
+Perfil A integrado posteriormente: GET/PATCH /api/users/me, POST multipart
+/api/users/me/avatar, GET /api/users/{username} y listado público paginado
+/api/users/{username}/capabilities. UserProfile incluye id; métricas no integradas
+son null, no ceros ficticios. Cambiar nombre/bio/foto persiste; ID/username no se
+editan. SQL 07 aplicado por usuario y comprobado con dos cuentas. Cliente perfil
+solo usa FastAPI. /users/{username}/activity responde 503 hasta contrato que no
+exponga entradas/salidas privadas; no consulta memorias antiguas de B. Nueva
+dependencia backend: Pillow==13.0.0 (instalar requirements al actualizar clon).
+Detalles en PERFIL_A.md; sin cambios de contratos de builds/runs/workflows.
 
 ## Identidad y catálogo existentes
 
