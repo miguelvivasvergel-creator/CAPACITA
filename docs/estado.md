@@ -29,6 +29,19 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
+15/11/2026: aceptación manual B2 confirmada por Fahida al completar el checklist:
+once casos superados, expectativa incorrecta detectada, JSON/entrada incompatible
+rechazados sin build nuevo, persistencia tras reinicio, lectura propia 200,
+segunda cuenta autenticada 404 y build ausente de su lista (`false`), y cierre.
+Evidencia reportada por la usuaria, sin observación directa del navegador ni
+registro de UUID/hash por el agente. Las menciones siguientes de aceptación
+manual pendiente quedan superadas. Fahida confirmó además recuperación tras
+terminar forzadamente el trabajador: estado interrumpido al reiniciar, consulta
+Docker sin contenedores del laboratorio y nueva prueba superada con otro UUID,
+conservando el reporte interrumpido. Confirmación manual de usuaria; no acredita
+apagado de Windows/corte eléctrico ni caída simultánea del controlador Linux.
+Queda revisión A. B3 permanece detenido, sin habilitación ni publicación.
+
 Seguimiento acumulativo propio: [CONTEXTO_Y_CONTINUIDAD_FAHIDA.md](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
 Bloque 1 de infraestructura local verificado el 14/11/2026: Ubuntu 24.04 en
 WSL2, Docker Engine 29.1.3 y runsc 20261109.0 propios. Diez comprobaciones reales
@@ -46,6 +59,12 @@ backend pasan; lint/build y auditoría de imports correctos. La batería real cu
 transformación, rechazo previo, aislamiento, temporales, procesos, timeout, OOM,
 salida excesiva, errores y contratos/salidas incorrectas, con limpieza verificada.
 Guía y límites en [LABORATORIO_BLOQUE_2.md](LABORATORIO_BLOQUE_2.md).
+
+Guía manual ampliada a petición de Fahida: 18 secciones con Windows/Ubuntu,
+terminales, comandos, resultados esperados y pruebas paso a paso. El recorrido
+manual aún no está confirmado. Usuario pidió probar primero B2 y detener B3;
+no se aplicaron cambios de código de ese bloque ni se autoriza iniciarlo por
+la pregunta previa sobre trabajar en paralelo.
 
 Corregida interferencia de Docker Desktop sobre /run/docker.sock: el Engine de
 Ubuntu usa /run/capacita-docker.sock mediante override de su servicio. No se

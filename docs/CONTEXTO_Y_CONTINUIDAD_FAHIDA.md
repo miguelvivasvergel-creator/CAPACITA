@@ -6,6 +6,35 @@ bloqueos y siguiente paso; no crear una continuidad nueva por sesión.
 
 ## Punto actual para retomar
 
+Actualización 15/11/2026: Fahida confirma terminada la aceptación manual B2.
+Confirmó reportes conservados tras reiniciar; acceso ajeno autenticado 404 y
+ausencia del build en la lista de la segunda cuenta (`false`). Tras revisar el
+checklist, confirmó también once casos superados, fallo intencional detectado,
+JSON/entrada incompatible rechazados sin build, lectura propia 200 y cierre.
+Evidencia declarada por la usuaria; el agente no observó el navegador ni capturó
+UUID/hashes de este recorrido inicial. Queda revisión A de evidencia local.
+
+Recuperación B2 confirmada por Fahida el 15/11/2026: se terminó forzadamente
+el proceso hijo Python del trabajador con Stop-Process -Force durante un nuevo
+build. Al reiniciar el trabajador, la usuaria observó estado interrumpido y
+confirmó consulta Docker sin contenedores del laboratorio, nueva prueba con otro
+UUID superada y conservación de la anterior interrumpida. Evidencia reportada
+por la usuaria; no observada directamente por el agente. El primer intento,
+build 1ab65314-27cc-4afe-8550-2222b4637dfd, terminó sus veinte casos antes de
+interrumpirse y no cuenta como evidencia de caída. No se registró el UUID del
+intento interrumpido. Esta prueba verifica terminación forzada del trabajador,
+no apagado de Windows/corte eléctrico ni terminación simultánea del controlador
+Linux. Esos escenarios no se presentan como probados.
+B3 permanece detenido hasta nueva instrucción. Esta actualización sustituye las
+menciones de aceptación manual pendiente conservadas más abajo como historial.
+
+Instrucción vigente posterior al commit 3e2d561: Fahida probará manualmente el
+bloque 2 primero. Solicitó guía sin saltos para Windows/Ubuntu; se amplió
+[LABORATORIO_BLOQUE_2.md](LABORATORIO_BLOQUE_2.md) con 18 secciones paso a paso.
+**No iniciar el bloque 3 sin una nueva instrucción**: la pregunta sobre avanzar
+en paralelo no era autorización y el usuario pidió detenerlo. No se aplicaron
+cambios de código B3. La aceptación manual B2 sigue pendiente, no confirmada.
+
 Bloque 2 implementado localmente el 14/11/2026: API privada de builds, cola/reportes
 SQLite durables, trabajador separado, harness dentro de gVisor y panel de candidato.
 75 pruebas backend pasan; batería real de candidatos de fixture comprobada, con
@@ -406,3 +435,27 @@ de testing se prueba con repositorio reabierto; no se probó apagar Windows dura
 un candidato. Falta prueba específica de recuperación tras caída abrupta y
 política de retención. Próximo desarrollo: bloque 3, ejecución persistente sobre
 versiones habilitadas; el motor heredado no queda integrado por este laboratorio.
+
+## Guía manual ampliada — después del cierre local del bloque 2
+
+- Usuario solicita probar primero B2 y pide explicación muy detallada, incluyendo
+  cómo conviven Windows y Ubuntu. Solo se actualizaron documentos en esta entrega;
+  no se arrancaron servicios ni se modificó código, configuración o datos.
+- LABORATORIO_BLOQUE_2.md ahora empieza con el recorrido completo: cuatro ventanas
+  PowerShell por función, comprobaciones Windows/WSL, socket/runtime/imagen,
+  arranque exacto de API/Vite desde raíz, login/candidato propio, tarea en cola
+  antes de encender el trabajador, ejecución y lectura de estados, once casos
+  condicionados al contrato real, expectativa incorrecta, rechazo previo,
+  persistencia, segunda cuenta y cierre de procesos.
+- Incluye resultados esperados, qué detener ante errores, una ruta si no hay
+  candidato propio y una lista para reportar OK/FALLÓ/PENDIENTE. La comprobación
+  directa de privacidad usa el cliente ya autenticado sin copiar JWT; no se
+  desactivan protecciones del navegador. Si no puede hacerse, queda pendiente.
+- Se conserva la referencia técnica del laboratorio al final. No se registran
+  pasos descritos como ejecutados ni se repiten baterías de código por editar docs.
+- Validación de la guía: 23 bloques PowerShell analizados sintácticamente sin
+  ejecutarlos, sin errores; tres ejemplos JSON válidos; enlaces locales de los
+  17 documentos y git diff --check correctos. Esto valida documentación, no el
+  recorrido manual, la configuración de servicios ni cuentas del usuario.
+- Siguiente paso: acompañar a Fahida desde el número exacto donde esté probando.
+  El bloque 3 permanece detenido hasta nueva autorización explícita.

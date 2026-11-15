@@ -4,6 +4,17 @@ Actualizado: 14/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Actualización B, 15/11/2026: Fahida confirma completado el checklist manual del
+laboratorio B2, incluidos once casos, fallos/rechazos esperados, reportes tras
+reinicio, lectura propia 200, acceso ajeno autenticado 404 y lista ajena sin el
+build (`false`). Confirmación de usuaria, sin observación directa del navegador
+ni UUID/hash registrados por el agente. Sustituye el pendiente de aceptación
+manual B2 indicado debajo. También confirma recuperación tras terminación
+forzada del trabajador: estado interrumpido al reiniciar, consulta Docker vacía
+y nueva prueba superada conservando el reporte interrumpido. No acredita corte
+eléctrico/apagado de Windows ni caída simultánea del controlador Linux. Queda
+revisión A de evidencia local. B3 continúa detenido. Detalle en continuidad B.
+
 Actualización del frente B (Fahida, 14/11/2026): bloques 1 y 2 con infraestructura
 y laboratorio local implementados/probados. API de builds privada, trabajador
 separado, SQLite durable y panel de candidatos; revalida hashes/contratos y ejecuta
@@ -14,6 +25,11 @@ Supabase propio/dos sesiones reales, revisión A de evidencia local y apagado ab
 No hay habilitación/publicación ni motor persistente B3. Las notas históricas
 siguientes sobre ausencia de sandbox/laboratorio quedan superadas para el entorno
 local; no alteran el punto de reanudación del frente A descrito abajo.
+
+Instrucción posterior de Fahida: probar manualmente B2 primero; B3 detenido,
+sin cambios de código aplicados y sin autorización para arrancarlo por la
+pregunta previa sobre trabajo en paralelo. Guía B2 ampliada con pasos detallados
+Windows/Ubuntu, comandos y resultados esperados; aceptación manual aún pendiente.
 
 Cierre solicitado por usuario: terminar este último bloque, commit detallado y push a miguel; luego continuar otro día. Nuevo flujo local en Capacidades → Crear: objetivo natural → búsqueda textual autorizada → aclaraciones/bloqueo/propuesta → cargar formulario → comprobar/guardar explícitamente. POST /api/objectives/interpret. No es planner de workflows ni ejecución. Validación: 62 pruebas, lint/build y roundtrip propuesta/formulario correctos. Gemini real devolvió define con contratos/ejemplo consistentes (hash 0af15b07bc660cdc43f1cbc2f7b4fe8e26ed8754e9fb0c76292acdd5c7cb1cab). Falta recorrido autenticado de objetivos en navegador y privacidad real con segunda cuenta. No empezar otro módulo durante el cierre.
 
