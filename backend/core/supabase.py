@@ -10,6 +10,15 @@ from core.config import settings
 
 logger = logging.getLogger(__name__)
 
+EXECUTION_RPCS = {
+    "execution_enqueue", "execution_get", "execution_list", "execution_enable",
+    "execution_versions", "execution_disable", "execution_lease", "execution_claim",
+    "execution_recover", "execution_finish",
+    "execution_workflow_get", "execution_workflow_list", "execution_workflow_save",
+    "execution_workflow_archive", "execution_workflow_approve", "execution_workflow_enqueue",
+    "execution_progress",
+}
+
 
 class SupabaseGateway:
     def __init__(self, client: httpx.AsyncClient, api_key: str):
@@ -17,7 +26,8 @@ class SupabaseGateway:
         self.api_key = api_key
 
     async def request(self, method: str, path: str, token: str, *, params=None, json=None):
-        if path not in {"/auth/v1/user", "/rest/v1/capabilities", "/rest/v1/profiles", "/rest/v1/capability_candidates"}:
+        is_execution_rpc = path in {f"/rest/v1/rpc/{name}" for name in EXECUTION_RPCS}
+        if not is_execution_rpc and path not in {"/auth/v1/user", "/rest/v1/capabilities", "/rest/v1/profiles", "/rest/v1/capability_candidates"}:
             raise ValueError("Ruta Supabase no permitida")
         headers = {"apikey": self.api_key, "Authorization": f"Bearer {token}"}
         if method != "GET":
@@ -36,6 +46,18 @@ class SupabaseGateway:
             except ValueError:
                 code = None
             safe_code = code if isinstance(code, str) and code.isalnum() and len(code) <= 20 else "unknown"
+            if is_execution_rpc:
+                mapped = {
+                    "P0002": (404, "Recurso no encontrado"),
+                    "P0001": (409, "La operación no es compatible con el estado o la evidencia actual"),
+                    "22023": (422, "Datos de ejecución inválidos"),
+                    "53000": (429, "La cola compartida está llena"),
+                    "55P03": (409, "Hay otro trabajador activo; espera a que termine su reserva"),
+                    "42501": (403, "Esta cuenta no está autorizada como trabajador"),
+                }
+                if safe_code in mapped:
+                    status, message = mapped[safe_code]
+                    raise HTTPException(status, message)
             logger.warning("Supabase request failed: method=%s path=%s status=%s code=%s", method, path, response.status_code, safe_code)
             # No exponer cuerpos del proveedor: pueden contener detalles SQL o datos privados.
             raise HTTPException(503, "No se pudo completar la operación en Supabase")
@@ -43,7 +65,9 @@ class SupabaseGateway:
             data = response.json()
         except ValueError:
             raise HTTPException(503, "Respuesta inválida de Supabase") from None
-        if path == "/auth/v1/user":
+        if is_execution_rpc:
+            valid = isinstance(data, dict)
+        elif path == "/auth/v1/user":
             valid = isinstance(data, dict)
         else:
             valid = isinstance(data, list) and all(isinstance(row, dict) for row in data)

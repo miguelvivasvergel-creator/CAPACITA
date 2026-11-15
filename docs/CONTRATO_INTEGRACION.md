@@ -27,6 +27,22 @@ solo usa FastAPI. /users/{username}/activity responde 503 hasta contrato que no
 exponga entradas/salidas privadas; no consulta memorias antiguas de B. Nueva
 dependencia backend: Pillow==13.0.0 (instalar requirements al actualizar clon).
 Detalles en PERFIL_A.md; sin cambios de contratos de builds/runs/workflows.
+B4 autorizado por Fahida el 15/11/2026: [contrato de workflows privados](BLOQUE_4_WORKFLOWS.md)
+implementado localmente con revisiones, aprobación y puertos nombrados, sobre B3.
+SQL 08 aplicado por Fahida y protocolo 2 activo. Aceptación técnica remota con
+fixture propia pasó; recorrido de usuaria pendiente. Worker protocolo 1 omite
+workflows. No integra planner ni registra
+capacidad compuesta pública en catálogo A; esa entrega se coordina por contrato.
+
+Actualización B3 (15/11/2026): Fahida confirma acuerdo con Miguel sobre builds
+compartidos en Supabase y versiones privadas habilitadas explícitamente. Contrato
+implementado localmente en [BLOQUE_3_EJECUCION.md](BLOQUE_3_EJECUCION.md): `/builds`
+con almacenamiento configurable, `/versions`, `/runs` por version_id e idempotencia.
+SQL 07 aplicado por Fahida y aceptación privada remota completada: recorrido
+manual, persistencia, privacidad y verificador remoto con recuperación real.
+Revisión técnica conjunta A/B pendiente. Las notas históricas de ausencia de
+sandbox/builds siguientes no describen el estado actual B. No cambia el contrato
+CandidateManifest ni publica/edita el catálogo de A.
 
 ## Identidad y catálogo existentes
 

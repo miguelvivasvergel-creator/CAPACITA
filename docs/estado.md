@@ -65,6 +65,75 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
+Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
+Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.
+Su proceso real tiene UN paso; lectura propia 200, resultado correcto y datos
+conservados tras reiniciar API (huellas de definicion, reporte y salida identicas).
+Otra cuenta obtiene 404 en proceso y ejecucion, ambos ausentes de sus listas.
+Los DOS pasos, parametros y recuperacion tras caida durante el segundo paso
+se verificaron con una fixture privada real independiente. Los tres reportes
+locales block4-owner-persistence.json, block4-user-privacy.json y
+block4-remote-latest.json tienen passed=true; permanecen ignorados por Git.
+SQL 08 aplicado y protocolo 2 activo. No repetir migraciones. Sin publicacion,
+conectores externos ni B5 iniciado. Revision conjunta e integracion pendientes.
+Este bloque usa la numeracion del laboratorio B vigente: workflows privados;
+no declara completo el apartado B4 de conexiones del plan inicial entre personas.
+Esta nota sustituye pendientes y referencias a dos pasos de usuaria anotados abajo.
+
+B4, recorrido real de usuaria: workflow de dos pasos guardado, aprobado y
+completado con resultado esperado, confirmado por Fahida. Falta comprobación
+de reapertura tras F5 y acceso ajeno al workflow conocido en sus sesiones.
+
+B4 activado en Supabase por usuaria (08) y comprobado por agente; worker protocolo
+2, API y WEB actualizados/activos. Aceptación técnica remota con fixture privada
+pasa: dos pasos con opciones, contratos/ciclo, revisión/aprobación, idempotencia,
+persistencia y caída en segundo paso con parcial conservado → interrupted → nuevo
+workflow completado. Historial conservado y limpieza comprobada. Sin IA ni cambio
+de versión de usuaria. Falta recorrido de su sesión/privacidad workflow real.
+Reporte output/laboratory/block4-remote-latest.json ignorado. Notas inferiores
+de activación pendiente son históricas; no repetir SQL 08 ni abrir otro worker.
+
+B4 en validación local, autorizado por Fahida: workflows privados, editor React
+Flow, contratos/ciclos, revisiones, aprobación y pasos con progreso/errores.
+SQL 08 NO aplicado a Supabase. 96 pruebas backend, lint/build y aceptación de
+dos pasos con parámetro no predeterminado en PostgreSQL temporal/gVisor pasan.
+Editor también pasa pruebas Chrome desktop/móvil con HTTP simulado, capturas
+revisadas. Vite 8.3.8 y transitorias corregidas; npm audit 0 avisos conocidos.
+Pendiente aplicar 08/configurar protocolo 2 y aceptación remota. Sin push/merge
+ni B5. Worker normal compatible con B3 quedó activo en protocolo 1.
+
+**B3 privado aceptado**: recorrido de usuaria confirmado (build compartido,
+habilitación, datos nuevos, resultado tras F5, lectura propia y 404 ajeno).
+Aceptación automática real con fixture privada worker también pasa: persistencia
+tras reinicio de API temporal, idempotencia, conflictos/contratos, caída forzada
+durante run, reserva vencida, interrupted, limpieza y nueva ejecución; versión
+fixture deshabilitada rechaza nuevas ejecuciones sin borrar historial. Reporte
+local ignorado `block3-remote-latest.json` con `passed=true`. Worker normal activo.
+No IA, publicación ni alteración de versión de usuaria. B4 pendiente, sin iniciar.
+Las notas siguientes de aceptación pendiente conservan el historial del bloque.
+
+Aceptación B3 en curso: usuaria confirma en navegador prueba compartida en
+Supabase superada, habilitación privada y run completado con datos nuevos y
+resultado correcto. Pendientes persistencia tras recarga/reinicio, privacidad
+entre cuentas y recuperación del nuevo worker. Sin UUID/hash registrados aquí.
+
+Actualización posterior: Fahida confirma SQL 07 aplicado en Supabase («Success.
+No rows returned»), cuenta worker creada y autorizada. No repetir SQL/INSERT.
+Credenciales configuradas sin exponer valores; worker nuevo iniciado realmente
+con sandbox recuperado. Pendiente reiniciar API y probar
+el recorrido autenticado real; las notas inferiores de SQL no aplicado son históricas.
+
+15/11/2026, instrucción posterior: B3 autorizado tras acuerdo con Miguel sobre
+Supabase compartido y versiones privadas. Implementación local validada:
+RPC/cola compartida, habilitación explícita y runs persistentes con worker gVisor,
+sin service_role. SQL 07 preparado, NO aplicado a Supabase. 87 pruebas backend
+pasan, lint/build pasan; migraciones y controles comprobados en PostgreSQL temporal,
+no en el proyecto real. Tras detener Fahida el worker B2, pasó el recorrido de
+fixture real en gVisor: prueba, habilitación y ejecución con datos nuevos, salida
+persistida/privada y limpieza comprobada. Activación remota/cuenta worker y
+aceptación con dos sesiones pendientes. [Guía B3](BLOQUE_3_EJECUCION.md).
+Esta autorización sustituye las notas anteriores de B3 detenido.
+
 15/11/2026: aceptación manual B2 confirmada por Fahida al completar el checklist:
 once casos superados, expectativa incorrecta detectada, JSON/entrada incompatible
 rechazados sin build nuevo, persistencia tras reinicio, lectura propia 200,
@@ -180,3 +249,8 @@ Rama miguel; **0ef8397** es el bloque anterior subido a origin/miguel. Definici�
 
 1. Generación/guardado/recarga confirmados; SQL 06 ya aplicado, no repetir. Comprobar acceso ajeno 404 con segunda cuenta.
 2. Coordinar entrega del paquete a Fahida para pruebas aisladas y ejecución; continuar comprensión/planner en A.
+
+
+### Integraci?n local Miguel ? 15/11/2026
+
+A petici?n del usuario, incorporada la entrega Fahida B3/B4 hasta 0e67c8b en miguel, conservando Inicio, perfil y b?squeda A. Respaldo: respaldo/miguel-antes-fahida-20261115-b3-b4. Conflictos resueltos conservando ambos frentes; 125 pruebas backend, lint, build, auditor?a de imports y diff --check correctos. Advertencia conocida de bundle >500 kB. Sin SQL, cambios de datos, despliegue ni push. Ejecuci?n integrada B3/B4 en este equipo pendiente de verificar; evidencia remota de Fahida conservada en sus gu?as.

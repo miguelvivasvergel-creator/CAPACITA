@@ -31,3 +31,4 @@ class BuildResponse(BaseModel):
     updated_at: str
     report: dict | None = None
     implementation_enabled: Literal[False] = False
+    storage_backend: Literal["sqlite", "supabase"] = "sqlite"

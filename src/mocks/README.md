@@ -13,6 +13,8 @@ Los mocks no prueban que exista una implementación. Las rutas reales de catálo
 | profile.js | Fixture histórica sin consumidor: perfil conectado a FastAPI, sin fallback. |
 | perfil-real.js | Fixture de contrato para pruebas interceptadas de perfil; no se usa en producción. |
 | busqueda.js | Fixture de búsqueda para pruebas interceptadas; sin fallback ni consumidor de producción. |
+| versiones.js | Fixture visual B3 de versión/ejecución privada; sin fallback ni import en el recorrido real. |
+| workflows.js | Fixture visual B4, sin fallback ni versiones ficticias en selector real. |
 | runs.js | Ejecución de desarrollo; integración persistente real pendiente. |
 | catalog/capabilities.js | Fixture antigua del catálogo, sin consumidor actual. Conservada para desarrollo, fuera del recorrido real. |
 | catalog/community.js | Fixture antigua de comunidad/rankings, sin consumidor actual. No reintroducir como fallback de producción. |
