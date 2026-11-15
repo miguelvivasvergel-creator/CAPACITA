@@ -29,6 +29,38 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
+**B3 privado aceptado**: recorrido de usuaria confirmado (build compartido,
+habilitación, datos nuevos, resultado tras F5, lectura propia y 404 ajeno).
+Aceptación automática real con fixture privada worker también pasa: persistencia
+tras reinicio de API temporal, idempotencia, conflictos/contratos, caída forzada
+durante run, reserva vencida, interrupted, limpieza y nueva ejecución; versión
+fixture deshabilitada rechaza nuevas ejecuciones sin borrar historial. Reporte
+local ignorado `block3-remote-latest.json` con `passed=true`. Worker normal activo.
+No IA, publicación ni alteración de versión de usuaria. B4 pendiente, sin iniciar.
+Las notas siguientes de aceptación pendiente conservan el historial del bloque.
+
+Aceptación B3 en curso: usuaria confirma en navegador prueba compartida en
+Supabase superada, habilitación privada y run completado con datos nuevos y
+resultado correcto. Pendientes persistencia tras recarga/reinicio, privacidad
+entre cuentas y recuperación del nuevo worker. Sin UUID/hash registrados aquí.
+
+Actualización posterior: Fahida confirma SQL 07 aplicado en Supabase («Success.
+No rows returned»), cuenta worker creada y autorizada. No repetir SQL/INSERT.
+Credenciales configuradas sin exponer valores; worker nuevo iniciado realmente
+con sandbox recuperado. Pendiente reiniciar API y probar
+el recorrido autenticado real; las notas inferiores de SQL no aplicado son históricas.
+
+15/11/2026, instrucción posterior: B3 autorizado tras acuerdo con Miguel sobre
+Supabase compartido y versiones privadas. Implementación local validada:
+RPC/cola compartida, habilitación explícita y runs persistentes con worker gVisor,
+sin service_role. SQL 07 preparado, NO aplicado a Supabase. 87 pruebas backend
+pasan, lint/build pasan; migraciones y controles comprobados en PostgreSQL temporal,
+no en el proyecto real. Tras detener Fahida el worker B2, pasó el recorrido de
+fixture real en gVisor: prueba, habilitación y ejecución con datos nuevos, salida
+persistida/privada y limpieza comprobada. Activación remota/cuenta worker y
+aceptación con dos sesiones pendientes. [Guía B3](BLOQUE_3_EJECUCION.md).
+Esta autorización sustituye las notas anteriores de B3 detenido.
+
 15/11/2026: aceptación manual B2 confirmada por Fahida al completar el checklist:
 once casos superados, expectativa incorrecta detectada, JSON/entrada incompatible
 rechazados sin build nuevo, persistencia tras reinicio, lectura propia 200,

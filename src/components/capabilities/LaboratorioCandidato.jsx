@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { consultarPrueba, crearPrueba, listarPruebas } from '../../services/laboratorio';
+import VersionPrivada from '../runs/VersionPrivada';
 
 const estados = {
   queued: 'En cola: esperando al trabajador', testing: 'Probando en aislamiento',
@@ -66,6 +67,7 @@ export default function LaboratorioCandidato({ candidate }) {
       {active && <div aria-live="polite" className="space-y-2 rounded-lg bg-slate-50 p-3 text-sm">
         <p className="font-semibold">{estados[active.status]}</p>
         <p className="break-all text-xs text-slate-500">Prueba: {active.id}</p>
+        <p className="text-xs text-slate-500">{active.storage_backend === 'supabase' ? 'Reporte compartido guardado en Supabase' : 'Reporte local guardado en este computador'}</p>
         <button type="button" disabled={busy} onClick={() => perform(async () => setActive(await consultarPrueba(active.id)))} className="rounded border bg-white px-3 py-1 disabled:opacity-50">Actualizar estado</button>
         {active.status === 'queued' && <p>La prueba comenzará cuando el trabajador local esté disponible.</p>}
         {active.report?.error && <p>La prueba no terminó. Revisa el trabajador y crea otra prueba cuando esté disponible.</p>}
@@ -79,6 +81,7 @@ export default function LaboratorioCandidato({ candidate }) {
         <button type="button" disabled={busy} onClick={() => setActive(item)} className="text-left text-blue-700 underline">{estados[item.status]} · {new Date(item.created_at).toLocaleString()} · {item.id.slice(0, 8)}</button>
       </li>)}</ul>}
       {page.next_cursor && <button type="button" disabled={busy} onClick={() => load(true)} className="rounded border px-3 py-1 text-sm">Más reportes</button>}
+      <VersionPrivada candidate={candidate} build={active} />
     </section>
   );
 }

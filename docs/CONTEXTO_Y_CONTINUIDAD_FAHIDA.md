@@ -6,6 +6,47 @@ bloqueos y siguiente paso; no crear una continuidad nueva por sesión.
 
 ## Punto actual para retomar
 
+**Aceptación B3 privada completada** con evidencia combinada de usuaria y pruebas
+automáticas reales. Fahida confirma API reiniciada y prueba nueva real con
+«Reporte compartido guardado en Supabase», «Casos superados» y botón de habilitar.
+Confirma después habilitación privada y ejecución completada con datos nuevos:
+texto «Esta es mi primera ejecución del bloque 3», sin espacios en extremos en
+el resultado. Confirmó resultado conservado tras F5, lectura propia y 404 desde
+otra cuenta autenticada para run f7585351… (UUID no es credencial). Fuente de
+estas comprobaciones: usuaria, no navegador controlado por agente.
+
+Después autorizó al agente completar pruebas restantes. Verificador remoto con
+fixture privada de cuenta worker terminó `passed=true`: build/habilitación,
+resultado real, idempotencia de versión/run, conflicto 409, entrada inválida 422,
+persistencia tras reinicio de API temporal, terminación forzada del worker durante
+run, vencimiento real de reserva, recuperación interrupted, ausencia de
+contenedores, nuevo run completado y rechazo 409 de versión fixture deshabilitada
+sin borrar historial. Otra identidad obtuvo 404 para el run real de Fahida.
+Reporte sanitizado: output/laboratory/block3-remote-latest.json (ignorado).
+No se modificó la capacidad/versión de Fahida ni su API del puerto 8000.
+Worker normal reiniciado, mensaje «Trabajador compartido listo; sandbox recuperado».
+La fixture queda privada y marcada `[PRUEBA B3]` en cuenta worker, sin llamada IA;
+su modelo indica fixture aunque provider conserva la restricción histórica gemini.
+No borrar sus registros ni presentarlos como generación IA. Commit local de
+cierre B3 creado; confirmar hash en Git. Push pendiente, revisión A/B pendiente;
+B4 workflows permanece sin iniciar.
+
+**B3 autorizado e iniciado el 15/11/2026.** Fahida confirma acuerdo con Miguel:
+guardar solicitudes/resultados en Supabase, trabajador aislado en su equipo y
+habilitación explícita de versiones privadas. Esta instrucción sustituye la
+detención de B3 registrada en los cierres anteriores. Implementación local
+validada con PostgreSQL temporal y gVisor. Fahida confirmó después aplicación de
+SQL 07 en Supabase («Success. No rows returned»); no repetir. Confirmó también
+cuenta Auth dedicada creada y autorizada mediante INSERT en workers. No se
+registran correo, contraseña ni UUID. Fahida confirmó configuración guardada;
+se verificó presencia de valores sin mostrarlos y modo supabase. Agente inició
+shared_worker.py con acceso autorizado; mensaje real «Trabajador compartido listo;
+sandbox recuperado». Worker activo en sesión de herramientas, no abrir otra copia.
+Siguiente: reiniciar API con código B3 y recorrido manual de candidato propio.
+Aún no hay aceptación remota
+ni despliegue. Guía y contrato exactos:
+[BLOQUE_3_EJECUCION.md](BLOQUE_3_EJECUCION.md).
+
 Actualización 15/11/2026: Fahida confirma terminada la aceptación manual B2.
 Confirmó reportes conservados tras reiniciar; acceso ajeno autenticado 404 y
 ausencia del build en la lista de la segunda cuenta (`false`). Tras revisar el
@@ -64,7 +105,7 @@ conservan el diagnóstico histórico, superado por los cierres posteriores.
 | --- | --- | --- |
 | 1. Base y sandbox | Verificado localmente | Ubuntu/Engine/runsc y 10 comprobaciones reales pasan; controles de recursos, salida, timeout y limpieza. |
 | 2. Laboratorio y reportes | Implementado y probado localmente; aceptación remota pendiente | API/trabajador/UI, hashes, contratos, SQLite privado y candidatos de fixture en gVisor. |
-| 3. Ejecución persistente | Pendiente | Trabajador, repositorios y versiones habilitadas. |
+| 3. Ejecución persistente | Aceptado en alcance privado B3 | SQL 07 aplicado por usuaria; recorrido real, persistencia, privacidad y recuperación verificados. Sin workflows/publicación ni apagado de Windows probado. |
 | 4. Workflows | Pendiente | Contratos compartidos, validación y mapeo entre pasos. |
 | 5. Resultados e historial | Pendiente | Runs y resultados persistentes privados. |
 | 6. Integración final | Pendiente | Aprobación, composición y pruebas cruzadas; piloto condicionado a accesos. |
@@ -459,3 +500,73 @@ versiones habilitadas; el motor heredado no queda integrado por este laboratorio
   recorrido manual, la configuración de servicios ni cuentas del usuario.
 - Siguiente paso: acompañar a Fahida desde el número exacto donde esté probando.
   El bloque 3 permanece detenido hasta nueva autorización explícita.
+
+## Bloque 3 — 15/11/2026: almacenamiento compartido y ejecución privada
+
+Autorización: usuario y Miguel acuerdan Supabase compartido y versiones privadas;
+usuario pide iniciar B3. No implica autorización de publicación, gastos ni pasar
+fixtures como aceptación remota. SQL preparado para aplicación manual, no enviado
+a Supabase desde esta sesión.
+
+### Implementación local
+
+- `db/07_shared_execution.sql`: esquema privado con jobs, versiones, cuentas
+  worker y reserva global; sin escritura directa de usuarios a evidencia ni
+  service_role. RPC SECURITY DEFINER con search_path vacío, permisos cerrados y
+  controles propios de dueño/worker. Cuenta Auth dedicada autorizada por admin.
+- Builds conserva API B2 pero usa Supabase por defecto (configuración explícita
+  sqlite permite consultar laboratorio anterior). No importa ni borra SQLite.
+  Reportes locales no habilitan versiones compartidas; repetir pruebas en nube.
+- Versiones privadas inmutables ligadas al candidato/build/hashes. Habilitación
+  explícita e idempotente por candidato, solo con reporte compartido satisfactorio
+  del perfil vigente. Deshabilitar impide trabajos nuevos, conserva historial.
+- `/api/runs` ahora encola versión/inputs/parameters con Idempotency-Key; lista y
+  detalle propios persistentes. Retirado del router principal el motor heredado
+  en memoria/BackgroundTasks. Panel B3 dentro del candidato permite habilitar,
+  ejecutar JSON nuevo, consultar resultados y reabrir historial paginado.
+- `shared_worker.py`: JWT de cuenta dedicada y renovación, reserva 60 s/heartbeat
+  10 s, fencing de resultados, limpieza antes de recuperar interrupted y sin
+  reintentos automáticos. Lock local compartido con B2. Un host designado WSL de
+  Fahida; no se promete limpieza de contenedores de otros equipos.
+- Reutiliza gVisor B2; revalida contratos/hashes antes de ejecutar, valida salida
+  JSON finita y conserva resultado solo para run completado. No source ni claves
+  ejecutados en API/host; runner recibe solo source/inputs/parameters.
+- Mocks visuales separados, sin fallback. Página Ejecutar heredada y workflows
+  no integrados; B4/B5 conservan su alcance. No publicación ni conectores.
+
+### Validación y pendientes
+
+- 87 pruebas backend pasan (75 previas + 12 nuevas): contratos, integridad,
+  perfil gVisor obligatorio, salida privada/sanitizada, API/autenticación y
+  recuperación de worker simulada. Frontend lint/build pasan; advertencias
+  conocidas de bundle >500 kB y Starlette/httpx.
+  Verificado además que un fallo de limpieza/perfil detiene el trabajador antes
+  de reclamar otro trabajo. OpenAPI registra builds/versions/runs nuevos;
+  auditoría de imports y enlaces locales pasa. Cambios B3 aún sin commit/push.
+- SQL 06/07 aplicado y verificado **solo en PostgreSQL 17 temporal**, sin red ni
+  puertos, con Auth/catálogo de fixture: idempotencia/conflictos, privacidad,
+  permisos worker, habilitación, salida privada, reserva/fencing, recuperación,
+  deshabilitación y paginación. Contenedor de prueba eliminado y ausencia
+  comprobada. Imagen gratuita descargada y fijada por digest en el verificador.
+- Primer intento `verify_shared_database.py --sandbox` se detuvo por lock del
+  trabajador B2 activo, antes de crear la base/ejecutar fixtures. Solicitado a
+  Fahida detener su worker cuando esté inactivo; no se terminó ningún proceso.
+- Fahida confirmó «trabajador detenido». Completada después la verificación con
+  `--sandbox`: build de fixture real en gVisor, habilitación de versión y run con
+  datos nuevos, salida validada/persistida en PostgreSQL temporal y privada frente
+  a otra identidad. Dos contenedores de candidato con limpieza verificada; base
+  temporal eliminada con ausencia comprobada. Sin IA ni candidato remoto.
+- Un primer recorrido completo abortó en una aserción de rechazo; se añadió
+  identificación de la aserción y se reforzó el helper para que su propio error
+  use P9999 y no pueda confundirse con P0001 esperado. El recorrido final con
+  aserciones estrictas terminó código 0 y ambos PASS (SQL y gVisor). No se
+  aplicaron cambios remotos para resolverlo.
+- Pendientes de activación real: revisión A/B de SQL 07, aplicarlo al proyecto
+  correcto, crear/autorizar cuenta worker dedicada y configurar sus credenciales
+  localmente. Después recorrido navegador con dos cuentas y datos nuevos,
+  persistencia y terminación forzada del nuevo worker con reserva compartida.
+- No hay migración de históricos SQLite, retención productiva ni habilitación
+  pública. No se registra código local como funcionalidad remota verificada.
+- Siguiente punto exacto: aplicar SQL 07 en el proyecto Supabase correcto y
+  autorizar cuenta Auth dedicada del worker siguiendo la guía B3, sin compartir
+  contraseña. Después configurar backend/.env y aceptación real desde navegador.

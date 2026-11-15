@@ -2,6 +2,16 @@
 
 Actualizado: 14/11/2026. Implementación local del frente A; pendiente revisión conjunta con Fahida. Las interfaces aquí implementadas no congelan los contratos futuros de candidatos, versiones, workflows o builds.
 
+Actualización B3 (15/11/2026): Fahida confirma acuerdo con Miguel sobre builds
+compartidos en Supabase y versiones privadas habilitadas explícitamente. Contrato
+implementado localmente en [BLOQUE_3_EJECUCION.md](BLOQUE_3_EJECUCION.md): `/builds`
+con almacenamiento configurable, `/versions`, `/runs` por version_id e idempotencia.
+SQL 07 aplicado por Fahida y aceptación privada remota completada: recorrido
+manual, persistencia, privacidad y verificador remoto con recuperación real.
+Revisión técnica conjunta A/B pendiente. Las notas históricas de ausencia de
+sandbox/builds siguientes no describen el estado actual B. No cambia el contrato
+CandidateManifest ni publica/edita el catálogo de A.
+
 ## Identidad y catálogo existentes
 
 Actualización de cierre: usuario confirmó SQL 06 (true,true,false,false) y generación/guardado/recarga del candidato 452d1c47 con mismo código/hash. No repetir SQL. Fahida aún no tiene sandbox; no hay ejecución/habilitación. Las notas de SQL pendiente más abajo describen la preparación inicial y quedan superadas por esta confirmación. Total actual: 62 pruebas locales, lint/build y roundtrip correctos. Nuevo flujo de objetivos descrito al final.

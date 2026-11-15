@@ -9,6 +9,7 @@ Leer al iniciar, en orden:
 
 Guías de trabajo:
 
+- [Bloque 3: ejecución y almacenamiento compartido](BLOQUE_3_EJECUCION.md).
 - [Entrega de candidatos a Fahida: sandbox y pruebas pendientes](ENTREGA_A_B_CANDIDATOS.md).
 
 - [Organización y movimientos de archivos](ESTRUCTURA.md).

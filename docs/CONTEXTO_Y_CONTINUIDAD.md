@@ -4,6 +4,33 @@ Actualizado: 14/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+**Cierre B3 privado**: usuaria confirmó recorrido real y F5/lectura propia/404 con
+otra cuenta. Agente completó aceptación contra Supabase real con fixture privada
+de cuenta worker: API temporal reiniciada conserva resultados, idempotencia,
+validaciones, worker terminado durante ejecución → reserva vencida → interrupted
+y limpieza → nuevo run correcto; versión fixture deshabilitada rechaza 409 y
+conserva historial. `passed=true` en reporte local ignorado. Worker normal activo.
+No se alteró la versión de la usuaria, no se consumió IA ni se publicó nada.
+Commit de cierre B3 local, push/revisión conjunta pendientes; B4 no iniciado. Esta actualización
+supera los pendientes de aceptación anotados abajo; detalle en continuidad B.
+
+Actualización posterior B3: Fahida confirmó aplicación de SQL 07 en Supabase con
+«Success. No rows returned» y cuenta Auth dedicada del trabajador creada/autorizada.
+No repetir migración ni INSERT. Configuración local comprobada sin mostrar valores;
+worker nuevo arrancado y sandbox recuperado. Siguiente: reiniciar API y aceptación
+manual B3; no abrir otra copia del worker. Esta
+confirmación supera las notas de SQL 07 no aplicado conservadas debajo.
+
+15/11/2026 — B3 autorizado por Fahida tras acuerdo con Miguel: solicitudes y
+resultados compartidos en Supabase, worker aislado local y versiones privadas
+habilitadas explícitamente. Implementación local validada con PostgreSQL temporal
+y ejecución real de fixture en gVisor; SQL 07 preparado
+pero NO aplicado al proyecto remoto. B3 ya no está detenido: las notas anteriores
+de pausa quedan superadas por esta instrucción. Estado, límites y siguiente paso
+en [continuidad B](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md) y
+[guía B3](BLOQUE_3_EJECUCION.md). Siguiente: aplicar 07 y autorizar cuenta worker,
+después aceptación remota con dos cuentas. No declarar aceptación integrada todavía.
+
 Actualización B, 15/11/2026: Fahida confirma completado el checklist manual del
 laboratorio B2, incluidos once casos, fallos/rechazos esperados, reportes tras
 reinicio, lectura propia 200, acceso ajeno autenticado 404 y lista ajena sin el

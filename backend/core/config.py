@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, SecretStr
 
@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     # La autorización procede del JWT del usuario, no de una service key.
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
+    # Transición explícita: no importar ni borrar los reportes SQLite anteriores.
+    LABORATORY_STORAGE: Literal["sqlite", "supabase"] = "supabase"
 
     GEMINI_API_KEY: SecretStr = SecretStr("")
     GEMINI_MODEL: str = Field(default="gemini-4-hydrogen", pattern=r"^gemini-[a-z0-9.-]+$")

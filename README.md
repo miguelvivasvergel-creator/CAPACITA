@@ -18,6 +18,11 @@ significa que todos los módulos estén implementados.
 
 ## Instalación y ejecución local
 
+El bloque 3 agrega almacenamiento compartido de pruebas, versiones privadas y
+ejecuciones. Requiere preparar SQL 07 y una cuenta de trabajador antes de usar
+esas rutas; no se aplica automáticamente. Ver [guía B3](docs/BLOQUE_3_EJECUCION.md).
+Los reportes SQLite anteriores se conservan y pueden consultarse en modo B2.
+
 Requisitos: Node.js compatible con el Vite instalado (consulta `package.json`),
 npm y Python 3.11 o posterior. Los comandos siguientes se ejecutan en PowerShell
 desde la raíz, salvo donde se indica otra carpeta.

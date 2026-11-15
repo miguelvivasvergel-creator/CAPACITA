@@ -26,6 +26,17 @@ Los SQL numerados para permisos están en db/, no son scripts de arranque. No ej
 
 ## Auditorías
 
+`maintenance/verify_shared_database.py` comprueba SQL 06/07 en PostgreSQL temporal
+sin red ni puertos, con fixtures y sin Supabase real. `--sandbox` añade pruebas
+y ejecución real de fixture en gVisor; exige detener antes el trabajador B2.
+Guía y preparación de imagen en docs/BLOQUE_3_EJECUCION.md.
+
+`maintenance/verify_shared_remote.py --allow-test-data` realiza aceptación en
+Supabase real con fixture privada de la cuenta worker y API temporal propia.
+`--exercise-recovery` termina/reinicia el worker durante un run de fixture.
+Requiere autorización de datos reales/reinicio y ausencia de otros trabajos;
+no consume IA ni altera la capacidad de la usuaria. Ver límites en la guía B3.
+
 `node scripts/maintenance/check_definition_roundtrip.mjs` comprueba que cargar una
 propuesta visual en el formulario conserva contratos, campos opcionales, listas,
 objetos y ejemplo. `ai/check_gemini.py --interpret-example` consume una llamada
