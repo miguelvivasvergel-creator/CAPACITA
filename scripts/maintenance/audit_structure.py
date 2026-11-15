@@ -13,6 +13,7 @@ IMPORTS = re.compile(r"(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['\"]([^'\"]+)['\"]")
 ASSETS = re.compile(r"(?:url\(\s*|(?:src|href)\s*=\s*)['\"]?([^\s'\"\)<>]+)")
 EXTENSIONS = (".js", ".jsx", ".css", ".json")
 EXPECTED_INACTIVE = {
+    "src/mocks/laboratorio.js": "casos visuales del laboratorio B, sin fallback de red",
     "src/mocks/candidatos.js": "fixture visual de candidatos sin fallback en el flujo real",
     "src/components/common/FileUpload.jsx": "componente conservado para integración de archivos de B",
     "src/pages/Capacidades/CrearCapacidad.jsx": "laboratorio de B, pendiente; no editar por esta limpieza",

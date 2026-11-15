@@ -4,6 +4,43 @@ Actualizado: 14/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Integración Miguel, 15/11/2026: a petición del usuario se incorporó
+`origin/feature/Fahida-backend-setup` hasta `65a5739` en `miguel`, conservando
+el avance A de `956701b` y su punto de reanudación descrito debajo. Respaldo:
+`respaldo/miguel-antes-fahida-20261115`. Merge sin conflictos. Las 75 pruebas
+backend con unittest pasan (servicios externos/sandbox simulados). Lint y build
+frontend correctos (advertencia de tamaño de bundle). Esta integración no
+configura ni certifica gVisor/WSL en el equipo de Miguel, no inicia B3 ni
+habilita candidatos. Siguiente: verificar entorno local y recorrido integrado
+del laboratorio; siguen pendientes las pruebas autenticadas del frente A.
+
+Actualización B, 15/11/2026: Fahida confirma completado el checklist manual del
+laboratorio B2, incluidos once casos, fallos/rechazos esperados, reportes tras
+reinicio, lectura propia 200, acceso ajeno autenticado 404 y lista ajena sin el
+build (`false`). Confirmación de usuaria, sin observación directa del navegador
+ni UUID/hash registrados por el agente. Sustituye el pendiente de aceptación
+manual B2 indicado debajo. También confirma recuperación tras terminación
+forzada del trabajador: estado interrumpido al reiniciar, consulta Docker vacía
+y nueva prueba superada conservando el reporte interrumpido. No acredita corte
+eléctrico/apagado de Windows ni caída simultánea del controlador Linux. Queda
+revisión A de evidencia local. B3 continúa detenido. Detalle en continuidad B.
+
+Actualización del frente B (Fahida, 14/11/2026): bloques 1 y 2 con infraestructura
+y laboratorio local implementados/probados. API de builds privada, trabajador
+separado, SQLite durable y panel de candidatos; revalida hashes/contratos y ejecuta
+fixtures reales dentro de gVisor. 75 pruebas backend pasan. Socket exclusivo del
+Engine Ubuntu evita interferencia de Desktop. Ver [continuidad propia de Fahida](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md)
+y [guía del laboratorio](LABORATORIO_BLOQUE_2.md). Falta aceptación con candidato
+Supabase propio/dos sesiones reales, revisión A de evidencia local y apagado abrupto.
+No hay habilitación/publicación ni motor persistente B3. Las notas históricas
+siguientes sobre ausencia de sandbox/laboratorio quedan superadas para el entorno
+local; no alteran el punto de reanudación del frente A descrito abajo.
+
+Instrucción posterior de Fahida: probar manualmente B2 primero; B3 detenido,
+sin cambios de código aplicados y sin autorización para arrancarlo por la
+pregunta previa sobre trabajo en paralelo. Guía B2 ampliada con pasos detallados
+Windows/Ubuntu, comandos y resultados esperados; aceptación manual aún pendiente.
+
 Cierre solicitado por usuario: terminar este último bloque, commit detallado y push a miguel; luego continuar otro día. Nuevo flujo local en Capacidades → Crear: objetivo natural → búsqueda textual autorizada → aclaraciones/bloqueo/propuesta → cargar formulario → comprobar/guardar explícitamente. POST /api/objectives/interpret. No es planner de workflows ni ejecución. Validación: 62 pruebas, lint/build y roundtrip propuesta/formulario correctos. Gemini real devolvió define con contratos/ejemplo consistentes (hash 0af15b07bc660cdc43f1cbc2f7b4fe8e26ed8754e9fb0c76292acdd5c7cb1cab). Falta recorrido autenticado de objetivos en navegador y privacidad real con segunda cuenta. No empezar otro módulo durante el cierre.
 
 Bloqueo confirmado por usuario: Fahida todavía no tiene sandbox. No probar código generado en host/API como sustituto. Guía preparada en ENTREGA_A_B_CANDIDATOS.md: contrato, casos independientes y evidencia por verificar; no implementa infraestructura ni envía mensajes a Fahida. Mantener propiedad B. A puede continuar privacidad real y comprensión/planner. Ejecución, habilitación y recorrido completo del martes siguen en riesgo hasta integrar aislamiento real.

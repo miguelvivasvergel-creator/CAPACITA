@@ -29,13 +29,56 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
-Usuario confirma que aún no tiene sandbox (14/11/2026). Bloqueo de pruebas aisladas, habilitación y ejecución de candidatos. Guía preparada: [ENTREGA_A_B_CANDIDATOS.md](ENTREGA_A_B_CANDIDATOS.md), con casos propuestos y evidencia requerida, sin declarar controles implementados/probados. Infraestructura y créditos por confirmar. No ejecutar candidatos en host/API como alternativa.
+15/11/2026: aceptación manual B2 confirmada por Fahida al completar el checklist:
+once casos superados, expectativa incorrecta detectada, JSON/entrada incompatible
+rechazados sin build nuevo, persistencia tras reinicio, lectura propia 200,
+segunda cuenta autenticada 404 y build ausente de su lista (`false`), y cierre.
+Evidencia reportada por la usuaria, sin observación directa del navegador ni
+registro de UUID/hash por el agente. Las menciones siguientes de aceptación
+manual pendiente quedan superadas. Fahida confirmó además recuperación tras
+terminar forzadamente el trabajador: estado interrumpido al reiniciar, consulta
+Docker sin contenedores del laboratorio y nueva prueba superada con otro UUID,
+conservando el reporte interrumpido. Confirmación manual de usuaria; no acredita
+apagado de Windows/corte eléctrico ni caída simultánea del controlador Linux.
+Queda revisión A. B3 permanece detenido, sin habilitación ni publicación.
+
+Seguimiento acumulativo propio: [CONTEXTO_Y_CONTINUIDAD_FAHIDA.md](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
+Bloque 1 de infraestructura local verificado el 14/11/2026: Ubuntu 24.04 en
+WSL2, Docker Engine 29.1.3 y runsc 20261109.0 propios. Diez comprobaciones reales
+pasan: admisión única, aislamiento/temporales independientes, timeout, salida
+limitada a 64 KiB, OOM a 256 MiB, CPU limitada según cgroup del host, máximo de
+8 procesos invitados, error y limpieza. Ocho contenedores de prueba eliminados.
+Scripts de referencia y verificación bajo scripts/maintenance; reporte local
+ignorado y evidencia resumida en el documento acumulativo.
+
+Bloque 2 implementado localmente: POST/GET de builds privados, revalidación de
+contratos/identificadores/hashes, cola y reportes persistentes en SQLite del host,
+trabajador separado y panel dentro del candidato. Candidatos de fixture ejecutados
+realmente en gVisor, sin credenciales ni ejecución en FastAPI/host. 75 pruebas
+backend pasan; lint/build y auditoría de imports correctos. La batería real cubre
+transformación, rechazo previo, aislamiento, temporales, procesos, timeout, OOM,
+salida excesiva, errores y contratos/salidas incorrectas, con limpieza verificada.
+Guía y límites en [LABORATORIO_BLOQUE_2.md](LABORATORIO_BLOQUE_2.md).
+
+Guía manual ampliada a petición de Fahida: 18 secciones con Windows/Ubuntu,
+terminales, comandos, resultados esperados y pruebas paso a paso. El recorrido
+manual aún no está confirmado. Usuario pidió probar primero B2 y detener B3;
+no se aplicaron cambios de código de ese bloque ni se autoriza iniciarlo por
+la pregunta previa sobre trabajar en paralelo.
+
+Corregida interferencia de Docker Desktop sobre /run/docker.sock: el Engine de
+Ubuntu usa /run/capacita-docker.sock mediante override de su servicio. No se
+modificó Docker Desktop ni Supabase. Pendientes: aceptación con candidato remoto
+propio y dos sesiones reales, revisión A de persistencia/evidencia local y caída
+abrupta. No hay habilitación/publicación ni motor de runs del bloque 3.
+Guía de consumo A: [ENTREGA_A_B_CANDIDATOS.md](ENTREGA_A_B_CANDIDATOS.md).
+Cada bloque deja pruebas, pendientes y commit local. Sin gastos ni publicación.
 
 Propiedad: laboratorio, pruebas aisladas, archivos, workflows, builds, motor, resultados e historial. CrearCapacidad.jsx y FileUpload.jsx se conservan para integración; no se implementaron aquí.
 
 Hay código heredado de runs/perfiles/adaptadores y datos en memoria; no demuestra motor persistente ni aislamiento real. Reportes anteriores de Franklin, Luis Miguel y Fahida conservados en [ESTADO_2026-11-14.md](historial/ESTADO_2026-11-14.md), sin tratarlos como aceptación actual ni reasignarlos.
 
-Consumo de definición A en [CONTRATO_INTEGRACION.md](CONTRATO_INTEGRACION.md), pendiente revisión conjunta. Sandbox, candidatos/artefactos, builds, habilitación y ejecución pendientes según el [plan A/B](PLAN_DOS_PERSONAS_MARTES.md).
+Consumo de definición A en [CONTRATO_INTEGRACION.md](CONTRATO_INTEGRACION.md), pendiente revisión conjunta. Sandbox y laboratorio local probados; integración remota, habilitación y motor de ejecución pendientes según el [plan A/B](PLAN_DOS_PERSONAS_MARTES.md).
 
 ## Verificación y límites
 
@@ -50,6 +93,12 @@ Consumo de definición A en [CONTRATO_INTEGRACION.md](CONTRATO_INTEGRACION.md), 
 - Avisos SQL del editor: diagnóstico `mssql` sobre scripts PostgreSQL; comprobado manifiesto de MSSQL 1.47.0. Desactivado análisis T-SQL en .vscode/settings.json solo para este workspace, sin cambios SQL/BD ni validador PostgreSQL nuevo. Pendiente recarga de VS Code para retirar avisos anteriores.
 
 ## Git y siguiente paso
+
+15/11/2026: integrada localmente en `miguel` la rama de Fahida hasta `65a5739`,
+sin conflictos y conservando el avance A de `956701b`. Respaldo en
+`respaldo/miguel-antes-fahida-20261115`. 75 pruebas backend con unittest pasan
+(servicios externos/sandbox simulados). Lint/build correctos; sandbox local de
+Miguel y recorrido integrado pendientes. No se inició B3 ni se publicó la app.
 
 14/11/2026: usuario autorizó subir el bloque local de definición y organización a `miguel` mediante commit de organización de carpetas. Preparación de entrega con lint/build y auditorías de estructura/enlaces correctos; prueba autenticada aún pendiente. Consultar Git para confirmar commit y push de este bloque.
 
