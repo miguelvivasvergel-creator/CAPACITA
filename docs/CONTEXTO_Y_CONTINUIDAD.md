@@ -4,12 +4,17 @@ Actualizado: 15/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
-Cierre solicitado por usuario, 15/11/2026: terminar el bloque y subirlo a
-origin/miguel con commit detallado. Alcance: integración ya probada B1/B2,
-Inicio real, perfil persistente/SQL 07 aplicado y búsqueda textual/semántica
-local. No iniciar tareas nuevas ni B3 durante este cierre. 104 pruebas backend,
-lint/build/imports y navegador/modelo correctos; comprobar enlaces, secretos,
-archivos incluidos y sincronización Git al entregar.
+Cierre entregado, 15/11/2026: commit principal **965e369**
+(`feat(modulo-a): integrar inicio, perfil persistente y busqueda autorizada`),
+subido a **origin/miguel**. HEAD/origin/miguel y consulta directa ls-remote a
+GitHub coincidieron en 965e369c5c2982addf934fcfa5498f8fcfd1523d antes de esta
+nota documental. Incluye la integración B1/B2 de Fahida ya probada (merge 7ad07e0),
+Inicio real, perfil persistente/SQL 07 aplicado y búsqueda textual/semántica local.
+50 archivos revisados sin claves reconocibles ni artefactos; modelos, cachés,
+sesiones y resultados locales excluidos. 104 pruebas backend, lint/build/imports,
+20 documentos con enlaces válidos y pruebas de navegador/modelo correctas.
+Sin despliegue ni implementación B3. Al retomar: dashboard/comunidad A y contrato
+planner con B; no repetir SQL 07 ni instalaciones ya verificadas en este equipo.
 
 Búsqueda A, 15/11/2026, implementada y validada: autocompletado/Buscar usan
 POST /api/search de FastAPI con sesión, perfiles/capacidades paginados, filtros,
@@ -32,8 +37,8 @@ Modelos/caché/reportes output/search ignorados por Git. Lint/build/imports pasa
 bundle >500 kB conocido. BUSQUEDA_A.md conserva instalación/límites. Siguiente A:
 dashboard/comunidad y entrega Git; planner/publicación dependen de contrato B.
 Extras semánticos requieren Python >=3.12 (NumPy); texto no los necesita.
-Git antes del cierre: HEAD 7ad07e0, merge de Fahida. Usuario autoriza commit/push
-del bloque A local; registrar hash y verificación remota al finalizar. Sin despliegue.
+Git: entrega funcional 965e369 verificada en origin/miguel; esta nota registra
+la evidencia del push y el siguiente punto de trabajo. Sin despliegue.
 
 Perfil A, 15/11/2026, bloque implementado y validado: backend conectado
 a profiles real, PATCH propio persistente, foto PNG/JPG normalizada con Pillow

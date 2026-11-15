@@ -4,9 +4,12 @@ Actualizado: 15/11/2026. Estado actual; reportes anteriores completos en [histor
 
 ## Reanudación inmediata
 
-Cierre autorizado: guardar Inicio/perfil/búsqueda y documentación, commit
-detallado y push a miguel. Sin tareas nuevas, despliegue ni cambios B3.
-Verificación de entrega Git en curso; no registrar push como hecho antes de comprobarlo.
+Cierre GitHub verificado: commit principal **965e369**, 50 archivos de
+Inicio/perfil/búsqueda y documentación, subido a **origin/miguel**. Hash local,
+referencia de seguimiento y ls-remote coincidieron. Integra también el merge
+previo B1/B2 de Fahida; no modifica B3 ni despliega la app. 104 pruebas backend,
+lint/build/imports/enlaces y validaciones reales conservadas. Siguiente bloque A:
+dashboard/comunidad; planner/publicación requieren contrato/evidencia de B.
 
 Búsqueda A lista: FastAPI para sugerencias/resultados y semántica local E5.
 Privada A ausente para B en ambos modos y GET ajeno 404. Ranking/navegación
