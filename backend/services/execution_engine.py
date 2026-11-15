@@ -29,8 +29,11 @@ def finite_json(raw):
     return json.loads(raw, parse_constant=reject)
 
 
-def execute_job(job, runner=invoke_runner):
+def execute_job(job, runner=invoke_runner, progress=None):
     payload = job["payload"]
+    if payload.get("execution_type") == "workflow":
+        from services.workflow_engine import execute_workflow
+        return execute_workflow(job, runner, progress)
     manifest = validate_manifest(payload["manifest"])
     if str(manifest.candidate_id) != job["candidate_id"] or manifest.artifact_hash != job["artifact_hash"]:
         raise ValueError("identity_mismatch")

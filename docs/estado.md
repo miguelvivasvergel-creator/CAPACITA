@@ -29,6 +29,43 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
+Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
+Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.
+Su proceso real tiene UN paso; lectura propia 200, resultado correcto y datos
+conservados tras reiniciar API (huellas de definicion, reporte y salida identicas).
+Otra cuenta obtiene 404 en proceso y ejecucion, ambos ausentes de sus listas.
+Los DOS pasos, parametros y recuperacion tras caida durante el segundo paso
+se verificaron con una fixture privada real independiente. Los tres reportes
+locales block4-owner-persistence.json, block4-user-privacy.json y
+block4-remote-latest.json tienen passed=true; permanecen ignorados por Git.
+SQL 08 aplicado y protocolo 2 activo. No repetir migraciones. Sin publicacion,
+conectores externos ni B5 iniciado. Revision conjunta e integracion pendientes.
+Este bloque usa la numeracion del laboratorio B vigente: workflows privados;
+no declara completo el apartado B4 de conexiones del plan inicial entre personas.
+Esta nota sustituye pendientes y referencias a dos pasos de usuaria anotados abajo.
+
+B4, recorrido real de usuaria: workflow de dos pasos guardado, aprobado y
+completado con resultado esperado, confirmado por Fahida. Falta comprobación
+de reapertura tras F5 y acceso ajeno al workflow conocido en sus sesiones.
+
+B4 activado en Supabase por usuaria (08) y comprobado por agente; worker protocolo
+2, API y WEB actualizados/activos. Aceptación técnica remota con fixture privada
+pasa: dos pasos con opciones, contratos/ciclo, revisión/aprobación, idempotencia,
+persistencia y caída en segundo paso con parcial conservado → interrupted → nuevo
+workflow completado. Historial conservado y limpieza comprobada. Sin IA ni cambio
+de versión de usuaria. Falta recorrido de su sesión/privacidad workflow real.
+Reporte output/laboratory/block4-remote-latest.json ignorado. Notas inferiores
+de activación pendiente son históricas; no repetir SQL 08 ni abrir otro worker.
+
+B4 en validación local, autorizado por Fahida: workflows privados, editor React
+Flow, contratos/ciclos, revisiones, aprobación y pasos con progreso/errores.
+SQL 08 NO aplicado a Supabase. 96 pruebas backend, lint/build y aceptación de
+dos pasos con parámetro no predeterminado en PostgreSQL temporal/gVisor pasan.
+Editor también pasa pruebas Chrome desktop/móvil con HTTP simulado, capturas
+revisadas. Vite 8.3.8 y transitorias corregidas; npm audit 0 avisos conocidos.
+Pendiente aplicar 08/configurar protocolo 2 y aceptación remota. Sin push/merge
+ni B5. Worker normal compatible con B3 quedó activo en protocolo 1.
+
 **B3 privado aceptado**: recorrido de usuaria confirmado (build compartido,
 habilitación, datos nuevos, resultado tras F5, lectura propia y 404 ajeno).
 Aceptación automática real con fixture privada worker también pasa: persistencia

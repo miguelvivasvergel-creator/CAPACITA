@@ -1,8 +1,36 @@
 # Capacita — contexto y continuidad
 
+Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
+Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.
+Su proceso real tiene UN paso; lectura propia 200, resultado correcto y datos
+conservados tras reiniciar API (huellas de definicion, reporte y salida identicas).
+Otra cuenta obtiene 404 en proceso y ejecucion, ambos ausentes de sus listas.
+Los DOS pasos, parametros y recuperacion tras caida durante el segundo paso
+se verificaron con una fixture privada real independiente. Los tres reportes
+locales block4-owner-persistence.json, block4-user-privacy.json y
+block4-remote-latest.json tienen passed=true; permanecen ignorados por Git.
+SQL 08 aplicado y protocolo 2 activo. No repetir migraciones. Sin publicacion,
+conectores externos ni B5 iniciado. Revision conjunta e integracion pendientes.
+Este bloque usa la numeracion del laboratorio B vigente: workflows privados;
+no declara completo el apartado B4 de conexiones del plan inicial entre personas.
+Esta nota sustituye pendientes y referencias a dos pasos de usuaria anotados abajo.
+
+
 Actualizado: 14/11/2026, America/Bogota. Estado actual; las sesiones anteriores se conservan en [historial](historial/README.md).
 
 ## Punto exacto para retomar
+
+B4: Fahida aplicó SQL 08; comprobado en Supabase, worker protocolo 2 configurado
+y activo, API/WEB reales reiniciadas. Aceptación técnica remota pasa con fixture
+privada: dos pasos, opciones, aprobación/revisión, persistencia e interrupción en
+segundo paso conservando el primer resultado, recuperación y nuevo workflow.
+Reporte B4 local ignorado passed=true. Siguiente: F5 y recorrido de usuaria desde
+Workflows, más privacidad de workflow conocido entre cuentas. No repetir SQL.
+
+B4 autorizado por Fahida: workflows privados implementados localmente, SQL 08
+preparado/no aplicado. 96 pruebas y dos pasos reales con gVisor/PostgreSQL temporal
+pasan; aceptación remota pendiente. Worker B3 compatible activo. Ver
+[guía B4](BLOQUE_4_WORKFLOWS.md) y continuidad B. No hay push ni merge nuevo.
 
 **Cierre B3 privado**: usuaria confirmó recorrido real y F5/lectura propia/404 con
 otra cuenta. Agente completó aceptación contra Supabase real con fixture privada

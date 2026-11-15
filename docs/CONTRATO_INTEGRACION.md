@@ -2,6 +2,13 @@
 
 Actualizado: 14/11/2026. Implementación local del frente A; pendiente revisión conjunta con Fahida. Las interfaces aquí implementadas no congelan los contratos futuros de candidatos, versiones, workflows o builds.
 
+B4 autorizado por Fahida el 15/11/2026: [contrato de workflows privados](BLOQUE_4_WORKFLOWS.md)
+implementado localmente con revisiones, aprobación y puertos nombrados, sobre B3.
+SQL 08 aplicado por Fahida y protocolo 2 activo. Aceptación técnica remota con
+fixture propia pasó; recorrido de usuaria pendiente. Worker protocolo 1 omite
+workflows. No integra planner ni registra
+capacidad compuesta pública en catálogo A; esa entrega se coordina por contrato.
+
 Actualización B3 (15/11/2026): Fahida confirma acuerdo con Miguel sobre builds
 compartidos en Supabase y versiones privadas habilitadas explícitamente. Contrato
 implementado localmente en [BLOQUE_3_EJECUCION.md](BLOQUE_3_EJECUCION.md): `/builds`

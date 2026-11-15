@@ -28,10 +28,11 @@ def command(*args, input=None, check=True):
     return subprocess.run(DOCKER + list(args), input=input, capture_output=True, check=check, timeout=90)
 
 
-def main(sandbox=False):
+def main(sandbox=False, workflows=False):
     name = "capacita-db-check-" + str(uuid4())
     owner, other, worker, cap, session, successor = [str(uuid4()) for _ in range(6)]
-    candidate = manifest().model_copy(update={"capability_id": UUID(cap)})
+    source = "def run(inputs, parameters):\n    text = inputs['texto'].strip()\n    return {'resultado': text.upper() if parameters.get('mayusculas') else text}\n"
+    candidate = (manifest(source) if workflows else manifest()).model_copy(update={"capability_id": UUID(cap)})
     # Cambiar el UUID de capacidad no altera el hash de contenido del contrato A.
     package = json.dumps(candidate.model_dump(mode="json"),ensure_ascii=False)
     request = json.dumps({"candidate_id":str(candidate.candidate_id),
@@ -56,6 +57,8 @@ def main(sandbox=False):
         sql((ROOT/"backend/tests/fixtures/shared_execution.sql").read_text(encoding="utf-8"))
         sql((ROOT/"db/06_private_candidates.sql").read_text(encoding="utf-8"))
         sql((ROOT/"db/07_shared_execution.sql").read_text(encoding="utf-8"))
+        if workflows:
+            sql((ROOT/"db/08_private_workflows.sql").read_text(encoding="utf-8"))
         sql(f"INSERT INTO auth.users VALUES ('{owner}'),('{other}'),('{worker}'); "
             f"INSERT INTO public.profiles VALUES ('{owner}'),('{other}'); "
             f"INSERT INTO public.capabilities(id,owner_id) VALUES ('{cap}','{owner}'); "
@@ -124,6 +127,9 @@ def main(sandbox=False):
         assert completed["output"]=={"resultado":"nuevo"}
         must_fail(other,f"PERFORM public.execution_get('run','{run['id']}')","P0002")
         assert json.loads(as_user(other,"SELECT public.execution_list('run');"))["items"]==[]
+        if workflows:
+            from workflow_database_cases import verify_workflows
+            verify_workflows(sql,as_user,must_fail,owner,other,worker,session,version,candidate,sandbox)
         interrupted=json.loads(as_user(owner,f"SELECT public.execution_enqueue('run','run2',$json${run_request}$json$);"))
         as_user(worker,f"SELECT public.execution_claim('{session}');")
         sql("UPDATE capacita_execution.lease SET expires_at=now()-interval '1 second';")
@@ -156,7 +162,8 @@ def main(sandbox=False):
 if __name__=="__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument('--sandbox',action='store_true',help='Ejecutar fixture pública realmente en gVisor')
+    parser.add_argument('--workflows',action='store_true',help='Incluir migración y aceptación B4 temporal')
     args=parser.parse_args()
     # Nunca competir con el trabajador local B2 ni sus baterías.
     with worker_lock(DEFAULT_PATH) if args.sandbox else nullcontext():
-        main(args.sandbox)
+        main(args.sandbox,args.workflows)

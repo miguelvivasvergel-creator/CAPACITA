@@ -1,10 +1,59 @@
 # Fahida — contexto y continuidad
 
+Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
+Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.
+Su proceso real tiene UN paso; lectura propia 200, resultado correcto y datos
+conservados tras reiniciar API (huellas de definicion, reporte y salida identicas).
+Otra cuenta obtiene 404 en proceso y ejecucion, ambos ausentes de sus listas.
+Los DOS pasos, parametros y recuperacion tras caida durante el segundo paso
+se verificaron con una fixture privada real independiente. Los tres reportes
+locales block4-owner-persistence.json, block4-user-privacy.json y
+block4-remote-latest.json tienen passed=true; permanecen ignorados por Git.
+SQL 08 aplicado y protocolo 2 activo. No repetir migraciones. Sin publicacion,
+conectores externos ni B5 iniciado. Revision conjunta e integracion pendientes.
+Este bloque usa la numeracion del laboratorio B vigente: workflows privados;
+no declara completo el apartado B4 de conexiones del plan inicial entre personas.
+Esta nota sustituye pendientes y referencias a dos pasos de usuaria anotados abajo.
+
+
 Documento único y acumulativo del frente B. Leerlo al retomar, junto con el
 contexto global y el contrato compartido. Conservar aquí cada bloque, su evidencia,
 bloqueos y siguiente paso; no crear una continuidad nueva por sesión.
 
 ## Punto actual para retomar
+
+Recorrido B4 de usuaria: confirmó «Proceso privado guardado» para workflow de dos
+pasos con su versión de normalizar texto. Confirmó aprobación y ejecución real
+Completado, ambos pasos completados y resultado «Mi primer workflow real», con
+espacios extremos retirados. Evidencia declarada por usuaria; UUID del workflow
+y run aún no compartidos. Siguiente: reabrir tras F5 y privacidad de workflow
+conocido; aceptación técnica remota automática ya pasó con fixture independiente.
+
+**B4 autorizado e iniciado** por Fahida después del cierre B3. Implementación
+local de workflows privados sobre versiones B3: editor React Flow, conexiones
+por campo, contratos/DAG, guardado/revisiones, aprobación por datos y ejecución
+secuencial con progreso y resultados parciales. Fahida confirmó SQL 08 aplicado
+con Success; RPC comprobada realmente. WORKFLOW_PROTOCOL=2 configurado localmente
+sin mostrar/cambiar credenciales y worker nuevo activo. 96 pruebas backend y lint/build pasan; migración y dos pasos reales
+con parámetro no predeterminado pasan en PostgreSQL temporal/gVisor. Editor
+verificado con Chrome headless en escritorio 1280 y móvil 390: dos pasos,
+parámetros/conexiones, aprobación invalidada al editar y salida escapada; capturas
+locales ignoradas revisadas. Aceptación técnica remota con fixture privada pasa:
+dos pasos y parámetro no predeterminado, aprobación obsoleta 409, ciclo 422,
+idempotencia, persistencia al reiniciar API temporal, caída durante segundo paso
+con parcial del primero conservado, recuperación interrupted y nuevo workflow
+completado. Archivo conserva historial; versión fixture deshabilitada. Docker sin
+contenedores restantes comprobado. Reporte: output/laboratory/block4-remote-latest.json,
+ignorado, passed=true. Ninguna capacidad/versión de usuaria se modificó; sin IA.
+Vite actualizado a 8.3.8 y dependencias transitivas corregidas;
+npm audit marca 0 vulnerabilidades conocidas. Mapa cargado de forma diferida.
+API real del puerto 8000 y WEB 5173 reiniciadas, worker protocolo 2 activo;
+no abrir copias adicionales. Siguiente punto exacto: usuaria recarga navegador
+y abre Workflows → Nuevo workflow → seleccionar versión propia y añadir pasos.
+Pendiente recorrido en su sesión real y privacidad de workflow conocido entre
+dos cuentas (SQL temporal la comprueba; fixture remota es privada de worker).
+Sin commit B4 todavía; no confundir el commit B3 local 873131a con un push nuevo.
+Guía: [BLOQUE_4_WORKFLOWS.md](BLOQUE_4_WORKFLOWS.md). Sin push/merge ni B5 iniciado.
 
 **Aceptación B3 privada completada** con evidencia combinada de usuaria y pruebas
 automáticas reales. Fahida confirma API reiniciada y prueba nueva real con
@@ -106,7 +155,7 @@ conservan el diagnóstico histórico, superado por los cierres posteriores.
 | 1. Base y sandbox | Verificado localmente | Ubuntu/Engine/runsc y 10 comprobaciones reales pasan; controles de recursos, salida, timeout y limpieza. |
 | 2. Laboratorio y reportes | Implementado y probado localmente; aceptación remota pendiente | API/trabajador/UI, hashes, contratos, SQLite privado y candidatos de fixture en gVisor. |
 | 3. Ejecución persistente | Aceptado en alcance privado B3 | SQL 07 aplicado por usuaria; recorrido real, persistencia, privacidad y recuperación verificados. Sin workflows/publicación ni apagado de Windows probado. |
-| 4. Workflows | Pendiente | Contratos compartidos, validación y mapeo entre pasos. |
+| 4. Workflows | Activado; aceptación técnica remota pasa, recorrido de usuaria pendiente | SQL 08 aplicado; worker protocolo 2, editor y dos pasos con recuperación/parciales probados. |
 | 5. Resultados e historial | Pendiente | Runs y resultados persistentes privados. |
 | 6. Integración final | Pendiente | Aprobación, composición y pruebas cruzadas; piloto condicionado a accesos. |
 

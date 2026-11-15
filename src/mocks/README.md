@@ -9,6 +9,7 @@ Los mocks no prueban que exista una implementación. Las rutas reales de catálo
 | candidatos.js | Fixture visual de desarrollo para candidatos Python; sin fallback ni consumidor en el recorrido real. |
 | laboratorio.js | Casos visuales de desarrollo del laboratorio; no sustituyen respuestas de builds ni se ejecutan automáticamente. |
 | versiones.js | Fixture visual B3 de versión/ejecución privada; sin fallback ni import en el recorrido real. |
+| workflows.js | Fixture visual B4, sin fallback ni versiones ficticias en selector real. |
 | home.js y users.js | Inicio de desarrollo; planner/estadísticas reales pendientes. |
 | profile.js | Fallback heredado de perfiles; migración pendiente, no aceptación de datos reales. |
 | runs.js | Ejecución de desarrollo; integración persistente real pendiente. |

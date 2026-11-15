@@ -32,7 +32,9 @@ class ExecutionRequest(BaseModel):
 
 class ExecutionResponse(BaseModel):
     id: UUID
-    version_id: UUID
+    version_id: UUID | None = None
+    workflow_id: UUID | None = None
+    workflow_revision: int | None = None
     artifact_hash: str
     status: Literal["queued", "running", "completed", "failed", "interrupted"]
     created_at: str

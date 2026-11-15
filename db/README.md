@@ -11,6 +11,7 @@ Inspeccionar el proyecto real antes de aplicar SQL. No ejecutar todos los archiv
 | 05_catalog_contract_insert.sql | Añade INSERT solo de input_schema/output_schema existentes; usuario reportó aplicación. |
 | 06_private_candidates.sql | Usuario reportó aplicación y permisos true,true,false,false (SELECT/INSERT/UPDATE/DELETE): tabla privada capability_candidates, RLS por dueño e INSERT/SELECT mínimos. Falta prueba real de persistencia/RLS con dos cuentas. No repetir sin inspección; no habilita ejecución. |
 | 07_shared_execution.sql | Aplicado por Fahida, cuenta worker autorizada y aceptación privada B3 verificada con sesiones/fixture reales. No repetir. Cola/reportes compartidos, versiones privadas y runs; no importa SQLite. Guía en docs/BLOQUE_3_EJECUCION.md. |
+| 08_private_workflows.sql | Aplicado por Fahida, RPC y aceptación técnica remota de fixture verificadas. No repetir. Workflows privados, revisiones/aprobaciones y progreso; protocolo worker 2 activo. Preserva B3. |
 
 Nuevo formulario de definición: reutiliza columnas/grants de 04/05 y config.definition; no requiere migración adicional. Permisos de UPDATE/DELETE, publicación/versiones, builds y motor reales siguen pendientes.
 

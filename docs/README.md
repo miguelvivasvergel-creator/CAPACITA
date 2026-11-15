@@ -9,6 +9,7 @@ Leer al iniciar, en orden:
 
 Guías de trabajo:
 
+- [Bloque 4: workflows privados](BLOQUE_4_WORKFLOWS.md).
 - [Bloque 3: ejecución y almacenamiento compartido](BLOQUE_3_EJECUCION.md).
 - [Entrega de candidatos a Fahida: sandbox y pruebas pendientes](ENTREGA_A_B_CANDIDATOS.md).
 

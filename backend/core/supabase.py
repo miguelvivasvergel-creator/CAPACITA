@@ -14,6 +14,9 @@ EXECUTION_RPCS = {
     "execution_enqueue", "execution_get", "execution_list", "execution_enable",
     "execution_versions", "execution_disable", "execution_lease", "execution_claim",
     "execution_recover", "execution_finish",
+    "execution_workflow_get", "execution_workflow_list", "execution_workflow_save",
+    "execution_workflow_archive", "execution_workflow_approve", "execution_workflow_enqueue",
+    "execution_progress",
 }
 
 

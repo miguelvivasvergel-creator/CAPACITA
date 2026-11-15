@@ -69,6 +69,11 @@ def _check_supported_schema(schema, label):
     return Draft202012Validator(schema)
 
 
+def validate_schema(schema, label="entrada del proceso"):
+    _bounded_json(schema)
+    return _check_supported_schema(schema, label)
+
+
 def validate_definition(definition: CapabilityDefinition) -> str:
     encoded = _bounded_json(definition.model_dump(mode="json"))
     contracts = (

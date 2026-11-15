@@ -16,7 +16,7 @@ from uuid import uuid4
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from core.supabase import get_supabase_gateway
@@ -29,6 +29,7 @@ from services.execution_engine import ExecutionInfrastructureError, execute_job
 class WorkerSettings(BaseSettings):
     SUPABASE_WORKER_EMAIL: str = ""
     SUPABASE_WORKER_PASSWORD: SecretStr = SecretStr("")
+    WORKFLOW_PROTOCOL: int = Field(default=1, ge=1, le=2)
     model_config = SettingsConfigDict(env_file=Path(__file__).resolve().parents[1] / ".env",
                                      env_file_encoding="utf-8", extra="ignore")
 
@@ -66,7 +67,7 @@ class WorkerSession:
         return await SharedExecutionRepository(catalog).rpc(name, **payload)
 
 
-async def serve(session, once=False, runner=invoke_runner):
+async def serve(session, once=False, runner=invoke_runner, protocol=1):
     identity = str(uuid4())
     await session.rpc("lease", p_session=identity, p_action="acquire")
     lost = threading.Event()
@@ -98,7 +99,8 @@ async def serve(session, once=False, runner=invoke_runner):
         while not lost.is_set():
             await session.rpc("lease", p_session=identity, p_action="heartbeat")
             last_ack[0] = time.monotonic()
-            job = (await session.rpc("claim", p_session=identity))["job"]
+            claim_args = {"p_session": identity} | ({"p_protocol": protocol} if protocol >= 2 else {})
+            job = (await session.rpc("claim", **claim_args))["job"]
             if job is None:
                 if once:
                     clean_exit = True
@@ -106,8 +108,18 @@ async def serve(session, once=False, runner=invoke_runner):
                 await asyncio.sleep(1)
                 continue
             infrastructure_failure = False
+            loop = asyncio.get_running_loop()
+
+            def progress(report):
+                if lost.is_set():
+                    raise RuntimeError("worker_lease_lost")
+                future = asyncio.run_coroutine_threadsafe(session.rpc("progress", p_session=identity,
+                    p_id=job["id"], p_report=report), loop)
+                future.result(timeout=20)
+
             try:
-                status, report, output = await asyncio.to_thread(execute_job, job, guarded_runner)
+                status, report, output = await asyncio.to_thread(execute_job, job, guarded_runner,
+                    progress if job["payload"].get("execution_type") == "workflow" else None)
             except ExecutionInfrastructureError:
                 infrastructure_failure = True
                 status, report, output = "failed", {"error": "sandbox_unavailable"}, None
@@ -142,7 +154,7 @@ async def main(once=False):
     DEFAULT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with worker_lock(DEFAULT_PATH):
         async for gateway in get_supabase_gateway():
-            await serve(WorkerSession(gateway, credentials), once)
+            await serve(WorkerSession(gateway, credentials), once, protocol=credentials.WORKFLOW_PROTOCOL)
 
 
 if __name__ == "__main__":

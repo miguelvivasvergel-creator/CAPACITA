@@ -26,6 +26,12 @@ Los SQL numerados para permisos están en db/, no son scripts de arranque. No ej
 
 ## Auditorías
 
+`maintenance/verify_shared_database.py --workflows` añade migración 08 y casos de
+workflows a PostgreSQL temporal. `--sandbox` añade dos pasos reales en gVisor;
+detener worker antes. `maintenance/verify_workflow_ui.py` verifica editor en
+Chrome headless con API simulada y perfiles temporales, escritorio/móvil. No
+utiliza sesión de usuario ni Supabase real; artefactos en output/playwright.
+
 `maintenance/verify_shared_database.py` comprueba SQL 06/07 en PostgreSQL temporal
 sin red ni puertos, con fixtures y sin Supabase real. `--sandbox` añade pruebas
 y ejecución real de fixture en gVisor; exige detener antes el trabajador B2.
@@ -36,6 +42,12 @@ Supabase real con fixture privada de la cuenta worker y API temporal propia.
 `--exercise-recovery` termina/reinicia el worker durante un run de fixture.
 Requiere autorización de datos reales/reinicio y ausencia de otros trabajos;
 no consume IA ni altera la capacidad de la usuaria. Ver límites en la guía B3.
+
+El parámetro `--workflows` añade aceptación B4 real: revisión/aprobación, dos pasos,
+parámetros, persistencia y caída durante segundo paso preservando el primero.
+Requiere SQL 08 y WORKFLOW_PROTOCOL=2. Reporte en block4-remote-latest.json ignorado.
+`maintenance/activate_workflow_worker.py` comprueba la RPC y cambia solo ese
+protocolo en backend/.env sin mostrar credenciales ni aplicar SQL/reiniciar procesos.
 
 `node scripts/maintenance/check_definition_roundtrip.mjs` comprueba que cargar una
 propuesta visual en el formulario conserva contratos, campos opcionales, listas,

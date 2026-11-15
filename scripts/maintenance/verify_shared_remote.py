@@ -33,10 +33,11 @@ from tests.fixtures.definitions import definition
 
 SOURCE = '''# Fixture publica B3: codigo fijo, NO generado por Gemini.
 def run(inputs, parameters):
-    if inputs["texto"] == "__B3_RECOVERY_FIXTURE__":
+    if inputs["texto"] == "__B3_RECOVERY_FIXTURE__" or parameters.get("delay"):
         import time
         time.sleep(8)
-    return {"resultado": inputs["texto"].strip()}
+    text = inputs["texto"].strip()
+    return {"resultado": text.upper() if parameters.get("mayusculas") else text}
 '''
 
 
@@ -157,6 +158,10 @@ async def verify(args, report):
                     description="Fixture privada automática de aceptación B3. Código fijo del repositorio, no generado con IA. No publicar.",
                     parameter_schema={"type":"object","properties":{},"additionalProperties":False})
                 spec["examples"][0]["parameters"]={}
+                if args.workflows:
+                    spec['name']=spec['name'].replace('[PRUEBA B3]','[PRUEBA B4]')
+                    spec['description']='Fixture privada automática B4; código fijo, sin IA. No publicar.'
+                    spec['parameter_schema']={'type':'object','properties':{'mayusculas':{'type':'boolean'},'delay':{'type':'boolean'}},'additionalProperties':False}
                 checked=await call("POST","/api/capabilities/definitions/check",spec)
                 if checked["matches"]["items"]:
                     # Es otra fixture: no se reutiliza porque vamos a deshabilitarla.
@@ -167,7 +172,7 @@ async def verify(args, report):
                 manifest=prepare_candidate(UUID(capability["id"]),CapabilityDefinition(**spec),PythonSourceProposal(source=SOURCE))
                 # La tabla histórica solo acepta provider=gemini. El modelo y la
                 # descripción marcan inequívocamente fixture, sin llamada de IA.
-                row=await CandidateRepository(catalog).create(manifest,"fixture-b3-acceptance-no-ia")
+                row=await CandidateRepository(catalog).create(manifest,"fixture-b4-acceptance-no-ia" if args.workflows else "fixture-b3-acceptance-no-ia")
                 report["fixture_candidate_id"]=row["id"]
                 report["fixture_artifact_hash"]=manifest.artifact_hash
                 build_body={"candidate_id":row["id"],"artifact_hash":manifest.artifact_hash,"cases":[{
@@ -201,7 +206,16 @@ async def verify(args, report):
                 report["api_restart_persistence"]=True
                 print("PASS: salida correcta, idempotencia, errores y resultado conservado al reiniciar API temporal.",flush=True)
 
-                if args.exercise_recovery:
+                if args.workflows:
+                    from workflow_remote_cases import verify_workflow_remote
+                    async def wait_run(identity,expected):
+                        return await wait_status(client,token,'runs',identity,expected,120)
+                    async def restart_api():
+                        api.stop();api.start();await ready(client,api)
+                    await verify_workflow_remote(call,wait_run,version,args.exercise_recovery,report,
+                                                 terminate_repository_worker,worker_once,restart_api)
+
+                if args.exercise_recovery and not args.workflows:
                     recovery_body=body|{"inputs":{"texto":"__B3_RECOVERY_FIXTURE__"}}
                     interrupted=await call("POST","/api/runs",recovery_body,key=str(uuid4()),status=202)
                     report["interrupted_run_id"]=interrupted["id"]
@@ -245,12 +259,13 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--allow-test-data",action="store_true",required=True)
     parser.add_argument("--exercise-recovery",action="store_true")
+    parser.add_argument("--workflows",action="store_true",help="Añadir aceptación B4 sobre fixture privada, requiere SQL 08/protocolo 2")
     parser.add_argument("--protected-run",type=UUID,help="Run ajeno conocido para comprobar 404 sin leer su contenido")
     parser.add_argument("--port",type=int,default=18003)
     args=parser.parse_args()
     report={"started_at":datetime.now(timezone.utc).isoformat(),"passed":False,
             "scope":"real_supabase_worker_owned_fixture_no_ai"}
-    path=ROOT/"output/laboratory/block3-remote-latest.json"
+    path=ROOT/"output/laboratory"/("block4-remote-latest.json" if args.workflows else "block3-remote-latest.json")
     try:
         asyncio.run(verify(args,report))
     except Exception as error:
