@@ -1,6 +1,7 @@
 """Valida planes como datos. Compatibilidad conservadora; no transforma valores."""
 from graphlib import CycleError, TopologicalSorter
 import json
+from types import SimpleNamespace
 
 from fastapi import HTTPException
 from jsonschema import Draft202012Validator
@@ -85,7 +86,13 @@ def compile_workflow(raw, versions, inputs=None):
             raise HTTPException(404, "Versión no encontrada")
         if version["status"] != "enabled":
             raise HTTPException(409, "Una versión del proceso está deshabilitada")
-        manifest = validate_manifest(version["manifest"])
+        if version.get('contract_only'):
+            for schema in version['contracts'].values():
+                validate_schema(schema)
+            manifest = SimpleNamespace(artifact_hash=version['artifact_hash'], definition_hash=version['definition_hash'],
+                                       definition=SimpleNamespace(**version['contracts']))
+        else:
+            manifest = validate_manifest(version["manifest"])
         if (manifest.artifact_hash != version["artifact_hash"]
                 or manifest.definition_hash != version["definition_hash"]):
             raise HTTPException(409, "La versión no coincide con sus contratos")

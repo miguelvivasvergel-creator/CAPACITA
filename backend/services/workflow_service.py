@@ -17,6 +17,9 @@ async def resolve_versions(definition, catalog):
         if identity in versions:
             continue
         version = await shared.version_for_execution(node.version_id)
+        if version.get('contract_only'):
+            versions[identity] = version
+            continue
         row = await CandidateRepository(catalog).get(UUID(version["candidate_id"]))
         manifest = validate_manifest(row["manifest"])
         if str(manifest.candidate_id) != row["id"] or str(manifest.capability_id) != version["capability_id"]:

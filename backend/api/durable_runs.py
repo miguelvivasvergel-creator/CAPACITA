@@ -21,6 +21,17 @@ router = APIRouter(prefix="/runs", tags=["Ejecuciones persistentes privadas"])
 async def create(payload: ExecutionRequest, repository: Repository, shared: Shared,
                  idempotency_key: Annotated[str, Header(min_length=1, max_length=128)]):
     version = await shared.version_for_execution(payload.version_id)
+    if version.get('public_execution'):
+        for field, value in (('input_schema', payload.inputs), ('parameter_schema', payload.parameters)):
+            if not Draft202012Validator(version['contracts'][field]).is_valid(value):
+                raise HTTPException(422, 'Entradas o parámetros incompatibles con la versión')
+        try:
+            if len(json.dumps(payload.model_dump(mode='json'), allow_nan=False).encode()) > 65000:
+                raise ValueError()
+        except (ValueError, TypeError, RecursionError):
+            raise HTTPException(422, 'La ejecución requiere JSON finito de hasta 64 KiB') from None
+        return APIResponse(data=await shared.rpc('public_enqueue', p_id=version['publication_id'],
+            p_key=idempotency_key, p_inputs=payload.inputs, p_parameters=payload.parameters))
     candidate = await CandidateRepository(repository).get(UUID(version["candidate_id"]))
     try:
         manifest = validate_manifest(candidate["manifest"])

@@ -25,3 +25,9 @@ Estos scripts son PostgreSQL/Supabase, no T-SQL de SQL Server. Si el panel Probl
 La configuración compartida `.vscode/settings.json` desactiva IntelliSense y comprobación T-SQL de MSSQL solo para este workspace; no cambia los ajustes globales ni los scripts. No añade validación PostgreSQL. Para validar/ejecutar sobre el proyecto usar su SQL Editor de Supabase. Si quedan diagnósticos anteriores, ejecutar **Developer: Reload Window** en la paleta de VS Code.
 
 Las dos claves se verificaron en el manifiesto de MSSQL 1.47.0 instalado (scope window) y en su [documentación oficial](https://github.com/microsoft/vscode-mssql/wiki/customize-options). No volver a aplicar migraciones por estos avisos del editor.
+# Publicación ejecutable B6
+
+`09_executable_publications.sql`: preparado y probado en PostgreSQL temporal/gVisor;
+no aplicado aún a Supabase. Requiere 06, 07_shared_execution y 08 ya existentes.
+No publica capacidades automáticamente. Ver docs/BLOQUE_6_INTEGRACION.md antes de
+aplicar y activar PUBLICATIONS_ENABLED. No repetir migraciones anteriores.

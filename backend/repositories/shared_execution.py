@@ -2,6 +2,7 @@
 from uuid import UUID
 
 from fastapi import HTTPException
+from core.config import settings
 
 
 class SharedExecutionRepository:
@@ -34,7 +35,11 @@ class SharedExecutionRepository:
         # El RPC no devuelve el código. El catálogo original usa visible_to.
         data = await self.versions(identity=identity)
         if not data["items"]:
-            raise HTTPException(404, "Versión no encontrada")
+            if not settings.PUBLICATIONS_ENABLED:
+                raise HTTPException(404, "Versión no encontrada")
+            data = await self.rpc('publication_versions', p_version=str(identity))
+            if not data['items']:
+                raise HTTPException(404, 'Versión no encontrada')
         version = data["items"][0]
         await self.catalog.get(UUID(version["capability_id"]))
         if version["status"] != "enabled":

@@ -1,5 +1,35 @@
 # Fahida — contexto y continuidad
 
+## B6 en curso — 16/11/2026
+
+Fahida autoriza integrar `origin/miguel` y avanzar B6. Nueva rama
+`integracion/Fahida-bloque-6` desde e4b286f, fast-forward a 3002946: Miguel ya
+incluía B1–B5. Sin conflictos ni main. Leídos sus apuntes PARA_FAHIDA_MARTES,
+ENTREGA_MARTES, CIERRE_MIGUEL y propuesta de publicación. `.env` conservados;
+eliminación previa de backend/.env.example preservada y respaldada en un stash
+específico. No restaurar/aplicar ese stash sin revisar.
+
+Instalado Pillow 13.0.0 faltante; 160 pruebas de base integrada pasan. Implementado
+soporte local de publicación ejecutable, retirada, uso ajeno sin abrir candidato,
+workflows/planner por contratos y UI desde capacidad. SQL 09 preparado, NO aplicado.
+PUBLICATIONS_ENABLED=false por defecto; no activar hasta verificar migración.
+168 pruebas backend pasan, lint/build correctos; PostgreSQL temporal con SQL09 y
+gVisor real pasa uso ajeno directo/workflow, retirada, permisos y regresiones B.
+Chrome con fixtures desktop/móvil pasa consentimiento, confirmación, retry,
+retirada y estado desactivado. No equivale a publicación remota aceptada.
+
+Detectado `/files` heredado descartaba contenido y devolvía éxito sin sesión:
+ahora 401 sin sesión y 501 explícito con sesión. Archivos privados no implementados.
+Fahida confirmó trabajador de Miguel detenido; local anterior había terminado.
+Ausencia comprobada antes de pruebas sandbox. Guía y siguiente paso:
+API integrada reiniciada, health 200, trabajador local normal reiniciado y
+mensaje de recuperación confirmado. No duplicar worker. No se ejecutó el
+activador de publicaciones porque falta SQL09 remoto.
+[BLOQUE_6_INTEGRACION.md](BLOQUE_6_INTEGRACION.md). Solicitar aplicación manual de
+09 y luego verificar RPC/activar flag, reiniciar API y aceptar dos cuentas reales.
+Compuesta registrada, agente guardado, archivos privados, creación guiada nueva
+real y ensayo final siguen pendientes. No cerrar B6 ni afirmar versión final.
+
 ## Actualización B5 — 16/11/2026
 
 Fahida autorizó avanzar B5 mientras Miguel integra B3/B4. Resultados e historial

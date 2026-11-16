@@ -102,3 +102,12 @@ controlador CDP compartido `workflow_browser.mjs`. No usa Supabase.
 de fixtures privadas con la cuenta worker configurada: paginación, detalle,
 parciales y privacidad. No imprime contenido ni JWT. Reporte local ignorado en
 `output/laboratory/block5-history-remote.json`. Guía en docs/BLOQUE_5_RESULTADOS.md.
+# Publicación B6
+
+`maintenance/verify_shared_database.py --publications` prueba SQL09 y los casos
+de publicación entre identidades en PostgreSQL temporal. `--sandbox` añade
+ejecución real en gVisor y requiere que no haya workers activos.
+`maintenance/verify_publication_ui.py` usa Chrome temporal y HTTP simulado;
+no publica datos reales ni usa sesiones personales.
+`maintenance/activate_publications.py` solo verifica RPC remota y activa el flag
+local después de aplicar SQL09; no aplica migraciones ni publica capacidades.

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from api.capabilities import Repository
 from api.versions import Shared
 from core.responses import APIResponse
+from core.config import settings
 from repositories.candidates import CandidateRepository
 from repositories.workflows import WorkflowRepository
 from schemas.executions import ExecutionResponse
@@ -27,6 +28,13 @@ Storage = Annotated[WorkflowRepository, Depends(get_workflow_repository)]
 @router.get("/available-versions", response_model=APIResponse[dict])
 async def available_versions(repository: Repository, shared: Shared, cursor: UUID | None = None,
                              limit: Annotated[int, Query(ge=1, le=100)] = 20):
+    if settings.PUBLICATIONS_ENABLED:
+        page = await shared.rpc('publication_versions', p_cursor=str(cursor) if cursor else None, p_limit=limit)
+        items = []
+        for version in page['items']:
+            await repository.get(UUID(version['capability_id']))
+            items.append(version | version['contracts'])
+        return APIResponse(data={'items': items, 'next_cursor': page['next_cursor']})
     page = await shared.rpc("versions", p_cursor=str(cursor) if cursor else None, p_limit=limit)
     items = []
     for version in page["items"]:

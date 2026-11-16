@@ -179,6 +179,13 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
+B6 en curso, 16/11/2026: rama nueva integra Miguel 3002946, incluido B1–B5.
+Publicación ejecutable/retirada preparada con SQL09, API, UI y resolución para
+workflows/planner sin revelar código privado. 168 tests, lint/build, Chrome de
+fixtures y gVisor/PostgreSQL temporal pasan. SQL09 remoto pendiente; flag false.
+No aceptación pública real todavía; compuestas/agente/archivos y ensayo siguen
+pendientes. Ver [B6](BLOQUE_6_INTEGRACION.md). No declarar bloque final cerrado.
+
 Entrega B5 autorizada, 16/11/2026: cierre técnico completado y commit detallado
 para subir a feature/Fahida-backend-setup. La aceptación con Fahida y Miguel queda
 en B6; no falta desarrollo B5 por ese recorrido. Sin merge a main.

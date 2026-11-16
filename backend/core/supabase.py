@@ -11,6 +11,7 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 EXECUTION_RPCS = {
+    "execution_publication_versions", "execution_publish", "execution_withdraw", "execution_public_enqueue",
     "execution_enqueue", "execution_get", "execution_list", "execution_enable",
     "execution_versions", "execution_disable", "execution_lease", "execution_claim",
     "execution_recover", "execution_finish",

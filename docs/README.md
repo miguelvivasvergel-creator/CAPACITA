@@ -9,6 +9,8 @@ Leer al iniciar, en orden:
 
 Guías de trabajo:
 
+- [Bloque 6: integración, publicación y aceptación pendiente](BLOQUE_6_INTEGRACION.md).
+
 - [Para Fahida: entrega de Miguel, pendientes B6/A y aceptación del martes](PARA_FAHIDA_MARTES.md).
 - [Modos guiado y desarrollador: experiencia A, contratos y validación](MODOS_USO_A.md).
 - [Entrega del martes: avance A, evidencia y candidato para B](ENTREGA_MARTES.md).

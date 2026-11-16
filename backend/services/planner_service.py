@@ -13,6 +13,7 @@ from services.objective_service import search_catalog, search_terms
 from services.workflow_service import check_workflow
 from services.workflow_validation import bounded_json
 from schemas.search import SearchRequest
+from core.config import settings
 from services.search_service import search as search_authorized
 
 
@@ -50,11 +51,17 @@ async def planner_options(objective, catalog, mode='text'):
     shared = SharedExecutionRepository(catalog)
     options, cursor = [], None
     for _ in range(2):
-        page = await shared.rpc("versions", p_cursor=cursor, p_limit=100)
+        page = await shared.rpc('publication_versions' if settings.PUBLICATIONS_ENABLED else 'versions', p_cursor=cursor, p_limit=100)
         for version in page["items"]:
             if version["status"] != "enabled" or version["capability_id"] not in allowed:
                 continue
             capability = await catalog.get(UUID(version["capability_id"]))
+            if version.get('contract_only'):
+                option = {key: version[key] for key in ('id', 'capability_id', 'name', 'description')}
+                option.update(publication_id=version.get('publication_id'), license=version.get('license'))
+                option.update(version['contracts'], visibility=capability['visibility'])
+                options.append(option | {'review_hash': review_hash(option)})
+                continue
             row = await CandidateRepository(catalog).get(UUID(version["candidate_id"]))
             try:
                 manifest = validate_manifest(row["manifest"])

@@ -28,7 +28,7 @@ def command(*args, input=None, check=True):
     return subprocess.run(DOCKER + list(args), input=input, capture_output=True, check=check, timeout=90)
 
 
-def main(sandbox=False, workflows=False):
+def main(sandbox=False, workflows=False, publications=False):
     name = "capacita-db-check-" + str(uuid4())
     owner, other, worker, cap, session, successor = [str(uuid4()) for _ in range(6)]
     source = "def run(inputs, parameters):\n    text = inputs['texto'].strip()\n    return {'resultado': text.upper() if parameters.get('mayusculas') else text}\n"
@@ -59,6 +59,8 @@ def main(sandbox=False, workflows=False):
         sql((ROOT/"db/07_shared_execution.sql").read_text(encoding="utf-8"))
         if workflows:
             sql((ROOT/"db/08_private_workflows.sql").read_text(encoding="utf-8"))
+        if publications:
+            sql((ROOT/"db/09_executable_publications.sql").read_text(encoding="utf-8"))
         sql(f"INSERT INTO auth.users VALUES ('{owner}'),('{other}'),('{worker}'); "
             f"INSERT INTO public.profiles VALUES ('{owner}'),('{other}'); "
             f"INSERT INTO public.capabilities(id,owner_id) VALUES ('{cap}','{owner}'); "
@@ -113,6 +115,9 @@ def main(sandbox=False, workflows=False):
         same=json.loads(as_user(owner,f"SELECT public.execution_enable('{candidate.candidate_id}','{identity}');"))
         assert version["id"]==same["id"]
         assert "manifest" not in version
+        if publications:
+            from publication_database_cases import check_publications
+            check_publications(sql, as_user, must_fail, owner, other, worker, session, version, sandbox)
         must_fail(other,f"PERFORM public.execution_disable('{version['id']}')","P0002")
         run_request=json.dumps({"version_id":version["id"],"inputs":{"texto":"  nuevo  "},"parameters":{}})
         run=json.loads(as_user(owner,f"SELECT public.execution_enqueue('run','run1',$json${run_request}$json$);"))
@@ -126,7 +131,10 @@ def main(sandbox=False, workflows=False):
         completed=json.loads(as_user(owner,f"SELECT public.execution_get('run','{run['id']}');"))
         assert completed["output"]=={"resultado":"nuevo"}
         must_fail(other,f"PERFORM public.execution_get('run','{run['id']}')","P0002")
-        assert json.loads(as_user(other,"SELECT public.execution_list('run');"))["items"]==[]
+        other_runs=json.loads(as_user(other,"SELECT public.execution_list('run');"))["items"]
+        assert all(row['id'] != run['id'] for row in other_runs)
+        if not publications:
+            assert other_runs==[]
         if workflows:
             from workflow_database_cases import verify_workflows
             verify_workflows(sql,as_user,must_fail,owner,other,worker,session,version,candidate,sandbox)
@@ -163,7 +171,8 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument('--sandbox',action='store_true',help='Ejecutar fixture pública realmente en gVisor')
     parser.add_argument('--workflows',action='store_true',help='Incluir migración y aceptación B4 temporal')
+    parser.add_argument('--publications',action='store_true',help='Incluir SQL 09 y publicación B6 en base temporal')
     args=parser.parse_args()
     # Nunca competir con el trabajador local B2 ni sus baterías.
     with worker_lock(DEFAULT_PATH) if args.sandbox else nullcontext():
-        main(args.sandbox,args.workflows)
+        main(args.sandbox,args.workflows or args.publications,args.publications)
