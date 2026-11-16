@@ -13,6 +13,7 @@ significa que todos los módulos estén implementados.
 - [Visión maestra](docs/VISION_MAESTRA.md): acuerdos de producto y arquitectura.
 - [Estado verificado](docs/estado.md): implementado, pendiente y bloqueos.
 - [Reparto Miguel/Fahida](docs/PLAN_DOS_PERSONAS_MARTES.md): Miguel (A), objetivos/catálogo/generación; Fahida (B), pruebas/workflows/ejecución.
+- [Entrega del martes en el PC de Fahida](docs/ENTREGA_MARTES.md): integración, arranque y ensayo pendientes en ese equipo, con evidencia y límites actuales.
 - [Estructura y organización](docs/ESTRUCTURA.md): dónde va cada archivo y movimientos realizados.
 - [Reglas del repositorio](AGENTS.md).
 
@@ -23,8 +24,12 @@ ejecuciones. Requiere preparar SQL 07 y una cuenta de trabajador antes de usar
 esas rutas; no se aplica automáticamente. Ver [guía B3](docs/BLOQUE_3_EJECUCION.md).
 Los reportes SQLite anteriores se conservan y pueden consultarse en modo B2.
 
-Workflows B4 está implementado, con SQL 08 y protocolo worker 2 activos y aceptación
-técnica remota verificada. Recorrido de usuaria en curso. Ver [guía B4](docs/BLOQUE_4_WORKFLOWS.md).
+Workflows B4 está integrado y se aceptó en el equipo de Miguel un proceso real de
+dos capacidades distintas, con aprobación y transferencia de datos. Historial B5
+conserva resultados al recargar y reiniciar API; privacidad aceptada con dos cuentas.
+Ver [guía B4](docs/BLOQUE_4_WORKFLOWS.md), [guía B5](docs/BLOQUE_5_RESULTADOS.md) y
+[evidencia de entrega](docs/ENTREGA_MARTES.md). Esto no certifica el ensayo en el
+PC de Fahida ni publicación ejecutable entre cuentas. No repetir SQL 07/08.
 
 Requisitos: Node.js compatible con el Vite instalado (consulta `package.json`),
 npm y Python 3.11 o posterior. Los comandos siguientes se ejecutan en PowerShell

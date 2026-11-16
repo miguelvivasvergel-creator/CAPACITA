@@ -1,8 +1,87 @@
-# Entrega del martes: frente Miguel y consumo B3/B4
+# Entrega del martes: frente Miguel y consumo B3/B4/B5
 
-16/11/2026. Prioridad del usuario: entrega del martes, con trabajo limitado a
-Miguel. Fahida no está disponible hoy y el usuario prevé su siguiente bloque
-mañana. Modalidad local/enlace público todavía no definida; no hay despliegue.
+16/11/2026. Usuario confirma presentación del martes 17 en el PC de Fahida y
+trabajo limitado a Miguel. B3/B4/B5 ya integrados; no asumir desarrollo B6,
+motor, sandbox ni cambios SQL de Fahida. Prioridad: cerrar y verificar A para
+esa entrega; avances adicionales después, si queda tiempo. No hay despliegue.
+
+## Preparación en el PC de Fahida — pendiente de realizar allí
+
+Estas instrucciones no acreditan que el ensayo ya haya pasado en ese equipo.
+
+1. Conservar los cambios locales y la configuración de Fahida. Revisar `git status`
+   antes de integrar la entrega revisada de `origin/miguel` mediante el flujo de
+   PR del equipo. No usar reset/clean ni sobrescribir su rama o `.env`.
+2. Usar la raíz de su copia de CAPACITA; no copiar rutas `C:/Users/USER/...` de
+   Miguel. Revisar [README](../README.md) y sus guías [B3](BLOQUE_3_EJECUCION.md),
+   [B4](BLOQUE_4_WORKFLOWS.md) y [B5](BLOQUE_5_RESULTADOS.md).
+3. Verificar dependencias instaladas, sin reinstalar si ya coinciden con los
+   lockfiles. Si faltan, desde la raíz: `npm ci` y
+   `.\.venv\Scripts\python.exe -m pip install -r backend/requirements.txt`.
+   La búsqueda semántica opcional requiere su instalación local aparte; elegir
+   búsqueda textual si no está preparada, sin presentarla como semántica.
+4. Mantener sus `.env` locales. Frontend: `VITE_API_URL=http://127.0.0.1:8000/api`
+   y su configuración Supabase. Backend/worker leen `backend/.env`: Supabase,
+   Gemini si se generará una propuesta, cuenta worker autorizada y
+   `WORKFLOW_PROTOCOL=2`. No copiar claves de Miguel ni enviarlas por chat/Git.
+   No repetir SQL 07/08 ni crear otra cuenta worker.
+5. Coordinar un único equipo worker. El worker de Miguel ha quedado activo:
+   antes del ensayo, detenerlo cuando esté libre si Fahida atenderá la misma
+   cola. No arrancar duplicados ni terminar una ejecución en curso.
+6. Desde la raíz, en terminales separadas, solo si no están ya activos:
+
+   ```powershell
+   .\.venv\Scripts\python.exe -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000
+   ```
+
+   ```powershell
+   npm.cmd run dev -- --host 127.0.0.1 --port 5173 --strictPort
+   ```
+
+   El trabajador se inicia con el comando B existente, cuando Fahida confirme
+   sandbox y reserva disponibles:
+
+   ```powershell
+   .\.venv\Scripts\python.exe backend/services/shared_worker.py
+   ```
+
+   Debe confirmar «Trabajador compartido listo; sandbox recuperado». Si falla,
+   seguir su guía B; Miguel no sustituye el aislamiento ni modifica su motor.
+
+## Ensayo del frente Miguel en ese PC
+
+- [ ] API responde en `/api/health` y frontend abre `http://127.0.0.1:5173`.
+- [ ] Entrar con las dos cuentas de prueba en ventanas aisladas. Método previsto:
+  correo/contraseña, ya usado en la aceptación de Miguel; confirmarlo allí.
+  OAuth y cambio de credenciales reales no se declaran certificados.
+- [ ] Inicio: capacidades/resumen reales; «Abrir mis ejecuciones» abre Historial.
+- [ ] Perfil propio: Actividad → detalle → resultado completo; Workflows → detalle
+  → abrir proceso exacto, sin aprobación heredada. Perfil ajeno sin listas privadas.
+- [ ] Búsqueda textual, filtros, detalle, autor y clonación privada con atribución.
+  Reutilizar datos de prueba; no clonar/generar repetidamente durante el ensayo.
+- [ ] Planner encuentra las dos versiones privadas habilitadas. Si se muestra IA,
+  una propuesta explícita con datos sintéticos y consentimiento; revisar conexiones.
+  El proceso guardado permite demostrar el uso sin regenerar código.
+- [ ] Con la cuenta dueña, abrir workflow `a1518d9e-6fb9-4fa6-9c97-4a3e5573f442`:
+  normalizar extremos → mayúsculas. Entrada `{"texto":"  Niño  azul  "}`;
+  resultado `{"resultado":"NIÑO  AZUL"}`, con doble espacio interior conservado.
+  Guardar/revisar y aprobar datos antes de una ejecución nueva.
+- [ ] Historial: dos pasos, resultado final, recarga, copia/descarga. El run de
+  evidencia `f89dd4c7-f2b8-4ed0-9c8a-6cab44ad2a13` ya existe; no repetirlo para leerlo.
+- [ ] Segunda cuenta: enlaces privados dan 404, sin resultados/editor ajenos;
+  planner no ofrece la versión privada. Mantener separadas las sesiones.
+- [ ] Registrar fecha, commit integrado y resultado de este ensayo en continuidad.
+
+## Alcance que sigue pendiente
+
+Publicación ejecutable y uso entre autores siguen pendientes del contrato A/B;
+B5 no los incorpora. La aceptación privada existente no sustituye ese hito de
+la visión. Antes de prometerlo para el martes, Fahida debe entregar su soporte y
+Miguel integrar su parte A. No se ha acordado eliminarlo de la entrega.
+
+pgvector global, búsqueda de workflows públicos, OAuth certificado y proveedores
+externos no se presentan como implementados. Si queda tiempo tras cerrar A,
+priorizar publicación coordinada y luego mejoras A; no iniciar motor/B6 de Fahida.
 
 ## Avance A del bloque
 

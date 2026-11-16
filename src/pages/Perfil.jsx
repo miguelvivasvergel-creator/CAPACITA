@@ -72,7 +72,7 @@ export default function Perfil({ usuario, username, onConfigurar, onPerfilActual
         {datos.next_cursor && <button onClick={loadMore} disabled={cargandoMas} className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50">{cargandoMas ? 'Cargando…' : 'Cargar más capacidades públicas'}</button>}
       </>}
       {pestana === 'workflows' && (esPropio ? <HistorialPropio key={`${userId}:workflows`} kind="workflows" onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="🔗" titulo="Workflows públicos pendientes de integración" texto="Los workflows privados de esta persona no se publican en su perfil." />)}
-      {pestana === 'actividad' && (esPropio ? <HistorialPropio key={`${userId}:runs`} kind="runs" /> : <EstadoVacio icono="📋" titulo="Actividad privada" texto="Las entradas, salidas y archivos de las ejecuciones solo los ve quien ejecutó." />)}
+      {pestana === 'actividad' && (esPropio ? <HistorialPropio key={`${userId}:runs`} kind="runs" onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="📋" titulo="Actividad privada" texto="Las entradas, salidas y archivos de las ejecuciones solo los ve quien ejecutó." />)}
       {editando && esPropio && <EditarPerfilModal perfil={perfil} onCerrar={() => setEditando(false)} onGuardado={updated => {
         setDatos(previous => ({ ...previous, perfil: { ...previous.perfil, ...updated, stats: previous.perfil.stats } }));
         setEditando(false);

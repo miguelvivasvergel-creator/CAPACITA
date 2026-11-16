@@ -9,6 +9,11 @@ Las tareas siguientes son pendientes, no implementación ni nuevas asignaciones 
 
 El inventario original de abajo se conserva como referencia. Estado actualizado:
 
+Usuario confirma entrega en PC de Fahida y trabajo exclusivamente Miguel, con
+extras posteriores si queda tiempo. Guía de arranque/ensayo preparada allí;
+su ejecución en ese equipo no verificada. A integra accesos de resumen/perfil
+al historial B5 y recursos exactos, y corrige menú móvil. No asume el desarrollo B6.
+
 Aceptación posterior con worker local protocolo 2: mayúsculas build 8a2c1355
 5/5, habilitación privada 28be84c1, planner real compose con dos versiones
 distintas y transferencia resultado → texto. Workflow a1518d9e guardado/reabierto

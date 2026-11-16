@@ -4,6 +4,26 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Prioridad de entrega confirmada, 16/11/2026: usuario pide cerrar para el martes
+y avanzar extras solo si queda tiempo; reitera SOLO Miguel. Presentación en el
+PC de Fahida. No asumir desarrollo B6, motor, workers, sandbox ni SQL de B.
+Guía ENTREGA_MARTES.md adaptada a ese equipo: integrar entrega revisada de Miguel,
+conservar configuraciones locales, un único worker coordinado y checklist de
+ensayo con dos cuentas. Ensayo en el PC de Fahida NO realizado desde aquí.
+Correcciones A tras B5: resumen Inicio/perfil abre Historial; detalle propio
+enlaza al resultado completo o al workflow exacto; Perfil pasa navegación a
+Actividad; ruta heredada ejecutar/workflow conserva ID y no hereda aprobación.
+Desborde móvil de Navbar reproducido (416 px sobre 390), origen en fila de cinco
+botones; columnas adaptables permiten leer etiquetas sin cortar palabras.
+Navegación real A verificada sin escrituras; regresión Perfil 6 grupos y siete
+checks dashboard pasan. Lint/build/imports correctos; móvil 320/390/640 sin
+desborde y captura final inspeccionada. Advertencia conocida de bundle >500 kB.
+Sin cambios backend ni archivos B. Batería backend previa
+de 160 pruebas permanece como evidencia anterior, no se repitió por estos enlaces.
+Pendiente publicación ejecutable: A no puede cerrarla sin contrato/soporte B;
+no se acordó eliminarla de la entrega. Siguiente: entrega Git de este bloque,
+revisión PR y ensayo en PC Fahida; extras solo del frente A.
+
 Privacidad con segunda cuenta normal completada, 16/11/2026: sesiones de navegador
 capacita-a y capacita-b autenticadas por Supabase; huella de B distinta de la dueña.
 B obtiene 404 en capacidad c7e2ed9f, candidato ba6d86d4, build 8a2c1355,

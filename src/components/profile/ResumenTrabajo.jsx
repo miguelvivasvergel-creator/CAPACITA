@@ -4,7 +4,7 @@ import { cargarMetrica } from '../../services/dashboard';
 const CARDS = [
   ['capabilities', 'Mis capacidades', 'capacidades'],
   ['workflows', 'Mis workflows', 'workflows'],
-  ['runs', 'Mis ejecuciones', 'workflows'],
+  ['runs', 'Mis ejecuciones', 'historial'],
 ];
 const STATES = { queued: 'En cola', running: 'En curso', completed: 'Completadas', failed: 'Fallidas', interrupted: 'Interrumpidas' };
 
@@ -45,7 +45,7 @@ export default function ResumenTrabajo({ onCambiarSeccion }) {
             {result.data.truncated && <p className="mt-2 text-xs text-amber-800">Recuento parcial: límite de 10 páginas. Puede haber más registros.</p>}
             {key === 'runs' && <dl className="mt-3 space-y-1 text-xs text-slate-600">{Object.entries(STATES).map(([status, label]) => <div key={status} className="flex justify-between gap-2"><dt>{label}</dt><dd>{result.data.states[status] || 0}</dd></div>)}</dl>}
           </>}
-          <button type="button" onClick={() => onCambiarSeccion?.(section)} className="mt-4 text-sm font-semibold text-blue-700 underline">{key === 'runs' ? 'Abrir workflows y sus ejecuciones' : `Abrir ${title.toLowerCase()}`}</button>
+          <button type="button" onClick={() => onCambiarSeccion?.(section)} className="mt-4 text-sm font-semibold text-blue-700 underline">{`Abrir ${title.toLowerCase()}`}</button>
         </article>;
       })}
     </div>

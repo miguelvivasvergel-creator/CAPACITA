@@ -49,11 +49,13 @@ export default function HistorialPropio({ kind, onCambiarSeccion }) {
       <p className="break-all text-xs text-slate-500">{detail.id}</p>
       <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{JSON.stringify(kind === 'workflows' ? detail.definition : detail.output, null, 2)}</pre>
       {kind === 'runs' && detail.output == null && <p className="text-sm">Esta ejecución todavía no tiene resultado. Consulta su estado actualizado.</p>}
+      <button type="button" className={BUTTON} onClick={() => onCambiarSeccion?.(`${kind === 'runs' ? 'historial' : 'workflows'}/${detail.id}`)}>{kind === 'runs' ? 'Abrir resultado completo' : 'Abrir workflow para revisar'}</button>
       <button type="button" disabled={busy} className={BUTTON} onClick={() => perform(async (signal) => {
         const next = await api(`/${kind}/${encodeURIComponent(detail.id)}`, { signal }); if (!signal.aborted) setDetail(next);
       })}>Actualizar detalle</button>
       <button type="button" className={`${BUTTON} ml-2`} onClick={() => setDetail(null)}>Cerrar detalle</button>
     </section>}
     {kind === 'workflows' && <button type="button" className={BUTTON} onClick={() => onCambiarSeccion?.('workflows')}>Abrir constructor de workflows</button>}
+    {kind === 'runs' && <button type="button" className={BUTTON} onClick={() => onCambiarSeccion?.('historial')}>Abrir mis ejecuciones</button>}
   </section>;
 }

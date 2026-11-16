@@ -234,14 +234,14 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
       </div>
 
       {/* Menú móvil inferior si la pantalla es reducida */}
-      <div className="md:hidden flex items-center justify-around border-t border-slate-100 bg-white py-2 px-2">
+      <div className="md:hidden grid grid-cols-3 items-stretch gap-1 border-t border-slate-100 bg-white py-2 px-2 sm:grid-cols-5">
         {navLinks.map(({ id, label }) => {
           const activo = seccionActiva === id;
           return (
             <button
               key={id}
               onClick={() => onCambiarSeccion?.(id)}
-              className={`text-xs px-2.5 py-1 rounded-md transition cursor-pointer ${
+              className={`min-h-11 min-w-0 text-xs px-1 py-1 rounded-md transition cursor-pointer ${
                 activo
                   ? 'text-[#1a56db] font-semibold bg-blue-50'
                   : 'text-slate-600 hover:text-slate-900'

@@ -278,7 +278,7 @@ export default function App() {
         )}
         {seccion === 'ejecutar' && (
           parametros[0] === 'workflow'
-            ? <Workflows key={vista} _usuario={usuarioActual} />
+            ? <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[1]} _usuario={usuarioActual} />
             : <TrabajoCapacidad key={`${usuarioActual.id}:${vista}`} id={parametros[1]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
         {seccion === 'buscar' && (

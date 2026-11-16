@@ -4,6 +4,15 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+Prioridad vigente: entrega martes en el PC de Fahida, SOLO Miguel; extras después
+si queda tiempo. Guía portátil y checklist preparados en ENTREGA_MARTES.md,
+ensayo allí pendiente. Inicio/perfil conectados al historial B5 y recursos exactos;
+ruta vieja de workflow conserva ID. Navbar móvil adapta columnas tras reproducir
+desborde real. Navegación A sin escrituras, Perfil 6 grupos, dashboard 7 checks,
+lint/build/imports y móvil 320/390/640 pasan. Backend/B/SQL sin cambios.
+Publicación ejecutable aún requiere soporte
+acordado con Fahida; no se eliminó de alcance ni se declara toda la entrega lista.
+
 Privacidad de recursos nuevos aceptada también con segunda cuenta normal en
 navegador: identidad B verificada distinta, cinco 404, listas completas sin
 privados A, versión ausente del planner y selección forzada 409 antes de IA.

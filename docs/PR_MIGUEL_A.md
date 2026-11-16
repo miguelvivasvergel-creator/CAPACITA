@@ -1,4 +1,4 @@
-# Integrar trabajo de capacidades, reparación acotada y actividad privada
+# Integrar capacidades, planner y actividad privada con B3/B4/B5
 
 El recorrido del catálogo no conectaba con los contratos privados B3/B4 y la ruta
 de ejecución conservaba un cliente heredado con fallback a mocks. App conecta ahora
@@ -10,6 +10,12 @@ El objetivo pendiente se recupera desde Inicio y el espacio de capacidad, por
 cuenta y durante 48 h en la pestaña. No hereda selección ni consentimiento.
 Configuración recupera fallos de red y distingue solicitud de correo de su
 confirmación, con mensajes accesibles y limpieza del campo de contraseña.
+
+Inicio y perfil propio enlazan al historial completo y al workflow exacto.
+El enlace heredado de workflow conserva su identificador y la navegación no
+hereda aprobación. Menú móvil distribuido en columnas adaptables para evitar el
+desbordamiento observado con las cinco secciones. Guía de entrega preparada
+para el PC de Fahida; su ensayo allí sigue pendiente.
 
 Añade reparación de candidatos propios con cuota configurable, nuevo ID/hash y
 revalidación de contratos sin heredar pruebas. Integra filtros de búsqueda en el

@@ -6,6 +6,13 @@ Fahida entrega su bloque siguiente. No se aplicó SQL ni se modificaron sus arch
 
 ## Bloqueo concreto
 
+Para la entrega en el PC de Fahida: B3/B4/B5 ya están integrados y la ejecución
+privada de dos capacidades, historial y privacidad están aceptados. Esos bloques
+no entregan publicación ejecutable. El usuario mantiene trabajo SOLO Miguel:
+A puede cerrar su UI/API de publicación al recibir un contrato operativo de B,
+pero no modifica unilateralmente sus RPC, motor, worker ni SQL. Esta dependencia
+continúa abierta; no se ha aceptado retirar publicación de la entrega del martes.
+
 Las RPC actuales de versiones y ejecución autorizan solo al propietario.
 CandidateRepository también exige propietario. Hacer pública la definición no
 habilita el uso del código por otra cuenta. Mantener esas restricciones mientras
