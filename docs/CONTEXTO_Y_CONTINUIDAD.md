@@ -3,9 +3,12 @@
 16/11/2026 — B6 autorizado por Fahida. Rama `integracion/Fahida-bloque-6` incorpora
 Miguel 3002946 (ya contenía B1–B5), sin conflictos ni main. Pillow instalado;
 base integrada 160 tests correcta. Publicación/retirada y uso entre autores
-implementados localmente: 168 tests, UI simulada 1280/390 y SQL09/gVisor temporal
-pasan. **SQL 09 no aplicado en Supabase; publicación desactivada**. Falta activación
-y aceptación remota de dos cuentas, más pendientes del alcance completo B6.
+implementados: 168 tests, UI simulada 1280/390 y SQL09/gVisor temporal pasan.
+Fahida confirmó SQL09 Success; RPC verificada, PUBLICATIONS_ENABLED=true, API y
+worker reiniciados. Verificación remota sin escrituras pasa: descriptores,
+contratos, 401 sin sesión, 404 publicación inexistente/run ajeno y 422 sin
+consentimiento. Falta publicación voluntaria y uso real entre dos cuentas,
+además de pendientes del alcance completo B6. No se publicó ninguna capacidad.
 Guía [B6](BLOQUE_6_INTEGRACION.md) y [continuidad B](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
 Esta nota supera el estado previo que indicaba B6 no iniciado.
 

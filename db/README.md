@@ -27,7 +27,8 @@ La configuración compartida `.vscode/settings.json` desactiva IntelliSense y co
 Las dos claves se verificaron en el manifiesto de MSSQL 1.47.0 instalado (scope window) y en su [documentación oficial](https://github.com/microsoft/vscode-mssql/wiki/customize-options). No volver a aplicar migraciones por estos avisos del editor.
 # Publicación ejecutable B6
 
-`09_executable_publications.sql`: preparado y probado en PostgreSQL temporal/gVisor;
-no aplicado aún a Supabase. Requiere 06, 07_shared_execution y 08 ya existentes.
+`09_executable_publications.sql`: probado en PostgreSQL temporal/gVisor y aplicado
+por Fahida a Supabase, RPC verificada y flag activo el 16/11/2026. No repetir.
+Requiere 06, 07_shared_execution y 08 ya existentes.
 No publica capacidades automáticamente. Ver docs/BLOQUE_6_INTEGRACION.md antes de
 aplicar y activar PUBLICATIONS_ENABLED. No repetir migraciones anteriores.

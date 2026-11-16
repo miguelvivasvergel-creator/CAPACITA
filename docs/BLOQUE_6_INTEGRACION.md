@@ -92,9 +92,17 @@ npm.cmd run build
 
 ## Activación remota y siguiente paso
 
-09 está preparado y probado localmente; **NO aplicado a Supabase todavía**.
-Requiere SQL Editor administrativo del proyecto correcto. No repetir 07/08 y no
-confundir `07_profile_edit_and_avatars` de A con `07_shared_execution` de B.
+SQL09 **aplicado por Fahida con Success y RPC comprobada realmente**, 16/11/2026.
+PUBLICATIONS_ENABLED=true guardado; API y worker reiniciados. No repetir 07/08/09
+ni confundir `07_profile_edit_and_avatars` de A con `07_shared_execution` de B.
+
+`verify_publications_remote.py --protected-run UUID_AJENO` pasó sin escrituras:
+activación, descriptores y contratos, 401 sin sesión, 404 publicación inexistente
+y run ajeno, 422 sin consentimiento. No publicó ni creó ejecuciones; reporte
+ignorado `output/laboratory/block6-activation-remote.json`. No sustituye prueba
+real de publicar/retirar y ejecutar entre dos cuentas.
+
+Secuencia de referencia para otros entornos (pasos 1–3 ya realizados aquí):
 
 1. Aplicar `db/09_executable_publications.sql` completo una vez.
 2. Comprobar RPC con cuenta normal y activar `PUBLICATIONS_ENABLED=true` en backend/.env.

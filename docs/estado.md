@@ -179,10 +179,13 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
-B6 en curso, 16/11/2026: rama nueva integra Miguel 3002946, incluido B1–B5.
+B6 en curso, 16/11/2026: SQL09 aplicado por Fahida y RPC verificada; flag true,
+API y worker listos. Lecturas y rechazos remotos pasan sin publicar datos. Falta
+publicación voluntaria y aceptación real entre cuentas. Rama nueva integra
+Miguel 3002946, incluido B1–B5.
 Publicación ejecutable/retirada preparada con SQL09, API, UI y resolución para
 workflows/planner sin revelar código privado. 168 tests, lint/build, Chrome de
-fixtures y gVisor/PostgreSQL temporal pasan. SQL09 remoto pendiente; flag false.
+fixtures y gVisor/PostgreSQL temporal pasan. No repetir SQL09.
 No aceptación pública real todavía; compuestas/agente/archivos y ensayo siguen
 pendientes. Ver [B6](BLOQUE_6_INTEGRACION.md). No declarar bloque final cerrado.
 

@@ -11,8 +11,8 @@ específico. No restaurar/aplicar ese stash sin revisar.
 
 Instalado Pillow 13.0.0 faltante; 160 pruebas de base integrada pasan. Implementado
 soporte local de publicación ejecutable, retirada, uso ajeno sin abrir candidato,
-workflows/planner por contratos y UI desde capacidad. SQL 09 preparado, NO aplicado.
-PUBLICATIONS_ENABLED=false por defecto; no activar hasta verificar migración.
+workflows/planner por contratos y UI desde capacidad. Fahida confirmó SQL09 con
+Success; RPC verificada y PUBLICATIONS_ENABLED=true activado en backend/.env.
 168 pruebas backend pasan, lint/build correctos; PostgreSQL temporal con SQL09 y
 gVisor real pasa uso ajeno directo/workflow, retirada, permisos y regresiones B.
 Chrome con fixtures desktop/móvil pasa consentimiento, confirmación, retry,
@@ -23,10 +23,16 @@ ahora 401 sin sesión y 501 explícito con sesión. Archivos privados no impleme
 Fahida confirmó trabajador de Miguel detenido; local anterior había terminado.
 Ausencia comprobada antes de pruebas sandbox. Guía y siguiente paso:
 API integrada reiniciada, health 200, trabajador local normal reiniciado y
-mensaje de recuperación confirmado. No duplicar worker. No se ejecutó el
-activador de publicaciones porque falta SQL09 remoto.
-[BLOQUE_6_INTEGRACION.md](BLOQUE_6_INTEGRACION.md). Solicitar aplicación manual de
-09 y luego verificar RPC/activar flag, reiniciar API y aceptar dos cuentas reales.
+mensaje de recuperación confirmado. No duplicar worker ni repetir SQL09.
+La primera activación no terminó; una segunda comprobación confirmó RPC y guardó
+solo el flag. API reiniciada con la activación y worker normal listo.
+`verify_publications_remote.py` pasó con cuenta worker, sin escrituras: activación,
+descriptores/contratos sin código, 401 sin sesión, 404 publicación inexistente y
+run ajeno, 422 sin consentimiento. Reporte ignorado block6-activation-remote.json.
+Guía [BLOQUE_6_INTEGRACION.md](BLOQUE_6_INTEGRACION.md). Siguiente: usuaria recarga
+Capacita, abre herramienta propia probada y consulta versiones para compartir.
+Falta consentimiento/publicación voluntaria y ejecución entre dos cuentas reales;
+ninguna capacidad real se publicó por activar el flag. No confundir con fixtures.
 Compuesta registrada, agente guardado, archivos privados, creación guiada nueva
 real y ensayo final siguen pendientes. No cerrar B6 ni afirmar versión final.
 
