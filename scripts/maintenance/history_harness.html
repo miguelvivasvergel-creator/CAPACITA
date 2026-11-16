@@ -1,0 +1,67 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><pre hidden id="b5-test-result">pending</pre><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import Historial from '/src/pages/Historial.jsx';
+import Workflows from '/src/pages/Workflows.jsx';
+import Navbar from '/src/components/layout/Navbar.jsx';
+import {workflowMock} from '/src/mocks/workflows.js';
+import {historialFixture} from '/src/mocks/historial.js';
+import '/src/index.css';
+const first=historialFixture.items[0], version='33333333-3333-4333-8333-333333333333';
+const second={...first,id:'44444444-4444-4444-8444-444444444444',workflow_id:null,version_id:version,status:'interrupted',output:null,report:{error:'worker_lost',steps:[{id:'a',label:'Paso anterior',status:'completed',output:{parcial:'conservado'}},{id:'b',label:'Paso interrumpido',status:'failed',error:'worker_lost'},{id:'c',label:'Paso pendiente',status:'skipped'}]}};
+const next={...first,id:'55555555-5555-4555-8555-555555555555',workflow_id:null,version_id:version,status:'queued',output:null,report:null};
+const wait=async(fn)=>{for(let i=0;i<120;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}throw Error('timeout')};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const assert=(v,m)=>{if(!v)throw Error(m)};
+const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===text);
+const nativeFetch=window.fetch.bind(window), requests=[];let copied,downloaded,failPost=true,polls=0,mode='normal';
+Object.defineProperty(navigator,'clipboard',{value:{writeText:async text=>{copied=JSON.parse(text)}}});
+const nativeClick=HTMLAnchorElement.prototype.click;
+HTMLAnchorElement.prototype.click=function(){if(this.download){downloaded={filename:this.download,url:this.href};return;}return nativeClick.call(this)};
+window.fetch=async(url,options={})=>{
+ const parsed=new URL(url,location.origin),path=parsed.pathname,method=options.method||'GET';
+ if(!path.startsWith('/api/')){if(parsed.origin===location.origin)return nativeFetch(url,options);throw Error('remote_request_blocked')}
+ requests.push({path,method,headers:options.headers,body:options.body&&JSON.parse(options.body)});
+ let data;
+ if(mode==='error')throw Error('servidor_no_disponible');
+ if(mode==='empty'&&path==='/api/runs')data={items:[],next_cursor:null};
+ else if(path==='/api/workflows')data={items:[],next_cursor:null};
+ else if(path==='/api/workflows/available-versions')data={items:[],next_cursor:null};
+ else if(path==='/api/workflows/'+first.workflow_id)data={id:first.workflow_id,revision:2,definition_hash:'b'.repeat(64),definition:workflowMock};
+ else if(path==='/api/runs'&&method==='GET')data=parsed.searchParams.has('cursor')?{items:[first,second],next_cursor:null}:{items:[first],next_cursor:first.id};
+ else if(path==='/api/runs/'+first.id)data=first;
+ else if(path==='/api/runs/'+second.id)data=second;
+ else if(path==='/api/runs/'+next.id){polls++;data={...next,status:polls>1?'completed':'running',output:polls>1?{resultado:'nuevo'}:null};}
+ else if(path==='/api/runs'&&method==='POST'){if(failPost){failPost=false;throw Error('conexion_interrumpida');}data=next;}
+ else return new Response(JSON.stringify({detail:'No encontrado'}),{status:404,headers:{'Content-Type':'application/json'}});
+ return new Response(JSON.stringify({data}),{status:200,headers:{'Content-Type':'application/json'}});
+};
+const root=createRoot(document.getElementById('root'));let lastNavigation;
+function render(id){root.render(React.createElement(Historial,{key:id||'list',runId:id,onCambiarSeccion:route=>{lastNavigation=route;if(route.startsWith('historial/'))render(route.split('/')[1]);}}));}
+function fill(el,value){Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));}
+try {
+ render();await wait(()=>button('Cargar más ejecuciones'));button('Cargar más ejecuciones').click();await wait(()=>document.querySelectorAll('[aria-label="Historial de ejecuciones"] li').length===2);
+ assert(!button('Cargar más ejecuciones'),'pagination_end');
+ render(first.id);await wait(()=>button('Copiar resultado'));button('Copiar resultado').click();await wait(()=>copied);assert(copied.resultado===first.output.resultado,'copy_changed');
+ button('Descargar JSON').click();assert(downloaded.filename===`resultado-${first.id}.json`&&downloaded.url.startsWith('blob:'),'bad_download');
+ assert(!document.querySelector('img')&&!window.__xss,'unsafe_html');
+ button('Abrir workflow para revisar y aprobar').click();assert(lastNavigation==='workflows/'+first.workflow_id,'workflow_approval_bypass');
+ assert(requests.every(r=>r.method==='GET'),'unrequested_execution');
+ render(second.id);await wait(()=>button('Introducir datos nuevos'));assert(document.body.textContent.includes('worker_lost')&&document.body.textContent.includes('Omitido'),'partial_failure_missing');
+ document.querySelector('details summary').click();assert(document.body.textContent.includes('conservado'),'partial_output_missing');
+ button('Introducir datos nuevos').click();await wait(()=>document.querySelector('textarea'));fill(document.querySelector('textarea'),'[]');await sleep(100);button('Confirmar y ejecutar con estos datos').click();await wait(()=>document.querySelector('[role="alert"]'));assert(requests.every(r=>r.method==='GET'),'invalid_json_submitted');
+ fill(document.querySelector('textarea'),'{"texto":"nuevo"}');await sleep(100);button('Confirmar y ejecutar con estos datos').click();await wait(()=>document.body.textContent.includes('conexion_interrumpida'));
+ button('Confirmar y ejecutar con estos datos').click();await wait(()=>lastNavigation==='historial/'+next.id);
+ const posts=requests.filter(r=>r.method==='POST');assert(posts.length===2&&posts[0].headers['Idempotency-Key']===posts[1].headers['Idempotency-Key'],'retry_key_changed');
+ assert(posts[1].body.version_id===version&&posts[1].body.inputs.texto==='nuevo','retry_data_changed');
+ await wait(()=>button('Copiar resultado'));assert(polls>=2,'missing_polling');
+ root.unmount();const reopened=createRoot(document.getElementById('root'));reopened.render(React.createElement(Historial,{runId:first.id,onCambiarSeccion:()=>{}}));await wait(()=>button('Copiar resultado'));
+
+ mode='error';reopened.render(React.createElement(Historial,{key:'error',onCambiarSeccion:()=>{}}));await wait(()=>document.body.textContent.includes('servidor_no_disponible'));assert(!document.body.textContent.includes('Todav\u00eda no tienes'),'error_became_empty');
+ mode='empty';reopened.render(React.createElement(Historial,{key:'empty',onCambiarSeccion:()=>{}}));await wait(()=>document.body.textContent.includes('Todav\u00eda no tienes'));
+ mode='normal';reopened.render(React.createElement(Workflows,{key:'workflow',workflowId:first.workflow_id}));await wait(()=>button('Aprobar estos pasos y datos'));assert(button('Ejecutar workflow aprobado').disabled,'reopened_workflow_already_approved');assert(!requests.some(r=>r.path.includes('/approvals')||r.path.includes('/workflows/')&&r.method==='POST'),'workflow_executed_on_open');
+ reopened.render(React.createElement(React.Fragment,null,React.createElement(Navbar,{usuario:{name:'Prueba',username:'prueba'},seccionActiva:'historial',onCambiarSeccion:()=>{}}),React.createElement(Historial,{key:'final',runId:first.id,onCambiarSeccion:()=>{}})));await wait(()=>button('Copiar resultado'));
+ assert(document.documentElement.scrollWidth<=innerWidth+2,'horizontal_overflow');
+ document.getElementById('b5-test-result').textContent=JSON.stringify({passed:true,pagination:true,escaped_output:true,copy_download:true,partials:true,explicit_retry:true,idempotency:true,polling:true,reopen:true,empty_and_error:true,workflow_fresh_approval:true,no_overflow:true});
+}catch(error){document.getElementById('b5-test-result').textContent=JSON.stringify({passed:false,error:error.message})}
+</script></body></html>

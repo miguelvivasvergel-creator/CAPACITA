@@ -11,6 +11,7 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
     { id: 'comunidad',    label: 'Comunidad' },
     { id: 'capacidades',  label: 'Capacidades' },
     { id: 'workflows',    label: 'Workflows' },
+    { id: 'historial',    label: 'Mis ejecuciones' },
   ];
 
   // Cerrar menú de usuario al hacer clic fuera
@@ -38,8 +39,8 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
     `https://ui-avatars.com/api/?name=${encodeURIComponent(nombreUsuario)}&background=1a56db&color=fff&size=128&bold=true`;
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-200/80">
-      <div className="max-w-7xl mx-auto h-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 bg-white border-b border-slate-200/80">
+      <div className="max-w-7xl mx-auto h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
         
         {/* Izquierda: Logo y Enlaces */}
         <div className="flex items-center gap-8">
@@ -87,10 +88,11 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
         </div>
 
         {/* Derecha: Buscador, Botón Crear y Avatar */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           
                    {/* Buscador global */}
-          <BuscadorGlobal onCambiarSeccion={onCambiarSeccion} />
+          <div className="hidden 2xl:block"><BuscadorGlobal onCambiarSeccion={onCambiarSeccion} /></div>
+          <button type="button" className="2xl:hidden min-h-11 rounded-lg px-2 text-sm font-medium text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600" onClick={() => onCambiarSeccion?.('buscar')}>Buscar</button>
 
           {/* Botón "+ Crear" arreglado */}
           <button
@@ -101,7 +103,7 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
-            <span>Crear</span>
+            <span className="hidden sm:inline">Crear</span>
           </button>
 
           {/* Avatar del usuario con menú desplegable */}
@@ -153,6 +155,7 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
                   </svg>
                   Mi perfil
                 </button>
+                <button type="button" onClick={() => { setMenuUsuarioAbierto(false); onCambiarSeccion?.('historial'); }} className="min-h-11 w-full px-4 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600">Mis ejecuciones</button>
 
                 <button
                   onClick={() => {

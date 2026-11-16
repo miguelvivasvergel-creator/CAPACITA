@@ -7,6 +7,7 @@ import AppLayout from './components/layout/AppLayout';
 import Inicio from './pages/Inicio';
 import Capacidades from './pages/Capacidades/Capacidades';
 import Workflows from './pages/Workflows';
+import Historial from './pages/Historial';
 import Comunidad from './pages/Comunidad';
 import Configuracion from './pages/Configuracion';
 import Perfil from './pages/Perfil';
@@ -25,6 +26,7 @@ const SECCIONES_VALIDAS = [
   'inicio',
   'capacidades',
   'workflows',
+  'historial',
   'comunidad',
   'configuracion',
   'perfil',
@@ -241,7 +243,8 @@ export default function App() {
           <Inicio usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
         {seccion === 'capacidades' && <Capacidades />}
-        {seccion === 'workflows' && <Workflows _usuario={usuarioActual} />}
+        {seccion === 'workflows' && <Workflows key={vista} workflowId={parametros[0]} _usuario={usuarioActual} />}
+        {seccion === 'historial' && <Historial key={vista} runId={parametros[0]} onCambiarSeccion={handleCambiarSeccion} />}
         {seccion === 'comunidad' && <Comunidad _usuario={usuarioActual} />}
         {seccion === 'configuracion' && (
           <Configuracion usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />

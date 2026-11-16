@@ -29,6 +29,18 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 
 ## Fahida — Persona B
 
+Entrega B5 autorizada, 16/11/2026: cierre técnico completado y commit detallado
+para subir a feature/Fahida-backend-setup. La aceptación con Fahida y Miguel queda
+en B6; no falta desarrollo B5 por ese recorrido. Sin merge a main.
+
+16/11/2026 — B5 resultados/historial implementado: lista paginada propia, detalle,
+progreso y parciales, copiar/descargar JSON, nuevos datos con confirmación e
+idempotencia; workflow necesita nueva aprobación. 96 tests backend, lint/build,
+Chrome de fixtures desktop/móvil y lecturas remotas privadas pasan. Sin nueva
+migración ni merge con Miguel. Pendientes: aceptación de uso con Fahida y B6
+integrado. Ver [guía B5](BLOQUE_5_RESULTADOS.md). No declarar planner/publicación
+ni conectores completados por este avance.
+
 Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
 Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.
 Su proceso real tiene UN paso; lectura propia 200, resultado correcto y datos

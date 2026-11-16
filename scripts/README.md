@@ -61,3 +61,13 @@ persistir ni ejecutar código. Es prueba aislada del proveedor.
 ```
 
 La auditoría comprueba imports locales del frontend y señala módulos fuera del recorrido estático de main.jsx. Distingue componentes/fixtures pendientes documentados. No detecta todos los usos dinámicos y nunca borra archivos. El segundo script comprueba destinos de enlaces Markdown locales de README/AGENTS/docs; no visita URLs ni verifica anclas.
+# Verificación de resultados e historial B5
+
+`maintenance/verify_history_ui.py` abre Chrome temporal en escritorio y móvil,
+con HTTP simulado y sin sesión de usuario. Usa `history_harness.html` y el
+controlador CDP compartido `workflow_browser.mjs`. No usa Supabase.
+
+`maintenance/verify_history_remote.py --protected-run UUID` realiza solo lecturas
+de fixtures privadas con la cuenta worker configurada: paginación, detalle,
+parciales y privacidad. No imprime contenido ni JWT. Reporte local ignorado en
+`output/laboratory/block5-history-remote.json`. Guía en docs/BLOQUE_5_RESULTADOS.md.

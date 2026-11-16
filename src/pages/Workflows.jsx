@@ -10,7 +10,7 @@ const input = 'mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white 
 const empty = () => ({ format_version: 1, name: '', description: '', input_schema: { type: 'object', properties: { texto: { type: 'string' } }, required: ['texto'], additionalProperties: false }, nodes: [], outputs: {} });
 const labels = { queued: 'En cola', running: 'Ejecutando', completed: 'Completado', failed: 'Fallido', interrupted: 'Interrumpido', pending: 'Pendiente', skipped: 'Omitido' };
 
-export default function Workflows() {
+export default function Workflows({ workflowId } = {}) {
   const [page, setPage] = useState({ items: [], next_cursor: null });
   const [available, setAvailable] = useState({ items: [], next_cursor: null });
   const [draft, setDraft] = useState(null);
@@ -54,6 +54,11 @@ export default function Workflows() {
     });
     return () => { current = false; };
   }, []);
+  useEffect(() => {
+    let current = true;
+    if (workflowId) obtenerWorkflow(workflowId).then(row => { if (current) open(row); }).catch(cause => { if (current) setError(cause.message); });
+    return () => { current = false; };
+  }, [workflowId]);
   useEffect(() => {
     const warn = (event) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } };
     window.addEventListener('beforeunload', warn);

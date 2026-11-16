@@ -1,5 +1,15 @@
 # Capacita — contexto y continuidad
 
+Actualización B, 16/11/2026: B5 resultados/historial implementado por autorización
+de Fahida. Lista y detalle propios, progreso/parciales, copiar/descargar y nuevo
+run explícito; workflow se reabre con aprobación nueva. 96 tests, lint/build y
+Chrome con fixtures en escritorio/móvil pasan; lecturas remotas de historial y
+privacidad pasan sin modificar datos. Sin SQL nuevo ni integración de Miguel.
+Pendiente B6: aceptación conjunta, reconciliar App/Navbar y revisar planner,
+publicación/composición según alcance. Guía [B5](BLOQUE_5_RESULTADOS.md) y evidencia
+en [continuidad B](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md). Esta nota supera pendientes B5
+anteriores; la nueva página aún no tiene recorrido real de Fahida confirmado.
+
 Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
 Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.
 Su proceso real tiene UN paso; lectura propia 200, resultado correcto y datos

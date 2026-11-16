@@ -13,6 +13,7 @@ IMPORTS = re.compile(r"(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['\"]([^'\"]+)['\"]")
 ASSETS = re.compile(r"(?:url\(\s*|(?:src|href)\s*=\s*)['\"]?([^\s'\"\)<>]+)")
 EXTENSIONS = (".js", ".jsx", ".css", ".json")
 EXPECTED_INACTIVE = {
+    "src/mocks/historial.js": "fixture visual B5; nunca fallback de red",
     "src/mocks/workflows.js": "fixture de diseño B4; nunca fallback de red",
     "src/mocks/versiones.js": "fixture visual B3, sin fallback de versiones o ejecuciones",
     "src/mocks/laboratorio.js": "casos visuales del laboratorio B, sin fallback de red",
