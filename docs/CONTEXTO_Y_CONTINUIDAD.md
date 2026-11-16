@@ -4,6 +4,40 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Aceptación integrada privada A/B, 16/11/2026: sesión dueña recupera build
+8a2c1355 pasado, cinco casos (3 matched, 2 input_rejected), hash esperado y
+perfil gvisor-python-stdlib-v1/runtime runsc. Habilitación explícita UI POST
+/versions 201: versión mayúsculas 28be84c1-5dd3-4d13-a1fa-298c920a6201 enabled.
+Una llamada Gemini real del planner 200 compose, dos versiones DISTINTAS:
+normalizar 588e0db0 → mayúsculas 28be84c1, binding resultado → texto.
+Propuesta validada/importada desde UI; guardado privado 201 y reapertura
+con definición idéntica, sin aprobación previa. Workflow a1518d9e-6fb9-4fa6-9c97-4a3e5573f442,
+revisión 1, hash 090bc25c004d1a977c033cbbb9b25a55bdba7bdafd833d07e9f9cf761cf27eb3.
+Aprobación 201 sobre datos sintéticos y encolado 202. Run
+f89dd4c7-f2b8-4ed0-9c8a-6cab44ad2a13 completado realmente por worker gVisor:
+entrada «  Niño  azul  » → paso normalizar «Niño  azul» → mayúsculas «NIÑO  AZUL».
+Dos pasos completed y resultado final correcto recuperados por API y UI.
+Historial B5 real: muestra 2/2 pasos y mismo resultado después de recargar
+#historial/f89dd4c7-f2b8-4ed0-9c8a-6cab44ad2a13; sesión y ruta conservadas.
+Normalizar SOLO quita extremos; conserva espacios interiores. No confundirlo
+con colapsar dobles espacios. Capturas/scripts ignorados output/playwright.
+Worker normal continúa activo. Sin SQL ni cambio de código B, publicación o
+despliegue. Pendiente aceptación de este recurso nuevo con otra cuenta,
+reinicio API y contrato de publicación; no declarar B6 completo.
+
+Worker local recuperado, 16/11/2026: credenciales sí estaban en .env raíz;
+WorkerSettings lee backend/.env. Se copiaron solo las dos variables de worker
+ausentes a backend/.env, sin mostrar valores ni alterar otras claves, y se fijó
+WORKFLOW_PROTOCOL=2. Primer arranque se detuvo con error genérico; intento único
+diagnóstico posterior autenticó, recuperó sandbox y procesó exactamente el build
+existente 8a2c1355-d1d4-4d14-af64-663c89e556ec: passed, salida del trabajador,
+sin volver a encolar. Proceso --once terminó exit 0. No atribuir causa al primer
+fallo sin evidencia. Worker normal activo después: mensaje de listo confirmado.
+No SQL, nueva generación ni habilitación. Siguiente: sesión del dueño en navegador,
+releer reporte y revisar casos/hashes antes de habilitar; después proceso real
+Normalizar espacios → Mayúsculas. Esta nota supera las lecturas anteriores de
+credenciales ausentes y build queued. No subir ninguno de los .env.
+
 Integración B5 Miguel, 16/11/2026: fetch confirma entrega Fahida e4b286f.
 Incorporado historial/resultados privados conservando navegación, planner,
 catálogo y perfil A. Respaldo: respaldo/miguel-antes-fahida-b5-20261116.

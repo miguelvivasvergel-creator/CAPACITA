@@ -4,6 +4,22 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+Dos capacidades distintas aceptadas realmente en recorrido privado: reporte de
+mayúsculas 5/5 y habilitación UI 201, versión 28be84c1. Planner Gemini 200 compose,
+importación, guardado 201 y reapertura idéntica del workflow a1518d9e. Aprobación
+201 y run f89dd4c7 completado en gVisor: «  Niño  azul  » → «Niño  azul» →
+«NIÑO  AZUL». Dos pasos completed, resultado leído por API/UI. Normalización
+conserva espacios interiores. Worker activo, sin SQL ni publicación entre cuentas.
+Privacidad del recurso nuevo/reinicio y publicación conjunta siguen pendientes;
+no certifica B6 completo. Esta nota supera build queued/segunda versión pendiente.
+
+Worker Miguel: configuración encontrada en .env raíz y sincronizadas únicamente
+variables dedicadas hacia backend/.env, protocolo 2. Worker --once autenticó,
+recuperó sandbox y registró build 8a2c1355 passed, exit 0. No hubo encolado nuevo
+ni SQL. Falta releer reporte desde la cuenta dueña y habilitar explícitamente;
+la capacidad de mayúsculas aún no se declara ejecutable. Worker normal activo
+después del diagnóstico, mensaje de listo confirmado. No se registran secretos.
+
 Integración B5 local desde Fahida e4b286f: Mis ejecuciones con lista/detalle,
 progreso, parciales, copia/descarga y nueva ejecución explícita; workflows se
 reabren sin aprobación anterior. Conflictos compartidos reconciliados con A.

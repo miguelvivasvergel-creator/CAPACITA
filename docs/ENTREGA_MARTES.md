@@ -74,6 +74,15 @@ bloque fueron reparación y generación de la segunda candidata, registradas arr
 
 ## Segunda capacidad preparada para laboratorio B
 
+Actualización de aceptación, 16/11/2026: build 8a2c1355 pasó sus cinco casos en
+el worker local protocolo 2. Versión habilitada privadamente desde UI:
+28be84c1-5dd3-4d13-a1fa-298c920a6201. Planner real compuso las dos versiones,
+workflow a1518d9e guardado/reabierto idéntico y run f89dd4c7 completado con
+transferencia entre pasos. Resultado «NIÑO  AZUL», preservando doble espacio
+interior. Historial B5 muestra 2/2 pasos y conserva salida y ruta tras recargar.
+UUID completos/hashes en continuidad. Las notas de cola/no habilitación debajo
+son el registro previo superado, no el estado actual. Sin publicación entre cuentas.
+
 Definición privada: Convertir texto a mayúsculas.
 capability_id: c7e2ed9f-7aeb-4ed3-9b6b-66f927ca7718.
 candidate_id: ba6d86d4-61de-4c08-aa6b-59205d2edb71.
@@ -106,17 +115,18 @@ Casos de referencia independientes para introducir en el laboratorio existente:
 
 Cuando B lo pruebe y habilite, usar en un plan distinto: Normalizar espacios →
 Convertir a mayúsculas, conectando resultado del primer paso a texto del segundo.
-Con entrada nueva «  Niño  azul  » el resultado esperado final es «NIÑO  AZUL».
-Esa composición de dos capacidades distintas sigue pendiente de aceptación.
+Con entrada nueva «  Niño  azul  » el resultado esperado final es «NIÑO  AZUL»;
+Normalizar espacios quita únicamente extremos, conserva el doble espacio interior.
+La aceptación positiva de esta composición ya pasó, según la actualización anterior.
 
 ## Bloqueos que no debe ocultar la entrega
 
 1. Publicación ejecutable entre cuentas requiere el contrato B descrito como
    propuesta en CONTRATO_PUBLICACION_A_B.md. No está implementado ni aprobado.
-2. El worker autorizado/protocolo correcto debe estar disponible para ejecutar;
-   no se configuraron credenciales ni arrancaron copias. No repetir SQL 07/08.
-3. Pruebas/habilitación del candidato de mayúsculas y ejecución integrada del
-   plan de dos capacidades, con resultados y reinicio, pertenecen al cierre A/B.
+2. Worker local autorizado con protocolo 2 ya activo; configuración solo en .env
+   ignorados. Confirmar disponibilidad al retomar, sin duplicados ni repetir SQL 07/08.
+3. Mayúsculas probada/habilitada y proceso de dos capacidades completado con
+   historial tras recarga. Faltan reinicio API y privacidad de estos nuevos recursos.
 4. Modalidad de entrega y eventual alojamiento público siguen sin definir.
    No hay servicio contratado, facturación activada ni despliegue de esta rama.
 
