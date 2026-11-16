@@ -7,11 +7,15 @@ esa entrega; avances adicionales después, si queda tiempo. No hay despliegue.
 
 ## Preparación en el PC de Fahida — pendiente de realizar allí
 
+Leer primero el [resumen para Fahida](PARA_FAHIDA_MARTES.md): cambios de Miguel,
+pendientes de cada dueño y aceptación completa; B6 no se presume terminado.
+
 Estas instrucciones no acreditan que el ensayo ya haya pasado en ese equipo.
 
 1. Conservar los cambios locales y la configuración de Fahida. Revisar `git status`
-   antes de integrar la entrega revisada de `origin/miguel` mediante el flujo de
-   PR del equipo. No usar reset/clean ni sobrescribir su rama o `.env`.
+   antes de integrar la entrega revisada de `origin/miguel` en la rama de trabajo
+   acordada. El usuario no requiere PR para el ensayo ni cambios en `main`.
+   No usar reset/clean ni sobrescribir su rama o `.env`.
 2. Usar la raíz de su copia de CAPACITA; no copiar rutas `C:/Users/USER/...` de
    Miguel. Revisar [README](../README.md) y sus guías [B3](BLOQUE_3_EJECUCION.md),
    [B4](BLOQUE_4_WORKFLOWS.md) y [B5](BLOQUE_5_RESULTADOS.md).

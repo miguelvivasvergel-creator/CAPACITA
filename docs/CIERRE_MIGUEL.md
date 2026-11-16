@@ -2,6 +2,10 @@
 
 ## Entrega actual — 16/11/2026
 
+Resumen vigente para ambos dueños: [traspaso a Fahida](PARA_FAHIDA_MARTES.md).
+Últimos bloques A subidos: modos `3606a57` y diseño `be49e6a`. B6 reportado
+en curso, sin verificación de su entrega. Pendientes de ambos separados en la guía.
+
 Nuevo bloque A: modos Guiado/Desarrollador implementados; evidencia y límites en
 [modos de uso](MODOS_USO_A.md). Guiado sin JSON manual, con formularios,
 aprobación y resultado. Siete grupos simulados y helpers pasan; propuesta Gemini
@@ -29,10 +33,10 @@ previa de 160 pruebas, sin cambios backend posteriores por estos enlaces.
 - Publicación/retiro ejecutable y reutilización entre autores: A tiene propuesta
   de contrato y espera soporte B de resolución/ejecución compartida. No se ha
   implementado la publicación A ni se ha aceptado retirarla de la entrega.
-- Revisión del PR e integración/ensayo en el PC de Fahida, pendientes hasta que
-  se realicen allí. [Guion y arranque](ENTREGA_MARTES.md).
-  [Comparación oficial para abrir el PR](https://github.com/miguelvivasvergel-creator/CAPACITA/compare/main...miguel),
-  con [descripción preparada](PR_MIGUEL_A.md); aún no creado al revisar este cierre.
+- Revisión cruzada e integración/ensayo en el PC de Fahida, pendientes hasta que
+  se realicen allí. [Guion y arranque](ENTREGA_MARTES.md). El usuario mantiene la
+  entrega en ramas de trabajo; no requiere PR ni cambios a main para el ensayo.
+  El [borrador de PR](PR_MIGUEL_A.md) es una referencia para eventual revisión.
 - OAuth y cambios reales de correo/contraseña no certificados. Las sesiones de
   presentación previstas usan correo/contraseña; los fallos de Configuración
   tienen aceptación simulada, sin alterar credenciales personales.

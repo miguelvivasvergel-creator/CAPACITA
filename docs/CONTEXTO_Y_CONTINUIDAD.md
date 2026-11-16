@@ -4,6 +4,14 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Traspaso para Fahida consolidado en [PARA_FAHIDA_MARTES.md](PARA_FAHIDA_MARTES.md):
+commits A `3606a57` y `be49e6a`, evidencia real/simulada, B6 reportado en curso
+sin aceptación verificada, pendientes separados B/A y ensayo conjunto del 17.
+Publicación sigue pendiente en ambos frentes; no basta publicar la definición.
+Incluye revisión de compuestas/agente/archivos/búsqueda frente a toda la visión,
+sin darlos por entregados ni retirarlos. Guía disponible en Git, sin mensaje
+externo a Fahida ni confirmación de lectura. No PR ni main para el ensayo.
+
 Prioridad nueva del usuario, 16/11/2026: cerrar diseño visual antes de retomar
 funcionalidades. Frente A unificado con la estética del login: marca compartida,
 navegación lateral en escritorio y compacta en móvil, selector de modo integrado,

@@ -4,6 +4,10 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+Traspaso a Fahida: [resumen operativo](PARA_FAHIDA_MARTES.md) con commits de
+Miguel, pruebas, pendientes por dueño, B6 sin certificar y aceptación conjunta
+para el martes. Disponible en rama miguel; lectura de Fahida no confirmada.
+
 Bloque visual A: estética del login extendida a navegación, inicio guiado,
 herramientas, soluciones, resultados, búsqueda/comunidad y marco de perfil/ajustes.
 Marca compartida e iconos SVG; se retiran emojis de vistas A y cifras decorativas
