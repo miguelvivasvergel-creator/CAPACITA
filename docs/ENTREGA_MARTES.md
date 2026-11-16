@@ -72,6 +72,14 @@ y candidato generados/guardados realmente; hash conservado al releer. Solo
 biblioteca estándar, contratos texto → resultado string, sin permisos/recursos.
 No se ha ejecutado, probado ni habilitado. No confundir persistencia con corrección.
 
+Prueba real solicitada después mediante el laboratorio B3 existente: POST /builds
+202, build_id `8a2c1355-d1d4-4d14-af64-663c89e556ec`, almacenamiento Supabase. Los
+cinco casos de abajo quedaron encolados; después de consultar durante unos 45 s
+seguía `queued`, sin reporte de ejecución. No se habilitó versión ni se encoló
+otra copia. Al disponer de worker autorizado, recuperar este build mediante
+«Cargar reportes guardados» y actualizar su estado; no repetir la solicitud.
+Captura local ignorada: output/playwright/second-build-live.png.
+
 Casos de referencia independientes para introducir en el laboratorio existente:
 
 ```json

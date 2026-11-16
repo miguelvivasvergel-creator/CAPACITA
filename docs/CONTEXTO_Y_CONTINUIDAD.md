@@ -4,6 +4,16 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Cierre funcional local ef8feb0, 16/11/2026: 59 archivos A/guías, 160 pruebas y
+aceptación descrita debajo. Se intentó aceptación de la segunda candidata usando
+solo el laboratorio B3 existente: POST builds 202, build
+8a2c1355-d1d4-4d14-af64-663c89e556ec en Supabase con cinco casos independientes.
+Tras unos 45 s seguía queued, sin reporte ni habilitación; no repetir encolado,
+recuperar ese build cuando el worker autorizado esté disponible. No se configuró
+worker ni se editó código B. Usuario completó autenticación GitHub; push correcto
+a origin/miguel y ls-remote confirmó ef8feb02be5fb7f41ff425c1c39685317cd5927c.
+El bloque funcional está entregado en su rama, sin merge a main ni despliegue.
+
 Avance de entrega Miguel, 16/11/2026: usuario pide implementar pendientes rápido,
 consumiendo B3/B4 integrados y manteniendo SOLO archivos A. Reitera que Fahida
 entrega su bloque siguiente mañana; no se autoriza asumir su motor/SQL/workers.

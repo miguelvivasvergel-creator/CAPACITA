@@ -262,6 +262,13 @@ Implementado localmente: resumen propio en Inicio con capacidades, workflows y e
 
 ### Recuperación del planner A — 15/11/2026
 
+Aceptación adicional 16/11: segunda candidata encolada mediante B3 real, 202,
+build 8a2c1355-d1d4-4d14-af64-663c89e556ec/Supabase. Sigue queued tras espera
+acotada, no habilitada ni ejecutada. Recuperar el reporte guardado; no duplicar.
+Bloque funcional ef8feb0 subido a origin/miguel tras autenticación del usuario;
+ls-remote confirmó el mismo hash. Sin merge a main ni despliegue. No modifica
+responsabilidades B.
+
 Entrega Miguel 16/11: integración A con componentes B3/B4 sin editar archivos B;
 App ya no monta el cliente heredado con mocks. Definición guardada abre el trabajo
 de implementación; pieza faltante conserva objetivo y renueva consentimiento.
