@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import EncabezadoVista from '../components/common/EncabezadoVista';
 import { listarCapacidades, clonarCapacidad } from '../services/capacidades';
 import InterpretarObjetivo from '../components/capabilities/InterpretarObjetivo';
 import DefinirCapacidad from '../components/capabilities/DefinirCapacidad';
@@ -80,12 +81,8 @@ export default function Inicio({ usuario, onCambiarSeccion, initialMode }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-      <header className="mx-auto max-w-3xl text-center">
-        <p className="text-sm text-slate-500">Hola, {usuario?.name || 'Creador'}</p>
-        <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">¿Qué quieres resolver hoy?</h1>
-        <p className="mt-4 text-base text-slate-600">Encuentra capacidades y define las herramientas que te faltan para avanzar en tu trabajo.</p>
-      </header>
+    <div className="vista-contenedor vista-secundaria inicio-desarrollador">
+      <EncabezadoVista icono="codigo" etiqueta="Modo desarrollador" titulo="¿Qué quieres resolver hoy?" descripcion="Encuentra capacidades y define las herramientas que te faltan para avanzar en tu trabajo."/>
       <div className="mx-auto mt-8 max-w-4xl">
         {retomar && <aside aria-label="Objetivo pendiente" className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
           <p className="font-semibold text-slate-900">Puedes retomar tu plan</p><p className="mt-2 whitespace-pre-wrap break-words text-slate-700">{retomar.objective}</p>

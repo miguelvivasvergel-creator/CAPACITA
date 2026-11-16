@@ -1,26 +1,7 @@
-// src/components/layout/AppLayout.jsx
 import Navbar from './Navbar';
-
-export default function AppLayout({
-  children,
-  usuario,
-  seccionActiva,
-  onCambiarSeccion,
-  onCerrarSesion,
-  experiencia = 'desarrollador',
-  onCambiarExperiencia,
-}) {
-  return (
-    <div className="min-h-screen bg-[#fcfdff] text-slate-800 flex flex-col">
-      <Navbar
-        usuario={usuario}
-        seccionActiva={seccionActiva}
-        onCambiarSeccion={onCambiarSeccion}
-        onCerrarSesion={onCerrarSesion}
-        experiencia={experiencia}
-      />
-      {onCambiarExperiencia && <section aria-label="Modo de uso" className="border-b border-slate-200 bg-white px-4 py-3"><div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2"><span className="mr-2 text-sm font-semibold text-slate-600">Modo de uso</span>{[['guiado','Guiado'],['desarrollador','Desarrollador']].map(([value,label])=><button key={value} type="button" aria-pressed={experiencia===value} onClick={()=>onCambiarExperiencia(value)} className={`min-h-11 rounded-xl border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-blue-600 ${experiencia===value?'border-blue-700 bg-blue-700 text-white':'border-slate-300 text-slate-700'}`}>{label}</button>)}<p className="w-full text-xs text-slate-500">{experiencia==='guiado'?'Describe tu necesidad y revisa la solución. No necesitas programar.':'Herramientas avanzadas para revisar contratos, código, pruebas y procesos.'}</p></div></section>}
-      <main className="flex-1 w-full">{children}</main>
-    </div>
-  );
+import Icono from '../common/Icono';
+export default function AppLayout({children,usuario,seccionActiva,onCambiarSeccion,onCerrarSesion,experiencia='desarrollador',onCambiarExperiencia}) {
+  const section=seccionActiva?.split('/')[0];
+  const labels={inicio:'Inicio',capacidades:experiencia==='guiado'?'Herramientas':'Capacidades',workflows:experiencia==='guiado'?'Soluciones':'Workflows',historial:'Resultados',comunidad:'Comunidad',buscar:'Buscar',perfil:'Perfil',configuracion:'Configuración',ejecutar:'Preparar herramienta'};
+  return <div className="workspace-shell"><a className="workspace-skip" href="#contenido-principal">Ir al contenido</a><Navbar usuario={usuario} seccionActiva={seccionActiva} onCambiarSeccion={onCambiarSeccion} onCerrarSesion={onCerrarSesion} experiencia={experiencia}/><div className="workspace-body"><header className="workspace-toolbar"><p className="workspace-breadcrumb"><span>Mi espacio</span><Icono nombre="chevron" className="h-3 w-3"/><strong>{labels[section]||'Capacita'}</strong></p>{onCambiarExperiencia&&<div className="workspace-modos" role="group" aria-label="Modo de uso">{[['guiado','Guiado','guiado'],['desarrollador','Desarrollador','codigo']].map(([value,label,icono])=><button key={value} type="button" aria-pressed={experiencia===value} onClick={()=>onCambiarExperiencia(value)}><Icono nombre={icono} className="h-4 w-4"/>{label}</button>)}</div>}</header><main id="contenido-principal" tabIndex={-1} className="workspace-main">{children}</main><footer className="workspace-footer"><span>Capacita</span><span>Tu trabajo, conectado.</span></footer></div></div>;
 }

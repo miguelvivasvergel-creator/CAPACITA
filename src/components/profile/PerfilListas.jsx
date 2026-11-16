@@ -1,3 +1,4 @@
+import Icono from '../common/Icono';
 // Listas de capacidades y workflows que se muestran en las pestañas del perfil.
 import TipoDato from '../common/TipoDato';
 
@@ -5,7 +6,7 @@ export function EstadoVacio({ icono, titulo, texto }) {
   return (
     <div className="rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center bg-slate-50/50">
       <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 text-xl">
-        {icono}
+        <Icono nombre={icono}/>
       </div>
       <h3 className="text-base font-bold text-slate-800">{titulo}</h3>
       <p className="mt-1 text-sm text-slate-500 max-w-sm mx-auto">{texto}</p>
@@ -28,7 +29,7 @@ export function ListaCapacidades({ capacidades }) {
   if (capacidades.length === 0) {
     return (
       <EstadoVacio
-        icono="🧩"
+        icono="herramientas"
         titulo="Sin capacidades públicas"
         texto="Cuando esta persona publique una capacidad, aparecerá aquí."
       />
@@ -62,7 +63,7 @@ export function ListaWorkflows({ workflows, onEjecutar }) {
   if (workflows.length === 0) {
     return (
       <EstadoVacio
-        icono="⚡"
+        icono="soluciones"
         titulo="Sin workflows públicos"
         texto="Cuando esta persona publique un workflow, aparecerá aquí."
       />

@@ -4,6 +4,22 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Prioridad nueva del usuario, 16/11/2026: cerrar diseño visual antes de retomar
+funcionalidades. Frente A unificado con la estética del login: marca compartida,
+navegación lateral en escritorio y compacta en móvil, selector de modo integrado,
+encabezados/listas coherentes, inicio enfocado en la necesidad, resumen secundario
+y detalles desplegables. Iconos SVG sin emojis en vistas activas A; login conserva
+su estética y sustituye cifras decorativas por explicación real del producto.
+Revisión con lecturas reales: 16 comprobaciones de navegación/tamaños/teclado,
+inicio 320/390/768/1280 y otras vistas móvil/escritorio, sin desbordes ni errores
+de página, cero escrituras. Siete grupos guiados interceptados pasan de nuevo.
+Regresiones Inicio desarrollador (8) y Perfil (6) pasan sin escrituras reales.
+Lint/build/imports/enlaces y diff check pasan; conserva aviso de bundle >500 kB.
+No cambia backend, SQL, servicios, motor ni archivos B. B6 en curso según usuario,
+no verificado como terminado. Publicación ejecutable sigue pendiente A/B.
+Tras revisión visual del usuario, retomar creación guiada real y publicación;
+no declarar completa la versión final por el rediseño.
+
 Modos guiado/desarrollador implementados por instrucción explícita del usuario,
 16/11/2026. Guiado inicial por cuenta: necesidad → búsqueda autorizada de versiones
 → selección automática (hasta 12) y propuesta IA → revisión/guardado directo →

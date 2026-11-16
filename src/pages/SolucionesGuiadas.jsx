@@ -1,3 +1,5 @@
+import EncabezadoVista from '../components/common/EncabezadoVista';
+import Icono from '../components/common/Icono';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import PlanGuiado from '../components/capabilities/PlanGuiado';
@@ -19,12 +21,12 @@ export default function SolucionesGuiadas({ workflowId, onCambiarSeccion }) {
     try{const next=await api(`/workflows?limit=20&cursor=${encodeURIComponent(page.next_cursor)}`);setPage(old=>({...next,items:[...old.items,...next.items.filter(row=>!old.items.some(item=>item.id===row.id))]}));}
     catch(cause){setError(cause.message);}finally{setBusy(false);}
   }
-  return <div className="mx-auto max-w-4xl space-y-5 px-4 py-8 sm:px-6"><h1 className="text-3xl font-bold">Mis soluciones</h1><p className="text-slate-600">Soluciones privadas que puedes volver a usar con otros datos. Cada ejecución necesita tu confirmación.</p>
-    <button type="button" className="min-h-11 rounded-xl border px-4 text-sm" onClick={()=>onCambiarSeccion?.('inicio')}>Resolver otra necesidad</button>
+  return <div className="vista-contenedor guiado-pagina space-y-5"><EncabezadoVista icono="soluciones" titulo="Mis soluciones" descripcion="Soluciones privadas que puedes volver a usar con otros datos. Cada ejecución necesita tu confirmación."/>
+    <button type="button" className="vista-boton-primario" onClick={()=>onCambiarSeccion?.('inicio')}>Resolver otra necesidad</button>
     {busy&&<p role="status">Cargando soluciones…</p>}{error&&<div role="alert" className="text-sm text-red-700"><p>{error}</p><button type="button" className="min-h-11 underline" onClick={()=>{setError('');setBusy(true);setRevision(old=>old+1);}}>Volver a consultar</button></div>}
     {saved&&<PlanGuiado key={saved.id+':'+saved.revision} definition={saved.definition} initialSaved={saved} onCambiarSeccion={onCambiarSeccion}/>}
-    {!workflowId&&!busy&&!error&&!page.items.length&&<p>Todavía no tienes soluciones guardadas. Describe tu necesidad para preparar la primera.</p>}
-    {!workflowId&&<ul className="space-y-3">{page.items.map(row=><li key={row.id}><button type="button" className="min-h-11 w-full rounded-xl border bg-white p-4 text-left" onClick={()=>onCambiarSeccion?.(`workflows/${row.id}`)}><span className="block break-words font-semibold">{row.definition.name}</span><span className="mt-1 block text-sm text-slate-600">{row.definition.nodes.length} pasos · Revisar y usar</span></button></li>)}</ul>}
-    {page.next_cursor&&<button type="button" disabled={busy} className="min-h-11 rounded-xl border px-4 text-sm" onClick={more}>Ver más soluciones</button>}
+    {!workflowId&&!busy&&!error&&!page.items.length&&<p className="guiado-vacio">Todavía no tienes soluciones guardadas. Describe tu necesidad para preparar la primera.</p>}
+    {!workflowId&&<ul className="guiado-lista">{page.items.map(row=><li key={row.id}><button type="button" className="guiado-item" onClick={()=>onCambiarSeccion?.(`workflows/${row.id}`)}><span className="guiado-item-icono"><Icono nombre="soluciones"/></span><span className="guiado-item-copy"><strong>{row.definition.name}</strong><span >{row.definition.nodes.length} pasos · Revisar y usar</span></span><Icono nombre="flecha" className="guiado-item-flecha"/></button></li>)}</ul>}
+    {page.next_cursor&&<button type="button" disabled={busy} className="vista-boton-primario" onClick={more}>Ver más soluciones</button>}
   </div>;
 }

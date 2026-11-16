@@ -1,3 +1,4 @@
+import EncabezadoVista from '../components/common/EncabezadoVista';
 import { useEffect, useRef, useState } from 'react';
 import { useBusqueda } from '../hooks/useBusqueda';
 import { buscarTodo } from '../services/busqueda';
@@ -49,11 +50,11 @@ export default function Buscar({ texto, capacidadId, metodo, alcance, usuario, o
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold text-slate-900">Buscar capacidades y personas</h1>
+    <div className="vista-contenedor vista-secundaria space-y-6">
+      <EncabezadoVista icono="buscar" etiqueta="Descubre posibilidades" titulo="Buscar capacidades y personas" descripcion="Encuentra herramientas y personas para avanzar con tu próxima idea."/>
       <form onSubmit={event => { event.preventDefault(); if (entrada.trim().length >= 2) navigate(entrada); }} className="flex flex-col gap-3 sm:flex-row">
         <label className="min-w-0 flex-1 text-sm font-semibold text-slate-700">Consulta
-          <input autoFocus maxLength={200} value={entrada} onChange={event => setEntrada(event.target.value)} placeholder="Describe lo que necesitas encontrar" className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-sm font-normal" />
+          <input maxLength={200} value={entrada} onChange={event => setEntrada(event.target.value)} placeholder="Describe lo que necesitas encontrar" className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-sm font-normal" />
         </label>
         <button type="submit" disabled={entrada.trim().length < 2} className={`${BUTTON} self-end`}>Buscar</button>
       </form>

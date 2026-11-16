@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Icono from '../common/Icono';
 import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
 import { interpretarObjetivo } from '../../services/objetivos';
 import { guardarObjetivoPlan, leerObjetivoPlan } from '../../utils/plannerDraft';
@@ -63,14 +64,14 @@ export default function AsistenteGuiado({ usuario, onCambiarSeccion }) {
   const definition=result?.kind==='definition'?result.value.definition:null;
   const explanation=proposal?.explanation||result?.value.interpretation?.explanation;
   return <section className="mx-auto max-w-4xl space-y-5" aria-label="Asistente guiado" data-trabajo-pendiente={objective.trim()?'true':undefined} data-task-busy={busy?'true':undefined}>
-    <form onSubmit={search} className="space-y-4 rounded-2xl border border-blue-200 bg-white p-5 sm:p-7">
-      <label htmlFor="necesidad-guiada" className="block text-lg font-bold">Cuéntame qué necesitas</label>
+    <form onSubmit={search} className="asistente-superficie space-y-3">
+      <label htmlFor="necesidad-guiada" className="font-bold"><Icono nombre="guiado"/>Cuéntame qué necesitas</label>
       <p className="text-sm text-slate-600">Describe los datos que tienes y el resultado que buscas. Buscaré herramientas existentes; si falta alguna, te ayudaré a prepararla.</p>
       <textarea id="necesidad-guiada" name="necesidad" autoComplete="off" required minLength={10} maxLength={2000} rows={4} value={objective} disabled={busy} onChange={event=>change(event.target.value)} placeholder="Por ejemplo: quiero quitar espacios de los extremos de un texto y convertirlo a mayúsculas…" className="w-full rounded-xl border border-slate-300 p-3 text-sm focus-visible:outline-2 focus-visible:outline-blue-600"/>
       {questions.length>0&&<fieldset disabled={busy} className="space-y-3"><legend className="mb-2 font-semibold">Necesito aclarar algo antes de continuar</legend>{questions.map((question,index)=><label key={index} className="block text-sm">{question}<textarea required maxLength={1000} rows={2} value={answers[index]||''} onChange={event=>{setAnswers(old=>({...old,[index]:event.target.value}));setConsent(false);}} className="mt-2 w-full rounded-xl border p-3"/></label>)}</fieldset>}
-      <label className="flex items-start gap-3 text-sm text-slate-700"><input type="checkbox" checked={consent} disabled={busy} onChange={event=>setConsent(event.target.checked)}/>Autorizo enviar a Google Gemini esta necesidad, mis aclaraciones y los nombres, descripciones y contratos de las herramientas encontradas, incluidas las privadas. Confirmo que no contienen datos sensibles.</label>
-      <p className="text-xs text-slate-500">Primero se busca en tu catálogo autorizado. No se envían código ni resultados. El nivel gratuito de Gemini puede usar el contenido para mejorar sus productos.</p>
-      <button type="submit" disabled={busy||!consent||objective.trim().length<10||questions.some((_,i)=>!answers[i]?.trim())} className={`${BUTTON} bg-blue-700 text-white`}>{busy?'Preparando…':questions.length?'Continuar con mis respuestas':'Buscar una solución'}</button>
+      <label className="asistente-consentimiento"><input type="checkbox" checked={consent} disabled={busy} onChange={event=>setConsent(event.target.checked)}/>Autorizo enviar a Google Gemini esta necesidad, mis aclaraciones y los nombres, descripciones y contratos de las herramientas encontradas, incluidas las privadas. Confirmo que no contienen datos sensibles.</label>
+      <details className="asistente-detalles"><summary>Qué información se comparte con el proveedor</summary><p>Primero se busca en tu catálogo autorizado. No se envían código ni resultados. El nivel gratuito de Gemini puede usar el contenido para mejorar sus productos.</p></details>
+      <button type="submit" disabled={busy||!consent||objective.trim().length<10||questions.some((_,i)=>!answers[i]?.trim())} className="asistente-enviar">{busy?'Preparando…':questions.length?'Continuar con mis respuestas':'Buscar una solución'}<Icono nombre="flecha" className="h-4 w-4"/></button>
       {busy&&<p role="status" className="text-sm text-blue-800">{phase}</p>}
       {error&&<p role="alert" className="break-words text-sm text-red-700">{error} Tu necesidad sigue aquí; puedes revisarla antes de volver a intentarlo.</p>}
       {notice&&<p role="status" className="text-sm text-blue-800">{notice}</p>}

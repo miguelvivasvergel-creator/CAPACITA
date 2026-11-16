@@ -21,7 +21,7 @@ export default function ResultadoGuiado({ runId, onCambiarSeccion }) {
     read(); document.addEventListener('visibilitychange',visible);
     return () => {controller.abort();clearTimeout(timer);document.removeEventListener('visibilitychange',visible);};
   },[runId,revision]);
-  return <section aria-label="Resultado de tu solución" className="min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+  return <section aria-label="Resultado de tu solución" className="min-w-0 space-y-4 guiado-detalle rounded-2xl border border-slate-200 bg-white p-5">
     <h2 className="text-xl font-bold">{run ? STATES[run.status] || run.status : 'Consultando resultado…'}</h2>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     <button type="button" className="min-h-11 rounded-lg border px-3 text-sm" onClick={() => setRevision(old=>old+1)}>Actualizar resultado</button>

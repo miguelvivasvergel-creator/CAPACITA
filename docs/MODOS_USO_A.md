@@ -81,6 +81,20 @@ sin guardar tiene aviso antes de descartarlo.
 
 ## Validación y evidencia
 
+Revisión visual 16/11/2026: marco compartido con identidad del login, navegación
+lateral en escritorio y compacta en móvil, selector integrado y páginas A con
+encabezados/listas coherentes. Iconos SVG, sin emojis. Consentimiento explícito
+conservado; explicación adicional y detalle de recuentos desplegables. Cifras
+decorativas del login sustituidas por explicación del recorrido, sin simular
+actividad. No hay nuevas dependencias ni cambios a servicios/contratos B.
+Dieciséis comprobaciones con lecturas reales: inicio 320/390/768/1280, listas
+guiadas/comunidad en escritorio y móvil, búsqueda/perfil/ajustes móvil, menú de
+cuenta con Escape y tarjeta de herramienta con Enter. Cero escrituras de negocio,
+sin desbordes ni errores de página. Capturas locales en `output/playwright/visual-*`.
+Regresiones repetidas tras rediseño: Guiado 7 grupos, Inicio desarrollador 8 y
+Perfil 6, con APIs simuladas y sin escrituras/llamadas reales de IA. Lint/build,
+imports y enlaces pasan; permanece el aviso conocido de bundle >500 kB.
+
 `verify_guided_data.mjs`: aislamiento de preferencias entre cuentas, almacenamiento
 bloqueado, datos tipados sin ejemplos heredados, rechazo de esquemas no soportados
 y orden de lectura por dependencias sin modificar el grafo.

@@ -51,7 +51,7 @@ export default function Perfil({ usuario, username, onConfigurar, onPerfilActual
 
   if (error) return <div role="alert" className="mx-auto max-w-5xl p-8"><p className="text-sm text-red-700">No se pudo cargar el perfil: {error}</p><button onClick={retry} className="mt-4 rounded-xl border px-4 py-2 text-sm">Reintentar</button></div>;
   if (datos === undefined) return <p role="status" className="mx-auto max-w-5xl p-8 text-sm text-slate-600">Cargando perfil…</p>;
-  if (datos === null) return <div className="mx-auto max-w-5xl p-8"><EstadoVacio icono="🔍" titulo="Perfil no encontrado" texto={`No encontramos el perfil @${username}.`} /></div>;
+  if (datos === null) return <div className="mx-auto max-w-5xl p-8"><EstadoVacio icono="buscar" titulo="Perfil no encontrado" texto={`No encontramos el perfil @${username}.`} /></div>;
 
   const { perfil } = datos;
   const esPropio = perfil.id === userId;
@@ -71,8 +71,8 @@ export default function Perfil({ usuario, username, onConfigurar, onPerfilActual
         {!datos.capacidadesError && <ListaCapacidades capacidades={perfil.capabilities} />}
         {datos.next_cursor && <button onClick={loadMore} disabled={cargandoMas} className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50">{cargandoMas ? 'Cargando…' : 'Cargar más capacidades públicas'}</button>}
       </>}
-      {pestana === 'workflows' && (esPropio ? <HistorialPropio key={`${userId}:workflows`} kind="workflows" experiencia={experiencia} onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="🔗" titulo="Workflows públicos pendientes de integración" texto="Los workflows privados de esta persona no se publican en su perfil." />)}
-      {pestana === 'actividad' && (esPropio ? <HistorialPropio key={`${userId}:runs`} kind="runs" experiencia={experiencia} onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="📋" titulo="Actividad privada" texto="Las entradas, salidas y archivos de las ejecuciones solo los ve quien ejecutó." />)}
+      {pestana === 'workflows' && (esPropio ? <HistorialPropio key={`${userId}:workflows`} kind="workflows" experiencia={experiencia} onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="soluciones" titulo="Workflows públicos pendientes de integración" texto="Los workflows privados de esta persona no se publican en su perfil." />)}
+      {pestana === 'actividad' && (esPropio ? <HistorialPropio key={`${userId}:runs`} kind="runs" experiencia={experiencia} onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="candado" titulo="Actividad privada" texto="Las entradas, salidas y archivos de las ejecuciones solo los ve quien ejecutó." />)}
       {editando && esPropio && <EditarPerfilModal perfil={perfil} onCerrar={() => setEditando(false)} onGuardado={updated => {
         setDatos(previous => ({ ...previous, perfil: { ...previous.perfil, ...updated, stats: previous.perfil.stats } }));
         setEditando(false);

@@ -4,6 +4,15 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+Bloque visual A: estética del login extendida a navegación, inicio guiado,
+herramientas, soluciones, resultados, búsqueda/comunidad y marco de perfil/ajustes.
+Marca compartida e iconos SVG; se retiran emojis de vistas A y cifras decorativas
+del login. Revisados 16 casos reales de lectura/navegación/tamaños/teclado, cero
+escrituras y errores de página; siete grupos guiados simulados pasan de nuevo.
+Backend, SQL y B sin cambios. Usuario pide visual primero; funcionalidades
+pendientes se retoman después, especialmente publicación A/B y aceptación real
+de creación guiada. Fahida en B6 según usuario; no equivale a bloque completado.
+
 Modos de experiencia A implementados: Guiado inicial por cuenta y Desarrollador.
 Guiado interpreta/busca y selecciona herramientas, propone, guarda sin copiar
 JSON, pide datos en formularios y aprobación y muestra resultados legibles.

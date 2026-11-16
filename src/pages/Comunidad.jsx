@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import EncabezadoVista from '../components/common/EncabezadoVista';
+import { useEffect, useRef, useState } from 'react';
 import { listarCapacidades, clonarCapacidad } from '../services/capacidades';
 import DetalleCapacidad from '../components/capabilities/DetalleCapacidad';
 
@@ -65,9 +66,8 @@ export default function Comunidad({ _usuario, onCambiarSeccion, experiencia = 'd
     finally { setCloning(false); }
   }
 
-  return <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-    <h1 className="text-3xl font-extrabold text-slate-900">Comunidad</h1>
-    <p className="mt-2 text-sm text-slate-600">Explora capacidades públicas y guarda una copia privada para trabajar con ella. La ejecución depende de una versión habilitada.</p>
+  return <div className="vista-contenedor vista-secundaria">
+    <EncabezadoVista icono="comunidad" etiqueta="Descubre posibilidades" titulo="Comunidad" descripcion="Explora capacidades públicas y guarda una copia privada para trabajar con ella. La ejecución depende de una versión habilitada."/>
     <form onSubmit={(event) => { event.preventDefault(); refresh(query.trim()); }} className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
       <label htmlFor="comunidad-buscar" className="text-sm font-semibold text-slate-800">Buscar capacidades públicas</label>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">

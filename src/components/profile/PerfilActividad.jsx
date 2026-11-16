@@ -17,7 +17,7 @@ export default function PerfilActividad({ actividad, onVerWorkflow }) {
 
       {actividad.length === 0 ? (
         <EstadoVacio
-          icono="🕒"
+          icono="resultados"
           titulo="Sin actividad reciente"
           texto="Aquí aparecerán los workflows públicos que esta persona ejecute."
         />

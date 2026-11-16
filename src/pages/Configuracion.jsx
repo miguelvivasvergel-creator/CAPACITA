@@ -1,3 +1,4 @@
+import EncabezadoVista from '../components/common/EncabezadoVista';
 import { useEffect, useId, useRef, useState } from 'react';
 import { supabase } from '../services/supabase';
 
@@ -51,23 +52,10 @@ export default function Configuracion({ usuario, onCerrarSesion }) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+    <div className="vista-contenedor vista-secundaria configuracion-vista">
 
-      {/* Encabezado estilo login */}
-      <div className="pb-6 border-b border-slate-200/80 space-y-2">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50/90 border border-blue-100 px-3 py-1 rounded-full shadow-sm">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-          AJUSTES DE LA CUENTA
-        </span>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
-          Configuración
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 font-normal font-body">
-          Administra los datos de tu cuenta.
-        </p>
-      </div>
+      <EncabezadoVista icono="ajustes" etiqueta="Tu cuenta" titulo="Configuración" descripcion="Administra los datos y el acceso a tu cuenta."/>
 
-      {/* Mensaje */}
       {mensaje && (
         <div role={esError ? 'alert' : 'status'} className={`mt-4 border text-xs font-semibold font-body px-3 py-2 rounded-xl ${esError ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
           {mensaje}

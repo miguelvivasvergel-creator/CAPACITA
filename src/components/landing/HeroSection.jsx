@@ -1,3 +1,5 @@
+import Marca from '../common/Marca';
+import Icono from '../common/Icono';
 export default function HeroSection({ modo }) {
   const textoSubtitulo =
     modo === 'registro'
@@ -7,13 +9,7 @@ export default function HeroSection({ modo }) {
   return (
     <section className="flex flex-col justify-between py-2 lg:py-4 max-w-xl mx-auto md:mx-0 w-full space-y-4 lg:space-y-6">
       <header className="flex items-center gap-3">
-        <a href="/" className="flex items-center gap-3" aria-label="Capacita inicio">
-          <div className="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 shadow-md shadow-blue-500/25 ring-4 ring-white/90">
-            <div className="w-4 h-4 rounded-full bg-white translate-x-0.5 shadow-sm"></div>
-            <div className="w-4 h-4 rounded-full bg-cyan-200/95 -translate-x-0.5 mix-blend-screen"></div>
-          </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900 font-sans">Capacita</span>
-        </a>
+        <a href="/" className="flex items-center gap-3" aria-label="Capacita inicio"><Marca/></a>
       </header>
 
       <div className="space-y-6">
@@ -81,67 +77,16 @@ export default function HeroSection({ modo }) {
           </div>
         </div>
 
-        <div className="pillar-card p-4 sm:p-5 rounded-2xl bg-white/90 backdrop-blur-md border border-white shadow-soft space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2 overflow-hidden">
-                <img alt="Talento en línea" className="inline-block h-7 w-7 rounded-full ring-2 ring-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOUZ7n2MJnXHzi3fmxjZaOqY7zQlgcBjdnwjWWuP8SgUBR-fIROmPtChhF8JBBuk-8Ws5d4cJCLlPeIrKA2-BsH5Fkh2s-e5AmYXWlhSwGo6j6AQ-Ki7neYGQGLX1EFLbqLEeLcUQkCpnPWyHh3gEH5JB9uuXVeLS_Pblkj4xjy4eKD-XCTEt_9PYWHtRZCrR3MR8Vt5eEYpo50yza_ySI9U4k4O0zPI6hLFjNQI4onRx_2JkvQr7D" />
-                <img alt="Talento en línea" className="inline-block h-7 w-7 rounded-full ring-2 ring-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNSnits05ln1q7SCHtdbvH15NLeU27PSQaKTuaS3z-fy5mSRSzGrcVYIdrriyE8nTiqZp2gmwqcTa_AvF6Q91pAu-MBAuDBN2isR7BYJwzFMF4ullpHhp-U7VAilNLaMLaOCeR4BNIUd4-T4gqudGy_eVcyaSWuMfO6S5LbKRg0kFCvM6r7UbJndO76eOZyDN0zx-_zS_KLJinu7YYMw_I-O2sEmJDNlvawhN5jnjRvgrjAVW5Kp7-" />
-                <img alt="Talento en línea" className="inline-block h-7 w-7 rounded-full ring-2 ring-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCb1eSSof3FIkGhJbBRWmmVEJkTypNe7Ion4HIBOneVEm0aDRv6EuhQ-NZGpneozEquwcRwb9_m6n2NBCubk4e4wOpm0x86eFLvvwsDzGk9e41QMnpvvhkgo7fwTZMmXS3jzRs0Z6vtZIg03P92eiufNVQMOs_qq0bMI9I_XMfZMEY-T60mzwQWy9TRqWQ3LFQGTD2DvOIpAahlgdYinW-eAu9rLeYOqlBp4cfVB7LvGWn8g4TQq4mA" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 font-sans">
-                  <span>+12.4k activos</span>
-                  <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 font-body font-medium">Red colaborativa sincronizada</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 bg-blue-50/80 border border-blue-100 px-2.5 py-1 rounded-full">
-              <svg className="w-12 h-4.5 text-blue-600" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 54 20">
-                <polyline points="2,15 12,12 22,16 32,8 42,11 52,4"></polyline>
-              </svg>
-              <span className="text-[11px] font-bold text-blue-600 font-sans">+38%</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100 text-xs">
-            <div className="flex items-center gap-2 bg-slate-50/80 rounded-xl p-2">
-              <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-100 text-blue-600 font-bold text-xs">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-              </div>
-              <div>
-                <div className="font-bold text-slate-900 font-sans text-xs">99.4%</div>
-                <div className="text-[10px] text-slate-500 font-body">Conexiones exitosas</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 bg-slate-50/80 rounded-xl p-2">
-              <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-cyan-100 text-cyan-700 font-bold text-xs">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                </svg>
-              </div>
-              <div>
-                <div className="font-bold text-slate-900 font-sans text-xs">+480</div>
-                <div className="text-[10px] text-slate-500 font-body">Intercambios hoy</div>
-              </div>
-            </div>
-          </div>
+        <div className="rounded-2xl border border-white bg-white/85 p-5 shadow-soft">
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><Icono nombre="soluciones"/></span><div><p className="text-sm font-bold text-slate-800">Conecta capacidades. Resuelve objetivos.</p><p className="mt-1 text-xs leading-relaxed text-slate-500">Encuentra herramientas, combina soluciones y crea lo que falta.</p></div></div>
+          <div className="mt-4 flex flex-wrap gap-4 border-t border-slate-100 pt-3 text-[11px] text-slate-500">{[['buscar','Describe tu necesidad'],['soluciones','Revisa la propuesta'],['resultados','Obtén el resultado']].map(([icono,label])=><span key={label} className="inline-flex items-center gap-1.5"><Icono nombre={icono} className="h-3.5 w-3.5 text-blue-500"/>{label}</span>)}</div>
         </div>
       </div>
 
       <footer className="pt-2 text-xs text-slate-400 font-medium font-body flex items-center gap-4">
-        <span>© 2025 Capacita</span>
+        <span>Capacita</span>
         <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-        <span>Comunidad colaborativa</span>
+        <span>Conecta capacidades</span>
       </footer>
     </section>
   );
