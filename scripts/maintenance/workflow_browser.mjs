@@ -1,7 +1,7 @@
 // Controla únicamente Chrome headless con perfil temporal del verificador B4.
 import { writeFile } from 'node:fs/promises';
 
-const [port, width, height, screenshot] = process.argv.slice(2);
+const [port, width, height, screenshot, harness = 'workflow-harness.html', resultId = 'b4-test-result'] = process.argv.slice(2);
 const page = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
 const socket = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
@@ -28,10 +28,10 @@ function send(method, params = {}) {
 try {
   await send('Runtime.enable'); await send('Page.enable'); await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: Number(width), height: Number(height), screenWidth: Number(width), screenHeight: Number(height), deviceScaleFactor: 1, mobile: Number(width) < 600 });
-  await send('Page.navigate', { url: 'http://127.0.0.1:18004/output/playwright/workflow-harness.html' });
+  await send('Page.navigate', { url: `http://127.0.0.1:18004/output/playwright/${harness}` });
   let report;
   for (let i = 0; i < 45; i++) {
-    const result = await send('Runtime.evaluate', { expression: 'document.getElementById("b4-test-result")?.textContent', returnByValue: true });
+    const result = await send('Runtime.evaluate', { expression: `document.getElementById(${JSON.stringify(resultId)})?.textContent`, returnByValue: true });
     if (result.result.value && result.result.value !== 'pending') { report = JSON.parse(result.result.value); break; }
     if (errors.length) throw new Error(errors[0]);
     await new Promise((resolve) => setTimeout(resolve, 1000));

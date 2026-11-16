@@ -7,6 +7,7 @@ import AppLayout from './components/layout/AppLayout';
 import Inicio from './pages/Inicio';
 import Capacidades from './pages/Capacidades/Capacidades';
 import Workflows from './pages/Workflows';
+import Historial from './pages/Historial';
 import Comunidad from './pages/Comunidad';
 import Configuracion from './pages/Configuracion';
 import Perfil from './pages/Perfil';
@@ -26,6 +27,7 @@ const SECCIONES_VALIDAS = [
   'inicio',
   'capacidades',
   'workflows',
+  'historial',
   'comunidad',
   'configuracion',
   'perfil',
@@ -52,7 +54,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    const titles = { inicio: 'Inicio', capacidades: 'Capacidades', workflows: 'Workflows',
+    const titles = { inicio: 'Inicio', capacidades: 'Capacidades', workflows: 'Workflows', historial: 'Mis ejecuciones',
       comunidad: 'Comunidad', configuracion: 'Configuración', perfil: 'Perfil',
       ejecutar: 'Capacidad', buscar: 'Buscar' };
     const title = titles[vista.split('/')[0]];
@@ -256,7 +258,8 @@ export default function App() {
           <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
         {seccion === 'capacidades' && <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />}
-        {seccion === 'workflows' && <Workflows _usuario={usuarioActual} />}
+        {seccion === 'workflows' && <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} _usuario={usuarioActual} />}
+        {seccion === 'historial' && <Historial key={`${usuarioActual.id}:${vista}`} runId={parametros[0]} onCambiarSeccion={handleCambiarSeccion} />}
         {seccion === 'comunidad' && <Comunidad key={usuarioActual.id} _usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />}
         {seccion === 'configuracion' && (
           <Configuracion key={usuarioActual?.id} usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />

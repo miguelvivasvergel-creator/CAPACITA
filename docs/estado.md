@@ -4,6 +4,15 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+Integración B5 local desde Fahida e4b286f: Mis ejecuciones con lista/detalle,
+progreso, parciales, copia/descarga y nueva ejecución explícita; workflows se
+reabren sin aprobación anterior. Conflictos compartidos reconciliados con A.
+160 pruebas backend, lint/build/imports y batería visual B5 en 1280/390 pasan.
+Navegación autenticada y lecturas reales de dos runs verificadas; lista/detalle
+coinciden. No equivale a aceptación completa B6. Build 8a2c1355 sigue queued
+en consulta real actual. B5 no incorpora publicación ni configuración worker.
+Sin SQL, encolado nuevo, push a main ni despliegue. Detalle en continuidad.
+
 Estado vigente Miguel: B3/B4 integrados como consumidores desde A; catálogo,
 definiciones, candidatos y reparación acotada, filtros, planner y actividad
 privada conectados. Privacidad aceptada realmente con dos cuentas distintas.
@@ -86,6 +95,18 @@ Usuario confirma guardado/recarga/detalle de definición y candidato real. SQL 0
 | Resto dashboard/planner | Integración pendiente. | Dashboard/comunidad restantes; planner/publicación esperan contrato/evidencia B. |
 
 ## Fahida — Persona B
+
+Entrega B5 autorizada, 16/11/2026: cierre técnico completado y commit detallado
+para subir a feature/Fahida-backend-setup. La aceptación con Fahida y Miguel queda
+en B6; no falta desarrollo B5 por ese recorrido. Sin merge a main.
+
+16/11/2026 — B5 resultados/historial implementado: lista paginada propia, detalle,
+progreso y parciales, copiar/descargar JSON, nuevos datos con confirmación e
+idempotencia; workflow necesita nueva aprobación. 96 tests backend, lint/build,
+Chrome de fixtures desktop/móvil y lecturas remotas privadas pasan. Sin nueva
+migración ni merge con Miguel. Pendientes: aceptación de uso con Fahida y B6
+integrado. Ver [guía B5](BLOQUE_5_RESULTADOS.md). No declarar planner/publicación
+ni conectores completados por este avance.
 
 Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
 Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.

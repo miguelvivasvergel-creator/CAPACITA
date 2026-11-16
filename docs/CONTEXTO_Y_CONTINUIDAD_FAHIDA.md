@@ -1,5 +1,30 @@
 # Fahida — contexto y continuidad
 
+## Actualización B5 — 16/11/2026
+
+Fahida autorizó avanzar B5 mientras Miguel integra B3/B4. Resultados e historial
+implementados en la rama B, sin mezclar `origin/miguel`: `#historial/UUID`, lista
+paginada, detalle/progreso, parciales y omitidos, copiar/descargar JSON y nuevo
+run con datos explícitos e idempotencia. Workflow se reabre en revisión actual
+sin aprobación anterior. Navbar/App llevan cambios mínimos para acceso y rutas;
+coordinar esos archivos al integrar. No SQL nuevo, ni cambios al worker ni a los
+datos de Fahida. Eliminación previa backend/.env.example ajena, conservar fuera.
+
+Validación: 96 tests backend, lint sin avisos y build pasan (bundle grande conocido).
+Chrome temporal 1280/390 pasa paginación, copia/descarga, texto escapado, parciales,
+datos inválidos, mismo idempotency key tras fallo, polling, reapertura, vacío/error
+y aprobación nueva de workflow. Capturas ignoradas; fixture sin Supabase/sesión.
+Aceptación remota de solo lectura con cuenta worker: lista paginada/detalle
+coinciden, completado e interrumpido con parciales, ejecución ajena 404 y ausente.
+Reporte ignorado `output/laboratory/block5-history-remote.json`: passed=true.
+Guía: [BLOQUE_5_RESULTADOS.md](BLOQUE_5_RESULTADOS.md).
+
+Cierre técnico B5 completado. Fahida autoriza commit detallado y push a su rama
+el 16/11/2026. Siguiente: integrar con Miguel y aceptación conjunta B6; el recorrido
+con Fahida en la página nueva pertenece a esa aceptación, no es desarrollo B5
+pendiente. No afirmar prueba de su sesión real ni planner/publicación/conectores
+completos. No merge a main. La eliminación local previa de .env.example se excluye.
+
 Entrega confirmada: commit B4 5844a8e y commit B3 873131a subidos a
 origin/feature/Fahida-backend-setup el 15/11/2026. Push correcto, sin merge
 a main. Siguiente: revision con Miguel y planificar B5. Eliminacion local
@@ -158,10 +183,10 @@ conservan el diagnóstico histórico, superado por los cierres posteriores.
 | Bloque | Estado | Evidencia / dependencia |
 | --- | --- | --- |
 | 1. Base y sandbox | Verificado localmente | Ubuntu/Engine/runsc y 10 comprobaciones reales pasan; controles de recursos, salida, timeout y limpieza. |
-| 2. Laboratorio y reportes | Implementado y probado localmente; aceptación remota pendiente | API/trabajador/UI, hashes, contratos, SQLite privado y candidatos de fixture en gVisor. |
+| 2. Laboratorio y reportes | Aceptado; subido a rama B | Pruebas privadas, persistencia, privacidad y recuperación verificadas; cola compartida incorporada en B3. |
 | 3. Ejecución persistente | Aceptado en alcance privado B3 | SQL 07 aplicado por usuaria; recorrido real, persistencia, privacidad y recuperación verificados. Sin workflows/publicación ni apagado de Windows probado. |
-| 4. Workflows | Activado; aceptación técnica remota pasa, recorrido de usuaria pendiente | SQL 08 aplicado; worker protocolo 2, editor y dos pasos con recuperación/parciales probados. |
-| 5. Resultados e historial | Pendiente | Runs y resultados persistentes privados. |
+| 4. Workflows | Aceptado en alcance privado; subido a rama B | SQL 08 y protocolo 2; fixture de dos pasos con recuperación y proceso real de Fahida conservado tras reinicio/privacidad. |
+| 5. Resultados e historial | Cierre técnico completado; entrega autorizada a rama B | Historial/detalle, parciales, copiar/descargar y nueva ejecución; Chrome de fixtures y lecturas reales pasan. Aceptación integrada en B6. |
 | 6. Integración final | Pendiente | Aprobación, composición y pruebas cruzadas; piloto condicionado a accesos. |
 
 ## Bloque 1 — 14/11/2026: base, contrato y diagnóstico

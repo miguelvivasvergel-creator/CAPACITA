@@ -4,6 +4,27 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Integración B5 Miguel, 16/11/2026: fetch confirma entrega Fahida e4b286f.
+Incorporado historial/resultados privados conservando navegación, planner,
+catálogo y perfil A. Respaldo: respaldo/miguel-antes-fahida-b5-20261116.
+Conflictos App/Navbar, auditor de imports, mocks y continuidad resueltos
+conservando ambos frentes; historial/workflows por ruta y cuenta, título nuevo.
+160 pruebas backend, lint/build y auditor de imports pasan. Batería visual B5
+con fixtures pasa en 1280/390 mediante Playwright; el lanzador Chrome original
+se detuvo por PermissionError al leer DevToolsActivePort, antes de probar UI.
+Sesión real: navegación Mis ejecuciones correcta, dos runs y detalle coincidente
+con lista por API. La comprobación adicional de detalle/recarga en UI no se
+completó: al navegar directamente se mostró login; requiere sesión nueva antes
+de certificar ese caso real. El caso equivalente con fixtures sí pasó.
+Build 8a2c1355 consultado realmente: queued en Supabase. No se repitió
+encolado, ejecutó código, habilitó versión ni aplicó SQL. B5 no incluye publicación,
+conectores ni cambios worker. Consultar Git para commit de integración; sin push,
+main ni despliegue. Usuario indicó configuración worker completada, pero la lectura
+posterior con WorkerSettings aún indica credenciales ausentes/protocolo 1;
+reconciliar configuración guardada antes de arrancar una única copia autorizada.
+Siguiente: worker B3/B4 y build existente → habilitación si pasa → proceso de dos
+capacidades. Publicación entre cuentas continúa pendiente de contrato A/B.
+
 Reanudación guiada Miguel, 16/11/2026: usuario autoriza iniciar el cierre paso a
 paso. API en 127.0.0.1:8000 y Vite en 127.0.0.1:5173 arrancados; navegador de
 prueba capacita-a abierto sin sesión. Pendiente login del dueño para consultar
@@ -325,6 +346,16 @@ frontend correctos (advertencia de tamaño de bundle). Esta integración no
 configura ni certifica gVisor/WSL en el equipo de Miguel, no inicia B3 ni
 habilita candidatos. Siguiente: verificar entorno local y recorrido integrado
 del laboratorio; siguen pendientes las pruebas autenticadas del frente A.
+Actualización B, 16/11/2026: B5 resultados/historial implementado por autorización
+de Fahida. Lista y detalle propios, progreso/parciales, copiar/descargar y nuevo
+run explícito; workflow se reabre con aprobación nueva. 96 tests, lint/build y
+Chrome con fixtures en escritorio/móvil pasan; lecturas remotas de historial y
+privacidad pasan sin modificar datos. Sin SQL nuevo ni integración de Miguel.
+Pendiente B6: aceptación conjunta, reconciliar App/Navbar y revisar planner,
+publicación/composición según alcance. Guía [B5](BLOQUE_5_RESULTADOS.md) y evidencia
+en [continuidad B](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md). Esta nota supera pendientes B5
+anteriores; la nueva página aún no tiene recorrido real de Fahida confirmado.
+
 Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
 Fahida autoriza commit y push a feature/Fahida-backend-setup, sin merge a main.
 Su proceso real tiene UN paso; lectura propia 200, resultado correcto y datos

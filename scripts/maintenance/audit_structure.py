@@ -33,6 +33,7 @@ EXPECTED_INACTIVE = {
     "src/mocks/home.js": "dashboard histórico; Inicio usa catálogo autorizado",
     "src/mocks/users.js": "personas de ejemplo históricas, fuera de Inicio real",
     "src/components/common/PlanProposal.jsx": "propuesta histórica; no usar como planner real ni contrato B",
+    "src/mocks/historial.js": "fixture visual B5; nunca fallback de red",
     "src/mocks/workflows.js": "fixture de diseño B4; nunca fallback de red",
     "src/mocks/versiones.js": "fixture visual B3, sin fallback de versiones o ejecuciones",
     "src/mocks/laboratorio.js": "casos visuales del laboratorio B, sin fallback de red",

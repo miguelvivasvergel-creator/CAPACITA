@@ -36,3 +36,6 @@ Referencia histórica:
 
 Los documentos históricos y planes no certifican funcionalidades. Consultar
 el estado para distinguir propuestas, código implementado y pruebas reales.
+# Bloque 5
+
+Resultados e historial privados: [guía y validación](BLOQUE_5_RESULTADOS.md).

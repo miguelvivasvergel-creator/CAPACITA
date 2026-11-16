@@ -25,3 +25,7 @@ Los tests del backend tienen sus datos separados en backend/tests/fixtures/. El 
 `trabajo.js`: fixtures del espacio de trabajo A, integración con componentes B3 y
 reparación de candidatos. Usadas solo por pruebas interceptadas, nunca como
 respuesta ni fallback de las APIs reales.
+# Historial B5
+
+`historial.js` contiene resultados de fixture para pruebas visuales; nunca se
+usa como fallback de la API del historial.
