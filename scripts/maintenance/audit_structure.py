@@ -13,6 +13,8 @@ IMPORTS = re.compile(r"(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['\"]([^'\"]+)['\"]")
 ASSETS = re.compile(r"(?:url\(\s*|(?:src|href)\s*=\s*)['\"]?([^\s'\"\)<>]+)")
 EXTENSIONS = (".js", ".jsx", ".css", ".json")
 EXPECTED_INACTIVE = {
+    "src/mocks/planner.js": "fixture visual planner A; nunca fallback de IA",
+    "src/mocks/dashboard.js": "fixture visual A4; métricas reales sin fallback",
     "src/mocks/busqueda.js": "fixture de pruebas interceptadas; no fallback de búsqueda",
     "src/services/dotnet.js": "cliente histórico conservado; búsqueda y perfil usan FastAPI",
     "src/mocks/perfil-real.js": "fixture de contrato para pruebas interceptadas, sin fallback",

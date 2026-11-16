@@ -254,3 +254,46 @@ Rama miguel; **0ef8397** es el bloque anterior subido a origin/miguel. Definici�
 ### Integraci?n local Miguel ? 15/11/2026
 
 A petici?n del usuario, incorporada la entrega Fahida B3/B4 hasta 0e67c8b en miguel, conservando Inicio, perfil y b?squeda A. Respaldo: respaldo/miguel-antes-fahida-20261115-b3-b4. Conflictos resueltos conservando ambos frentes; 125 pruebas backend, lint, build, auditor?a de imports y diff --check correctos. Advertencia conocida de bundle >500 kB. Sin SQL, cambios de datos, despliegue ni push. Ejecuci?n integrada B3/B4 en este equipo pendiente de verificar; evidencia remota de Fahida conservada en sus gu?as.
+
+### Frente Miguel A4 — dashboard y comunidad, 15/11/2026
+
+Implementado localmente: resumen propio en Inicio con capacidades, workflows y ejecuciones por estado; consultas paginadas hasta 1.000 registros por sección, parcial explícito y errores independientes. Comunidad pública con búsqueda en backend, detalle, perfil y clonación explícita; retirados rankings sin métricas integradas. No cambia servicios de motor/workflows B ni SQL. Siete comprobaciones de paginación y seis grupos visuales interceptados pasan; lint/build/imports/diff correctos (bundle >500 kB conocido). Móvil inspeccionado sin desborde. Sin prueba remota autenticada de este bloque, commit ni push. Siguiente: aceptación con sesión real y planner A; no registrar A4 completo. Detalles en DASHBOARD_COMUNIDAD_A.md.
+
+
+### Recuperación del planner A — 15/11/2026
+
+Avance posterior, 16/11/2026: guardado/recarga real del plan de un paso con 201
+(f61664e5). Composición Gemini 200 de dos pasos reutilizando una sola versión
+para título/cuerpo; validación 200, guardado 201 y reapertura idéntica (de068ede).
+Ambos procesos de prueba privados conservados, sin aprobar ni ejecutar.
+Contratos revisados ligados a huellas: un cambio obliga nueva búsqueda/revisión
+antes de enviar a IA. Propuestas nuevas con posiciones separadas por dependencia.
+145 pruebas backend, veinte del planner; privacidad HTTP con dos identidades
+simulada, cinco grupos visuales y siete checks dashboard. Guía PLANNER_A.md.
+Solo una versión habilitada real; no hay sesión B ni credenciales worker locales:
+privacidad remota, dos capacidades distintas y ejecución de planes pendientes.
+
+Aceptación real posterior: sesión Supabase verificada; dashboard con tres
+capacidades, un workflow y dos ejecuciones completadas sin truncado. Búsqueda
+planner 200 y una propuesta Gemini real 200/reuse de un paso, contratos validados.
+Importada al constructor B con /workflows/validate 200, valid=true y orden
+normalizar_texto. Queda en editor sin guardar/aprobar/ejecutar. Capturas locales
+en output/playwright/planner-real-{proposal,import}.png. Segunda cuenta,
+composición de dos pasos y persistencia de propuesta siguen pendientes.
+
+Recuperado el avance local de Inicio → Planificar un proceso. Busca versiones
+habilitadas del catálogo autorizado sin IA; exige selección y consentimiento
+para enviar objetivo, nombres, descripciones y contratos a Gemini. Valida con
+el contrato B y comprueba disponibilidad después de inferencia. No guarda,
+aprueba ni ejecuta. Transferencia manual: copiar JSON e importar en Workflows.
+Búsqueda textual limitada a veinte capacidades y doscientas versiones; recorte
+explícito.
+
+Pasan 136 pruebas backend, incluidas once del planner; lint, build, imports,
+diff --check y siete comprobaciones del dashboard. Cinco grupos Playwright
+interceptados pasan: consentimiento, propuesta/conexiones, aclaraciones, errores
+y móvil de 390 px sin desborde. Sin IA ni escrituras reales en estas pruebas.
+Vite reiniciado en http://127.0.0.1:5173. Bundle >500 kB conocido.
+Pendientes: aceptación autenticada de dashboard/planner, Gemini real,
+privacidad entre cuentas e importación/guardado real con contrato B.
+Sin SQL, cambios remotos, commit ni push durante recuperación.

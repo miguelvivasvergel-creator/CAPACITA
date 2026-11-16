@@ -3,6 +3,8 @@ import { listarCapacidades, clonarCapacidad } from '../services/capacidades';
 import InterpretarObjetivo from '../components/capabilities/InterpretarObjetivo';
 import DefinirCapacidad from '../components/capabilities/DefinirCapacidad';
 import DetalleCapacidad from '../components/capabilities/DetalleCapacidad';
+import ResumenTrabajo from '../components/profile/ResumenTrabajo';
+import PlanificarObjetivo from '../components/capabilities/PlanificarObjetivo';
 
 const EMPTY_PAGE = { items: [], next_cursor: null };
 const BUTTON = 'rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
@@ -83,7 +85,7 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
       </header>
       <div className="mx-auto mt-8 max-w-4xl">
         <div className="mb-5 flex flex-wrap justify-center gap-2" aria-label="Cómo empezar">
-          {[['objetivo', 'Describir un objetivo'], ['buscar', 'Buscar capacidades']].map(([value, label]) => (
+          {[['objetivo', 'Describir un objetivo'], ['planificar', 'Planificar un proceso'], ['buscar', 'Buscar capacidades']].map(([value, label]) => (
             <button key={value} type="button" aria-pressed={modo === value} onClick={() => setModo(value)} className={`${BUTTON} ${modo === value ? '!border-blue-600 !bg-blue-600 !text-white' : ''}`}>{label}</button>
           ))}
         </div>
@@ -100,6 +102,7 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
             refresh();
           }} />}
         </div>
+        {modo === 'planificar' && <PlanificarObjetivo onCambiarSeccion={onCambiarSeccion} />}
         <form hidden={modo !== 'buscar'} onSubmit={(event) => {
           event.preventDefault();
           changeSearch({ q: consulta.trim() });
@@ -112,6 +115,7 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
           <p className="mt-2 text-xs text-slate-500">Búsqueda textual por nombre y descripción.</p>
         </form>
       </div>
+      <ResumenTrabajo key={usuario?.id} onCambiarSeccion={onCambiarSeccion} />
       <section aria-label="Capacidades del catálogo" className="mt-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>

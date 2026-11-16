@@ -1,0 +1,210 @@
+"""Planner: autorización, datos enviados y contrato real B; sin IA ni escrituras."""
+from copy import deepcopy
+import json
+from types import SimpleNamespace
+import unittest
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
+import httpx
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
+from core.config import Settings
+from api.planner import router
+from providers.gemini import GeminiProvider
+from schemas.planner import PlannerProposal, PlannerRequest
+from services.candidate_generation import GenerationLimiter
+from services.planner_service import planner_options, propose_plan, review_hash
+from services.workflow_validation import compile_workflow
+from tests.test_workflows import fixture
+from tests.test_builds import manifest
+
+
+class PlannerTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.definition, self.versions = fixture()
+        self.identity = self.definition['nodes'][0]['version_id']
+        self.catalog = SimpleNamespace(user_id='owner', get=AsyncMock(return_value={'visibility': 'private'}))
+        self.options = {'items': [{'id': self.identity, 'name': 'Limpiar texto', 'input_schema': self.definition['input_schema']}], 'search_truncated': False}
+        self.provider = SimpleNamespace(plan=AsyncMock(return_value={
+            'decision': 'compose', 'explanation': 'Dos transformaciones para revisar',
+            'definition': self.definition, 'questions': [], 'missing': []}))
+        self.request = PlannerRequest(objective='Limpiar texto y convertir a mayúsculas', version_ids=[self.identity],
+            version_hashes={self.identity: review_hash(self.options['items'][0])}, consent_to_provider=True)
+
+    async def validate(self, definition, _catalog):
+        _, order = compile_workflow(definition, self.versions)
+        return {'valid': True, 'order': order}
+
+    async def propose(self):
+        with patch('services.planner_service.planner_options', AsyncMock(return_value=self.options)), \
+             patch('services.planner_service.check_workflow', self.validate):
+            return await propose_plan(self.request, self.catalog, self.provider, GenerationLimiter())
+
+    async def test_real_contract_validates_named_connections_without_saving(self):
+        result = await self.propose()
+        self.assertEqual(result['validation']['order'], ['limpiar', 'mayusculas'])
+        self.assertFalse(result['saved'])
+        self.assertFalse(result['executed'])
+        self.assertEqual(self.provider.plan.await_args.args[1], self.options['items'])
+
+    async def test_generated_layout_separates_input_sequential_and_parallel_steps(self):
+        result = await self.propose()
+        nodes = result['proposal']['definition']['nodes']
+        self.assertEqual([(node['x'], node['y']) for node in nodes], [(330, 0), (660, 0)])
+        self.assertEqual(nodes[1]['bindings'], self.definition['nodes'][1]['bindings'])
+        self.definition['nodes'][1]['bindings']['texto'] = {'source': '$input', 'field': 'texto'}
+        result = await self.propose()
+        nodes = result['proposal']['definition']['nodes']
+        self.assertEqual([(node['x'], node['y']) for node in nodes], [(330, 0), (330, 240)])
+        self.assertEqual(result['proposal']['definition']['outputs'], self.definition['outputs'])
+
+    async def test_consent_required_before_search_or_model(self):
+        self.request.consent_to_provider = False
+        with patch('services.planner_service.planner_options', AsyncMock()) as options:
+            with self.assertRaises(HTTPException) as caught:
+                await propose_plan(self.request, self.catalog, self.provider)
+        self.assertEqual(caught.exception.status_code, 422)
+        options.assert_not_awaited()
+        self.provider.plan.assert_not_awaited()
+
+    async def test_stale_selection_rejected_before_model(self):
+        self.request.version_ids = [uuid4()]
+        with self.assertRaises(HTTPException) as caught:
+            await self.propose()
+        self.assertEqual(caught.exception.status_code, 409)
+        self.provider.plan.assert_not_awaited()
+
+    async def test_changed_reviewed_metadata_is_not_sent_to_provider(self):
+        for key in ['name', 'input_schema']:
+            with self.subTest(key=key):
+                original = deepcopy(self.options['items'][0])
+                self.options['items'][0][key] = 'Changed' if key == 'name' else {'type': 'object', 'properties': {'secret': {'type': 'string'}}}
+                with self.assertRaises(HTTPException) as caught:
+                    await self.propose()
+                self.assertEqual(caught.exception.status_code, 409)
+                self.provider.plan.assert_not_awaited()
+                self.options['items'][0] = original
+
+    def test_selection_requires_exact_reviewed_hashes_and_no_duplicates(self):
+        payload = self.request.model_dump(mode='json')
+        for changes in [{'version_hashes': {}}, {'version_ids': [self.identity, self.identity]},
+                        {'version_hashes': {str(uuid4()): 'a' * 64}}]:
+            with self.assertRaises(ValueError):
+                PlannerRequest.model_validate(payload | changes)
+
+    async def test_review_hash_is_not_sent_to_model(self):
+        self.options['items'][0]['review_hash'] = review_hash(self.options['items'][0])
+        await self.propose()
+        self.assertNotIn('review_hash', self.provider.plan.await_args.args[1][0])
+
+    async def test_two_distinct_versions_use_real_resolver_and_port_validation(self):
+        second_id = str(uuid4())
+        self.definition['nodes'][1]['version_id'] = second_id
+        first, second = manifest(), manifest()
+        versions = {}
+        candidates = {}
+        for identity, candidate in [(self.identity, first), (second_id, second)]:
+            versions[identity] = {'id': identity, 'status': 'enabled',
+                'candidate_id': str(candidate.candidate_id), 'capability_id': str(candidate.capability_id),
+                'artifact_hash': candidate.artifact_hash, 'definition_hash': candidate.definition_hash}
+            candidates[str(candidate.candidate_id)] = {'id': str(candidate.candidate_id),
+                'manifest': candidate.model_dump(mode='json')}
+        self.options['items'].append({'id': second_id, 'name': 'Transformación independiente'})
+        self.request = PlannerRequest(objective=self.request.objective, version_ids=[self.identity, second_id],
+            version_hashes={row['id']: review_hash(row) for row in self.options['items']}, consent_to_provider=True)
+        resolver = SimpleNamespace(version_for_execution=AsyncMock(side_effect=lambda identity: versions[str(identity)]))
+        repository = SimpleNamespace(get=AsyncMock(side_effect=lambda identity: candidates[str(identity)]))
+        with patch('services.planner_service.planner_options', AsyncMock(return_value=self.options)), \
+             patch('services.workflow_service.SharedExecutionRepository', return_value=resolver), \
+             patch('services.workflow_service.CandidateRepository', return_value=repository):
+            result = await propose_plan(self.request, self.catalog, self.provider, GenerationLimiter())
+        self.assertEqual(result['validation']['order'], ['limpiar', 'mayusculas'])
+        self.assertEqual(len(result['validation']['versions']), 2)
+        self.assertEqual(resolver.version_for_execution.await_count, 2)
+        self.assertEqual(repository.get.await_count, 2)
+
+    async def test_foreign_selection_never_reaches_provider(self):
+        with patch('services.planner_service.planner_options', AsyncMock(return_value={'items': [], 'search_truncated': False})):
+            with self.assertRaises(HTTPException) as caught:
+                await propose_plan(self.request, self.catalog, self.provider, GenerationLimiter())
+        self.assertEqual(caught.exception.status_code, 409)
+        self.provider.plan.assert_not_awaited()
+
+    async def test_model_cannot_invent_or_choose_unselected_versions(self):
+        self.provider.plan.return_value['definition']['nodes'][0]['version_id'] = str(uuid4())
+        with self.assertRaises(HTTPException) as caught:
+            await self.propose()
+        self.assertEqual(caught.exception.status_code, 502)
+
+    async def test_real_validator_rejects_cycles_and_missing_ports(self):
+        for field in ['resultado', 'missing']:
+            spec = deepcopy(self.definition)
+            spec['nodes'][0]['bindings']['texto'] = {'source': 'mayusculas', 'field': field}
+            self.provider.plan.return_value['definition'] = spec
+            with self.assertRaises(HTTPException) as caught:
+                await self.propose()
+            self.assertEqual(caught.exception.status_code, 502)
+
+    async def test_inconsistent_output_and_missing_questions_rejected(self):
+        for proposal in [
+            {'decision': 'reuse', 'explanation': 'Incorrecto', 'definition': self.definition},
+            {'decision': 'clarify', 'explanation': 'Pregunta ausente'},
+            {'decision': 'create', 'explanation': 'Inventa workflow', 'definition': self.definition},
+        ]:
+            self.provider.plan.return_value = proposal
+            with self.assertRaises(HTTPException) as caught:
+                await self.propose()
+            self.assertEqual(caught.exception.status_code, 502)
+
+    async def test_clarification_is_not_reported_as_validated_plan(self):
+        self.provider.plan.return_value = {'decision': 'clarify', 'explanation': 'Falta regla', 'questions': ['¿Conservar signos?']}
+        result = await self.propose()
+        self.assertIsNone(result['validation'])
+        self.assertIsNone(result['proposal']['definition'])
+
+    async def test_versions_revalidated_after_inference_and_limiter_released(self):
+        limits = GenerationLimiter()
+        with patch('services.planner_service.planner_options', AsyncMock(return_value=self.options)), \
+             patch('services.planner_service.check_workflow', AsyncMock(side_effect=HTTPException(404, 'Privada'))):
+            with self.assertRaises(HTTPException) as caught:
+                await propose_plan(self.request, self.catalog, self.provider, limits)
+        self.assertEqual(caught.exception.status_code, 409)
+        self.assertEqual(limits.active, set())
+
+    async def test_options_use_catalog_authorization_and_never_return_source(self):
+        candidate = manifest()
+        version = {'id': self.identity, 'candidate_id': str(candidate.candidate_id),
+            'capability_id': str(candidate.capability_id), 'status': 'enabled',
+            'artifact_hash': candidate.artifact_hash, 'definition_hash': candidate.definition_hash}
+        shared = SimpleNamespace(rpc=AsyncMock(return_value={'items': [version, version | {'capability_id': str(uuid4())}], 'next_cursor': None}))
+        candidates = SimpleNamespace(get=AsyncMock(return_value={'manifest': candidate.model_dump(mode='json')}))
+        with patch('services.planner_service.search_catalog', AsyncMock(return_value=([{'id': str(candidate.capability_id)}], False))), \
+             patch('services.planner_service.SharedExecutionRepository', return_value=shared), \
+             patch('services.planner_service.CandidateRepository', return_value=candidates):
+            result = await planner_options('Limpiar texto', self.catalog)
+        self.assertEqual(len(result['items']), 1)
+        self.catalog.get.assert_awaited_once()
+        candidates.get.assert_awaited_once()
+        self.assertNotIn('source', json.dumps(result))
+        self.assertEqual(result['items'][0]['visibility'], 'private')
+
+    async def test_provider_protocol_only_sends_selected_metadata_and_objective(self):
+        sent = []
+        def handler(request):
+            payload = json.loads(request.content)
+            sent.append(json.loads(payload['contents'][0]['parts'][0]['text']))
+            proposal = {'decision': 'blocked', 'explanation': 'Recurso no disponible'}
+            return httpx.Response(200, json={'candidates': [{'finishReason': 'STOP', 'content': {'parts': [{'text': json.dumps(proposal)}]}}]})
+        provider = GeminiProvider(Settings(_env_file=None, GEMINI_API_KEY='fixture'), httpx.MockTransport(handler))
+        await provider.plan(self.request.objective, self.options['items'])
+        self.assertEqual(sent, [{'objective': self.request.objective, 'versions': self.options['items']}])
+
+    def test_api_requires_session_and_schema_rejects_execution_fields(self):
+        app = FastAPI()
+        app.include_router(router, prefix='/api')
+        with TestClient(app) as client:
+            result = client.post('/api/planner/options', json={'objective': 'Limpiar texto de prueba'})
+        self.assertEqual(result.status_code, 401)
+        with self.assertRaises(ValueError):
+            PlannerProposal(decision='blocked', explanation='No', executed=True)

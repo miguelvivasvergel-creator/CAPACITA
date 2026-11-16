@@ -9,6 +9,8 @@ Los mocks no prueban que exista una implementación. Las rutas reales de catálo
 | candidatos.js | Fixture visual de desarrollo para candidatos Python; sin fallback ni consumidor en el recorrido real. |
 | laboratorio.js | Casos visuales de desarrollo del laboratorio; no sustituyen respuestas de builds ni se ejecutan automáticamente. |
 | inicio.js | Fixtures visuales para pruebas interceptadas de Inicio; no fallback. |
+| dashboard.js | Fixture visual A4 para resumen de trabajo; sin fallback de métricas. |
+| planner.js | Fixture de objetivo del planner; sin fallback de IA ni IDs ejecutables. |
 | home.js y users.js | Mocks históricos sin consumidor actual; Inicio usa catálogo autorizado e interpretación real. |
 | profile.js | Fixture histórica sin consumidor: perfil conectado a FastAPI, sin fallback. |
 | perfil-real.js | Fixture de contrato para pruebas interceptadas de perfil; no se usa en producción. |

@@ -26,6 +26,16 @@ Los SQL numerados para permisos están en db/, no son scripts de arranque. No ej
 
 ## Auditorías
 
+`maintenance/verify_planner_browser.js` comprueba el planner con API interceptada:
+consentimiento, huellas de contratos, propuesta, aclaración, error y móvil. No usa
+IA ni escribe datos reales. Ejecutar desde una sesión Playwright con Vite activo.
+
+`maintenance/verify_planner_persistence_browser.js` es una aceptación REAL y requiere
+autorización de guardado: partir de una propuesta nueva ya importada en Workflows
+(encabezado Crear workflow). Guarda un proceso privado y compara su definición
+tras recargar; no aprueba ni ejecuta. No usar sobre un proceso existente. Ambos:
+`playwright-cli run-code --filename scripts/maintenance/NOMBRE_DEL_SCRIPT.js`.
+
 `maintenance/verify_shared_database.py --workflows` añade migración 08 y casos de
 workflows a PostgreSQL temporal. `--sandbox` añade dos pasos reales en gVisor;
 detener worker antes. `maintenance/verify_workflow_ui.py` verifica editor en

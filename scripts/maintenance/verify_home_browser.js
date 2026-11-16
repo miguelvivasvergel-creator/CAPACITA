@@ -32,6 +32,7 @@ async (page) => {
       writes++;
       return route.fulfill({ status: 500, json: { detail: 'Escritura inesperada en prueba' } });
     }
+    if (['/api/runs', '/api/workflows'].includes(url.pathname)) return route.fulfill({ json: envelope({ items: [], next_cursor: null }) });
     if (url.pathname !== '/api/capabilities') return route.continue();
     scopes.add(url.searchParams.get('scope'));
     const q = url.searchParams.get('q');
@@ -70,15 +71,15 @@ async (page) => {
     await page.getByRole('button', { name: 'Cargar más capacidades' }).waitFor();
     await page.getByRole('button', { name: 'Cargar más capacidades' }).click();
     await page.getByRole('heading', { name: 'Segundo resultado', exact: true }).waitFor();
-    assert(await page.locator('article').count() === 2, 'Paginación duplicó resultados');
+    assert(await page.getByRole('region', { name: 'Capacidades del catálogo' }).locator('article').count() === 2, 'Paginación duplicó resultados');
     checks.push('búsqueda y paginación sin duplicados');
 
     await query('vacía');
     await page.getByText('No hay capacidades para esta búsqueda.', { exact: false }).waitFor();
-    assert(await page.locator('article').count() === 0, 'Vacío conserva resultados anteriores');
+    assert(await page.getByRole('region', { name: 'Capacidades del catálogo' }).locator('article').count() === 0, 'Vacío conserva resultados anteriores');
     await query('error');
     await page.getByRole('alert').filter({ hasText: 'Catálogo temporalmente no disponible' }).waitFor();
-    assert(await page.locator('article').count() === 0, 'Error presenta fallback de capacidades');
+    assert(await page.getByRole('region', { name: 'Capacidades del catálogo' }).locator('article').count() === 0, 'Error presenta fallback de capacidades');
     checks.push('vacío y error sin fallback');
 
     await query('lenta');

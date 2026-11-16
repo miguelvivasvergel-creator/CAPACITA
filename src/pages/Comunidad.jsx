@@ -1,307 +1,100 @@
-import { useState, useEffect } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { listarCapacidades, clonarCapacidad } from '../services/capacidades';
+import DetalleCapacidad from '../components/capabilities/DetalleCapacidad';
 
-const PAGINA = 4;
+const EMPTY = { items: [], next_cursor: null };
+const BUTTON = 'rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 
-// Convierte una fecha ISO en "Hace X horas / días"
-function tiempoRelativo(fechaIso) {
-  const diff = (Date.now() - new Date(fechaIso).getTime()) / 1000;
-  if (diff < 3600) return `Hace ${Math.max(1, Math.floor(diff / 60))} min`;
-  if (diff < 86400) return `Hace ${Math.floor(diff / 3600)} horas`;
-  const dias = Math.floor(diff / 86400);
-  if (dias === 1) return 'Ayer';
-  return `Hace ${dias} días`;
-}
-
-export default function Comunidad({ _usuario }) {
-  const [filtro, setFiltro] = useState('todo');       // todo | capacidades | workflows
-  const [orden, setOrden] = useState('recientes');    // recientes | populares
-  const [mostrar, setMostrar] = useState(PAGINA);
-  const [toast, setToast] = useState('');
-
-  const [datos, setDatos] = useState({ items: [], creadores: [], populares: [], deEjemplo: false });
-  const [cargando, setCargando] = useState(true);
+export default function Comunidad({ _usuario, onCambiarSeccion }) {
+  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState({ q: '', revision: 0 });
+  const [page, setPage] = useState(EMPTY);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
-  const [cursor, setCursor] = useState(null);
-  const [recarga, setRecarga] = useState(0);
-  const [clonando, setClonando] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [cloning, setCloning] = useState(false);
+  const [cloneError, setCloneError] = useState('');
+  const [notice, setNotice] = useState('');
+  const request = useRef(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    listarCapacidades('community', { signal: controller.signal })
-      .then(({ items, next_cursor }) => {
-        setDatos({ items: items.map(itemComunidad), creadores: [], populares: items });
-        setCursor(next_cursor);
-      })
-      .catch((err) => { if (!controller.signal.aborted) setError(err.message); })
-      .finally(() => { if (!controller.signal.aborted) setCargando(false); });
+    request.current = controller;
+    listarCapacidades('community', { q: search.q, signal: controller.signal })
+      .then((result) => { if (!controller.signal.aborted) setPage(result); })
+      .catch((cause) => { if (!controller.signal.aborted) setError(cause.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [recarga]);
+  }, [search]);
 
-  async function cargarMas() {
-    if (mostrar < items.length) { setMostrar(mostrar + PAGINA); return; }
-    setCargando(true);
+  function refresh(q = search.q) {
+    request.current?.abort();
+    setPage(EMPTY);
+    setLoading(true);
+    setLoadingMore(false);
     setError('');
-    try {
-      const pagina = await listarCapacidades('community', { cursor });
-      setDatos((actual) => ({ ...actual, items: [...actual.items, ...pagina.items.map(itemComunidad)] }));
-      setCursor(pagina.next_cursor);
-      setMostrar(mostrar + PAGINA);
-    } catch (err) { setError(err.message); }
-    finally { setCargando(false); }
+    setSearch((previous) => ({ q, revision: previous.revision + 1 }));
   }
 
-
-
-
-
-
-
-
-  // 1. Filtrar por tipo
-  let items = datos.items;
-  if (filtro === 'capacidades') items = items.filter((x) => x.tipo === 'capacidad');
-  if (filtro === 'workflows')   items = items.filter((x) => x.tipo === 'workflow');
-
-  // 2. Ordenar
-  items = [...items].sort((a, b) => {
-    if (orden === 'populares') return b.uses_count - a.uses_count;
-    return new Date(b.created_at) - new Date(a.created_at);
-  });
-
-  const visibles = items.slice(0, mostrar);
-  const hayMas = mostrar < items.length || (cursor && filtro !== 'workflows');
-
-  const handleClonar = async (item) => {
-    setClonando(item.id);
-    setToast('');
+  async function loadMore() {
+    if (loading || loadingMore || !page.next_cursor) return;
+    const controller = request.current;
+    setLoadingMore(true);
     setError('');
     try {
-      await clonarCapacidad(item.id);
-      setToast(`"${item.name}" guardada como borrador privado en Mis capacidades.`);
-    } catch (err) { setError(err.message); }
-    finally { setClonando(null); }
-  };
+      const next = await listarCapacidades('community', { q: search.q, cursor: page.next_cursor, signal: controller.signal });
+      if (!controller.signal.aborted) setPage((previous) => {
+        const ids = new Set(previous.items.map((item) => item.id));
+        return { items: [...previous.items, ...next.items.filter((item) => !ids.has(item.id))], next_cursor: next.next_cursor };
+      });
+    } catch (cause) { if (!controller.signal.aborted) setError(cause.message); }
+    finally { if (!controller.signal.aborted) setLoadingMore(false); }
+  }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+  async function clone(item) {
+    if (cloning) return;
+    setCloning(true);
+    setCloneError('');
+    setNotice('');
+    try {
+      const saved = await clonarCapacidad(item.id);
+      setNotice(`“${saved.name}” guardada como borrador privado en Mis capacidades.`);
+      setDetail(null);
+    } catch (cause) { setCloneError(cause.message); }
+    finally { setCloning(false); }
+  }
 
-      {/* Pestañas-chip (Todo / Capacidades / Workflows / Más populares / Recientes) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-soft inline-flex flex-wrap gap-1">
-        <PestañaChip activo={filtro === 'todo'}        onClick={() => { setFiltro('todo');        setMostrar(PAGINA); }}>Todo</PestañaChip>
-        <PestañaChip activo={filtro === 'capacidades'} onClick={() => { setFiltro('capacidades'); setMostrar(PAGINA); }}>Capacidades</PestañaChip>
-        <PestañaChip activo={filtro === 'workflows'}   onClick={() => { setFiltro('workflows');   setMostrar(PAGINA); }}>Workflows</PestañaChip>
-        <div className="w-px bg-slate-200 mx-1 my-1" />
-        <PestañaChip activo={orden === 'populares'}    onClick={() => setOrden('populares')}>Más populares</PestañaChip>
-        <PestañaChip activo={orden === 'recientes'}    onClick={() => setOrden('recientes')}>Recientes</PestañaChip>
+  return <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+    <h1 className="text-3xl font-extrabold text-slate-900">Comunidad</h1>
+    <p className="mt-2 text-sm text-slate-600">Explora capacidades públicas y guarda una copia privada para trabajar con ella. La ejecución depende de una versión habilitada.</p>
+    <form onSubmit={(event) => { event.preventDefault(); refresh(query.trim()); }} className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+      <label htmlFor="comunidad-buscar" className="text-sm font-semibold text-slate-800">Buscar capacidades públicas</label>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <input id="comunidad-buscar" value={query} maxLength={200} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre o descripción" />
+        <button type="submit" className={BUTTON}>Buscar en comunidad</button>
       </div>
-
-      {/* Toast */}
-      {toast && (
-        <div className="mt-4 inline-block bg-green-50 border border-green-200 text-green-700 text-xs font-semibold font-body px-3 py-2 rounded-full">
-          {toast}
+    </form>
+    {notice && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{notice}</p>}
+    {cloneError && !detail && <p role="alert" className="mt-4 text-sm text-red-700">{cloneError}</p>}
+    {error && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-white p-4"><p className="text-sm text-red-700">No se pudo cargar la comunidad: {error}</p><button type="button" onClick={() => refresh()} className={`${BUTTON} mt-3`}>Reintentar</button></div>}
+    {loading && <p role="status" className="mt-6 text-sm text-slate-600">Cargando comunidad…</p>}
+    {!loading && !error && !page.items.length && <p className="mt-6 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-600">No hay capacidades públicas para esta búsqueda.</p>}
+    {!loading && !!page.items.length && <p className="mt-6 text-sm text-slate-500">{page.items.length}{page.next_cursor ? '+' : ''} capacidades cargadas</p>}
+    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {page.items.map((item) => <article key={item.id} className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+        <p className="text-xs text-slate-500">Capacidad pública · {item.category}</p>
+        <h2 className="mt-2 break-words text-lg font-bold text-slate-900">{item.name}</h2>
+        <p className="mt-2 break-words text-sm text-slate-600">{item.description}</p>
+        <p className="mt-3 text-xs text-slate-500">{item.input_type} → {item.output_type}</p>
+        {item.owner_username && <button type="button" onClick={() => onCambiarSeccion?.(`perfil/${encodeURIComponent(item.owner_username)}`)} className="mt-3 self-start break-all text-sm font-semibold text-blue-700 underline">@{item.owner_username}</button>}
+        <div className="mt-auto flex flex-wrap gap-3 pt-5">
+          <button type="button" onClick={() => { setDetail(item); setCloneError(''); }} className={BUTTON}>Ver {item.name}</button>
+          <button type="button" disabled={cloning} onClick={() => clone(item)} className={BUTTON}>{cloning ? 'Guardando copia…' : `Clonar ${item.name}`}</button>
         </div>
-      )}
-
-
-            {error && (
-        <div role="alert" className="mt-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 font-body">
-          {error}
-          <button className="ml-3 underline" disabled={cargando} onClick={() => { setError(''); setCargando(true); setRecarga(recarga + 1); }}>Reintentar</button>
-        </div>
-      )}
-
-
-
-
-      {/* Layout 2 columnas */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Grid de tarjetas */}
-        <div className="lg:col-span-2">
-          {visibles.length === 0 ? (
-            <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center text-sm text-slate-500 font-body">
-              {cargando ? 'Cargando comunidad…' : error ? 'No se pudo cargar la comunidad.' : filtro === 'workflows' ? 'Los workflows comunitarios aún no están disponibles.' : 'No hay capacidades publicadas con ese filtro.'}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {visibles.map((item) => (
-                <TarjetaComunidad
-                  key={item.id}
-                  item={item}
-                  deshabilitado={clonando !== null}
-                  onClonar={() => handleClonar(item)}
-                />
-              ))}
-            </div>
-          )}
-
-          {hayMas && (
-            <div className="mt-6 text-center">
-              <button
-                onClick={cargarMas}
-                disabled={cargando}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-full cursor-pointer transition-colors font-body shadow-soft"
-              >
-                <span>🔄</span>
-                <span>Cargar más</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Columna derecha */}
-        <aside className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
-            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight font-sans mb-4">
-              Creadores destacados
-            </h3>
-            <ul className="space-y-3">
-              {datos.creadores.map((c) => (
-                <li key={c.username} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center font-body shrink-0">
-                    {c.nombre.split(' ').map((n) => n[0]).slice(0, 2).join('')}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1">
-                      <p className="text-sm font-semibold text-slate-800 truncate font-sans">
-                        {c.nombre}
-                      </p>
-                      <CheckVerificado />
-                    </div>
-                    <p className="text-xs text-slate-500 truncate font-body">
-                      {c.usos} usos
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs text-slate-500">El ranking de creadores aún no está disponible.</p>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
-            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight font-sans mb-4">
-              Capacidades de esta página
-            </h3>
-            <ol className="space-y-2.5 font-body">
-              {datos.populares.map((c, idx) => (
-                <li key={c.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xs text-slate-400 font-semibold w-4">{idx + 1}</span>
-                    <span className="text-slate-700 truncate">{c.name}</span>
-                  </div>
-                  <span className="text-xs text-slate-500 shrink-0 font-semibold">
-                    {c.uses_count}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </aside>
-      </div>
+      </article>)}
     </div>
-  );
-}
-
-/* ---------- Subcomponentes ---------- */
-
-function PestañaChip({ activo, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-1.5 text-xs font-semibold rounded-full cursor-pointer transition-colors font-body ${
-        activo
-          ? 'bg-blue-600 text-white shadow-sm'
-          : 'text-slate-600 hover:bg-slate-50'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function CheckVerificado() {
-  return (
-    <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function itemComunidad(item) {
-  return { ...item, tipo: 'capacidad', owner_name: item.owner_username || 'Usuario' };
-}
-
-function TarjetaComunidad({ item, onClonar, deshabilitado }) {
-  const esCapacidad = item.tipo === 'capacidad';
-  const tipos = esCapacidad
-    ? [item.input_type, item.output_type]
-    : item.pasos;
-
-  return (
-    <article className="pillar-card bg-white border border-slate-200 rounded-2xl p-5 shadow-soft flex flex-col">
-      {/* Etiqueta + tiempo */}
-      <div className="flex items-center justify-between mb-3">
-        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full font-body ${
-          esCapacidad
-            ? 'bg-blue-50 text-blue-700 border border-blue-100'
-            : 'bg-purple-50 text-purple-700 border border-purple-100'
-        }`}>
-          {esCapacidad ? '⚡' : '🔀'} {esCapacidad ? 'Capacidad' : 'Workflow'}
-        </span>
-        <span className="text-xs text-slate-400 font-body">
-          {tiempoRelativo(item.created_at)}
-        </span>
-      </div>
-
-      {/* Nombre */}
-      <h3 className="text-base font-extrabold text-slate-900 tracking-tight font-sans">
-        {item.name}
-      </h3>
-      <p className="mt-1.5 text-xs text-slate-500 font-body line-clamp-2">
-        {item.description}
-      </p>
-
-      {/* Chips con flechas */}
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        {tipos.map((t, idx) => (
-          <span key={idx} className="flex items-center gap-1.5">
-            <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-full text-[11px] font-semibold text-slate-700 font-body">
-              {t}
-            </span>
-            {idx < tipos.length - 1 && (
-              <span className="text-slate-400 text-xs">→</span>
-            )}
-          </span>
-        ))}
-      </div>
-
-      {/* Pie: autor + usos + botón */}
-      <div className="mt-auto pt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center font-body shrink-0">
-            {item.owner_name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
-          </div>
-          <div className="flex items-center gap-1 min-w-0">
-            <span className="text-xs font-semibold text-slate-800 truncate font-body">
-              {item.owner_name}
-            </span>
-          </div>
-          <span className="text-xs text-slate-400 font-body shrink-0">
-            ▶ {item.uses_count}
-          </span>
-        </div>
-        <button
-          onClick={onClonar}
-          disabled={deshabilitado}
-          className="boton-primario inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-full cursor-pointer font-body shrink-0"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          <span>Clonar borrador</span>
-        </button>
-      </div>
-    </article>
-  );
+    {!loading && page.next_cursor && <button type="button" disabled={loadingMore} onClick={loadMore} className={`${BUTTON} mt-5`}>{loadingMore ? 'Cargando más…' : 'Cargar más capacidades públicas'}</button>}
+    {detail && <DetalleCapacidad capacidad={detail} esDuenio={detail.owner_id === _usuario?.id} onCerrar={() => setDetail(null)} onClonar={() => clone(detail)} clonando={cloning} accionError={cloneError} />}
+  </div>;
 }

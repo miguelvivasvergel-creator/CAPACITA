@@ -4,6 +4,85 @@ Actualizado: 15/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Cierre de avance Miguel, 16/11/2026: usuario pide avanzar lo máximo posible.
+Guardado real de propuesta de un paso: 201, workflow f61664e5, misma definición
+tras recargar y listado propio. Una llamada Gemini adicional real produce
+compose de dos pasos sobre la MISMA versión habilitada (título/cuerpo); validación
+200, guardado 201 y reapertura UI con definición idéntica. Workflow de068ede,
+nombre «Prueba planner A: título y cuerpo». Ambos conservados como privados;
+no se aprobaron/ejecutaron ni se modificaron procesos previos. Capturas ignoradas
+en output/playwright/planner-compose-{real,saved}.png.
+
+Planner A corregido: review_hash por opción y version_hashes obligatorias en
+propuesta, selección única/exacta; contratos/metadatos cambiados devuelven 409
+antes de IA. Huellas no conceden acceso ni se envían a Gemini. Tras validar,
+disposición de nodos por dependencias separa pasos de $input y pasos paralelos;
+no toca el editor B ni datos guardados. Guía [PLANNER_A.md](PLANNER_A.md).
+145 pruebas backend completas, cinco grupos visuales planner y siete checks
+dashboard pasan; lint/build/imports/diff correctos y enlaces válidos en 24
+documentos. Revisados 30 archivos del bloque sin patrones de claves reconocibles;
+sesiones, capturas y scripts locales de aceptación permanecen ignorados.
+Privacidad HTTP local con dos identidades y repositorios reales pasa mediante
+transporte simulado; NO es aceptación RLS remota. Segunda sesión ausente y
+credenciales worker no configuradas aquí. Pendiente privacidad remota con otra
+cuenta, dos capacidades distintas y ejecución aislada de estos planes. Sin SQL,
+publicación ni cambios de motor/workers B. Consultar Git para entrega del bloque.
+
+Aceptación real A, 15/11/2026, tras login confirmado por usuario: sesión verificada
+por Supabase. Dashboard consulta endpoints reales: tres capacidades, un workflow,
+dos ejecuciones completadas, sin truncado. Planner options 200 encuentra versión
+propia habilitada de Normalizar espacios de un texto. Una llamada real a Gemini
+mediante POST /planner/propose devuelve 200, decisión reuse, un paso y contratos
+validados. Importación desde la propuesta visible al constructor B: POST
+/workflows/validate 200, valid=true, orden normalizar_texto y aviso de carga correcto.
+Propuesta queda en editor SIN guardar, aprobar ni ejecutar. Capturas locales
+ignoradas: output/playwright/planner-real-proposal.png y planner-real-import.png.
+El primer script se detuvo después de recibir la propuesta por usar window fuera
+del navegador; corregido script local y continuada importación desde UI, sin
+repetir llamada a Gemini. No fue un fallo del producto. El 404 de /openapi.json
+era ruta incorrecta del diagnóstico; esquema real bajo /api/openapi.json.
+Pendientes: privacidad del planner con segunda cuenta, composición de dos pasos
+y persistencia de un workflow generado. Sin SQL, guardado remoto, commit ni push.
+
+Prueba real solicitada, 15/11/2026: navegador local sin sesión autenticada y API
+apagada tras cierre. API reiniciada en 8000 con acceso de red autorizado; frontend
+disponible en 5173. Solicitado login al usuario en la ventana de prueba, sin pedir
+credenciales por chat. Todavía no se invocó Gemini ni se guardó/ejecutó un workflow.
+Continuar aceptación autenticada cuando el usuario confirme inicio de sesión.
+
+### Recuperación del planner A — 15/11/2026
+
+Recuperado el avance local de Inicio → Planificar un proceso. Busca versiones
+habilitadas del catálogo autorizado sin IA; exige selección y consentimiento
+para enviar objetivo, nombres, descripciones y contratos a Gemini. Valida con
+el contrato B y comprueba disponibilidad después de inferencia. No guarda,
+aprueba ni ejecuta. Transferencia manual: copiar JSON e importar en Workflows.
+Búsqueda textual limitada a veinte capacidades y doscientas versiones; recorte
+explícito.
+
+Pasan 136 pruebas backend, incluidas once del planner; lint, build, imports,
+diff --check y siete comprobaciones del dashboard. Cinco grupos Playwright
+interceptados pasan: consentimiento, propuesta/conexiones, aclaraciones, errores
+y móvil de 390 px sin desborde. Sin IA ni escrituras reales en estas pruebas.
+Vite reiniciado en http://127.0.0.1:5173. Bundle >500 kB conocido.
+Pendientes: aceptación autenticada de dashboard/planner, Gemini real,
+privacidad entre cuentas e importación/guardado real con contrato B.
+Sin SQL, cambios remotos, commit ni push durante recuperación.
+
+
+Avance A4 local, 15/11/2026, después de integrar Fahida B3/B4: usuario solicita
+continuar el frente Miguel. Inicio incorpora resumen de capacidades propias,
+workflows y ejecuciones por estado mediante endpoints existentes; hasta 1.000
+registros por sección, recuento parcial explícito y fallos independientes sin
+ceros ficticios. Comunidad con búsqueda pública en backend, detalle, perfil y
+clonación explícita; retirados rankings y contadores sin fuente integrada.
+Siete comprobaciones de paginación y seis grupos Playwright interceptados pasan;
+lint, build, imports y diff --check correctos, bundle >500 kB conocido. Captura
+móvil inspeccionada sin desborde. Sin SQL, IA, datos remotos ni cambios al motor B.
+No se probó el resumen contra sesión real ni se certifica aquí ejecución B3/B4.
+Cambios locales sin commit/push. Guía: [dashboard/comunidad](DASHBOARD_COMUNIDAD_A.md).
+Siguiente: aceptación autenticada del resumen y planner A usando contrato B.
+
 Integraci?n local Miguel, 15/11/2026: usuario solicita traer la rama de Fahida.
 Se incorpora origin/feature/Fahida-backend-setup hasta 0e67c8b sobre miguel
 (06f9ecc), conservando Inicio, perfil y b?squeda A. Respaldo:

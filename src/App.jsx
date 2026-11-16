@@ -242,7 +242,7 @@ export default function App() {
         )}
         {seccion === 'capacidades' && <Capacidades />}
         {seccion === 'workflows' && <Workflows _usuario={usuarioActual} />}
-        {seccion === 'comunidad' && <Comunidad _usuario={usuarioActual} />}
+        {seccion === 'comunidad' && <Comunidad key={usuarioActual.id} _usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />}
         {seccion === 'configuracion' && (
           <Configuracion usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />
         )}
