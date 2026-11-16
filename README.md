@@ -122,9 +122,9 @@ políticas RLS remotas ni sustituyen el recorrido real con dos usuarios.
 | Interfaz | `src/` | React, Vite y Tailwind. Catálogo conectado a FastAPI. |
 | API principal | `backend/` | FastAPI: Auth verificada y repositorio PostgREST del catálogo. |
 | Persistencia y Auth | Supabase | Catálogo inspeccionado; lectura/clonación y permisos mínimos confirmados por el usuario. Otros módulos pendientes. |
-| API .NET existente | `backend-dotnet/` | Se conserva: búsqueda y consulta de perfiles aún tienen consumidores. Requiere SDK .NET 10 según su csproj. |
+| API .NET existente | `backend-dotnet/` | Conservada e inactiva en búsqueda/perfil actuales. Requiere SDK .NET 10 si se trabaja en ella. |
 | SQL de referencia | `db/` | Scripts numerados; su existencia no prueba que estén aplicados. |
-| Ejecución y workflows | Frente B | Motor/datos de desarrollo pendientes de integración con catálogo/versiones reales. |
+| Ejecución y workflows | Frente B | B3/B4 privados integrados: versiones, runs persistentes, laboratorio y constructor. Requieren worker autorizado; publicación entre cuentas pendiente. |
 
 Consulta [el contrato de identidad y catálogo](docs/modulo-a-identidad-catalogo.md)
 antes de conectar nuevas pantallas. Mocks y placeholders siguen presentes en
@@ -146,7 +146,9 @@ El detalle de una definición privada propia incluye **Preparar implementación 
 Permite revisar coincidencias, confirmar envío de ejemplos sin datos privados a Gemini
 y generar/guardar un candidato privado. Requiere revisar/aplicar
 [`06_private_candidates.sql`](db/06_private_candidates.sql); el script está preparado,
-no aplicado automáticamente. Crea una tabla privada independiente con RLS, sin
+no aplicado automáticamente en instalaciones nuevas. Ya aplicado en el proyecto
+trabajado, al igual que SQL 07/08 según continuidad: no repetir migraciones allí.
+Crea una tabla privada independiente con RLS, sin
 modificar capacidades existentes ni habilitar ejecución. Hasta que exista el
 almacenamiento, la generación se detiene antes de llamar a IA.
 

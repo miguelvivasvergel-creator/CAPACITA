@@ -1,6 +1,7 @@
 // CLI Playwright: pruebas interceptadas, sin cambiar perfiles ni fotos reales.
 // eslint-disable-next-line no-unused-expressions -- La CLI evalúa esta expresión de función.
 async (page) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
   const fixture = await page.evaluate(async () => {
     const { api } = await import('/src/api.js');
@@ -16,6 +17,11 @@ async (page) => {
   const handler = async route => {
     const request = route.request();
     const url = new URL(request.url());
+    if (url.origin !== 'http://127.0.0.1:8000') return route.continue();
+    if (!url.pathname.startsWith('/api/users/')) {
+      if (['/api/runs', '/api/workflows', '/api/capabilities'].includes(url.pathname)) return route.fulfill({ json: { success: true, data: { items: [], next_cursor: null } } });
+      throw new Error(`Petición inesperada en perfil: ${url.pathname}`);
+    }
     if (url.pathname.startsWith('/api/users/desconocido')) return route.fulfill({ status: 404, json: { detail: 'Perfil no encontrado' } });
     if (url.pathname.startsWith('/api/users/fallo')) return route.fulfill({ status: 503, json: { detail: 'Proveedor no disponible' } });
     if (request.method() === 'PATCH') {
@@ -32,7 +38,8 @@ async (page) => {
     const data = url.pathname === '/api/users/otro' ? { ...profile, id: '22222222-2222-4222-8222-222222222222', username: 'otro' } : profile;
     return route.fulfill({ json: { success: true, data } });
   };
-  await page.route('**/api/users/**', handler);
+  const patterns = ['**/api/users/**', '**/api/runs?*', '**/api/workflows?*', '**/api/capabilities?*'];
+  for (const pattern of patterns) await page.route(pattern, handler);
   try {
     await page.goto('http://127.0.0.1:5173/#perfil/' + encodeURIComponent(profile.username));
     await page.reload();
@@ -68,11 +75,14 @@ async (page) => {
     checks.push('error de guardado conserva editor sin éxito falso');
 
     await page.getByRole('button', { name: 'Workflows', exact: true }).last().click();
-    await page.getByRole('heading', { name: 'Workflows del perfil pendientes de integración' }).waitFor();
+    await page.getByRole('region', { name: 'Mis workflows privados', exact: true }).waitFor();
     await page.goto('http://127.0.0.1:5173/#perfil/otro');
     await page.reload();
     await page.getByText('@otro', { exact: true }).waitFor();
     assert(await page.getByRole('button', { name: 'Editar perfil', exact: true }).count() === 0, 'Perfil ajeno ofrece editar');
+    await page.locator('[aria-label="Secciones del perfil"]').getByRole('button', { name: 'Actividad', exact: true }).click();
+    await page.getByRole('heading', { name: 'Actividad privada', exact: true }).waitFor();
+    assert(await page.getByRole('region', { name: 'Mis ejecuciones privadas', exact: true }).count() === 0, 'Perfil ajeno monta historial privado');
     checks.push('perfil ajeno sin edición y workflows sin datos ficticios');
 
     await page.goto('http://127.0.0.1:5173/#perfil/desconocido');
@@ -87,7 +97,7 @@ async (page) => {
     checks.push('móvil sin desborde');
     return { passed: true, checks, realWrites: 0 };
   } finally {
-    await page.unroute('**/api/users/**', handler);
+    for (const pattern of patterns) await page.unroute(pattern, handler);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('http://127.0.0.1:5173/#perfil/' + encodeURIComponent(fixture.username));
     await page.reload();

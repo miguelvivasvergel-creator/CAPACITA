@@ -262,6 +262,26 @@ Implementado localmente: resumen propio en Inicio con capacidades, workflows y e
 
 ### Recuperación del planner A — 15/11/2026
 
+Entrega Miguel 16/11: integración A con componentes B3/B4 sin editar archivos B;
+App ya no monta el cliente heredado con mocks. Definición guardada abre el trabajo
+de implementación; pieza faltante conserva objetivo y renueva consentimiento.
+Reparación explícita implementada/aceptada realmente con 201, candidato nuevo
+5ef7a607 persistido y anterior intacto. Semántica local en planner, filtros servidor
+y actividad/workflows propios en perfil, aceptados con sesión real. Privacidad con
+segunda identidad verificada: selección ajena 409, seis lecturas 404, listas sin
+recursos A y perfil ajeno sin consultas privadas. 160 pruebas backend y batería
+visual pasan; detalle en ENTREGA_MARTES.md. Mayúsculas: segunda definición/candidato
+c7e2ed9f/ba6d86d4 preparados, NO probados/habilitados. Publicación/ejecución conjunta
+de dos capacidades y worker dependen del cierre B. Sin SQL, despliegue ni cambios B.
+
+Auditoría 16/11/2026: pendientes completos de Miguel en CIERRE_MIGUEL.md (A1–A5,
+quince bloques con aceptación y dependencias). Inspección documental/estática;
+no se implementaron las tareas inventariadas ni se repitieron pruebas remotas.
+Commit funcional local 8f879ab confirmado. Principales faltantes: publicación y
+reutilización por otra cuenta, enlace catálogo/ejecución, recorrido de piezas
+faltantes/reparación y aceptación integrada. Hay ruta de ejecución heredada con
+fallback a mocks que debe coordinarse con B antes de considerarla entregable.
+
 Avance posterior, 16/11/2026: guardado/recarga real del plan de un paso con 201
 (f61664e5). Composición Gemini 200 de dos pasos reutilizando una sola versión
 para título/cuerpo; validación 200, guardado 201 y reapertura idéntica (de068ede).

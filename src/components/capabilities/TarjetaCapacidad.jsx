@@ -108,7 +108,7 @@ export default function TarjetaCapacidad({ capacidad, onVer, onUsar }) {
       {/* Footer de la tarjeta */}
       <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
         <span className="text-xs text-slate-400 font-medium">
-          {capacidad.uses_count} usos
+          Revisa su versión
         </span>
 
         <div className="flex items-center gap-2">
@@ -122,9 +122,10 @@ export default function TarjetaCapacidad({ capacidad, onVer, onUsar }) {
           <button
             type="button"
             onClick={() => onUsar && onUsar(capacidad)}
+            disabled={!onUsar}
             className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-sm shadow-blue-500/20 cursor-pointer"
           >
-            Usar
+            Abrir
           </button>
         </div>
       </div>

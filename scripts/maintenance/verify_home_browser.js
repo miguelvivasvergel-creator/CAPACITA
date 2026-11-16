@@ -56,7 +56,7 @@ async (page) => {
     assert(await page.getByText('PLAN PROPUESTO', { exact: true }).count() === 0, 'Planner ficticio visible');
     checks.push('catálogo autorizado sin estadísticas ni plan ficticios');
     await page.getByRole('button', { name: 'Ver Normalizar espacios', exact: true }).click();
-    assert(await page.getByRole('button', { name: 'Ejecución pendiente', exact: true }).isDisabled(), 'Detalle ofrece ejecución sin integración');
+    assert(!await page.getByRole('button', { name: 'Abrir capacidad →', exact: true }).isDisabled(), 'Detalle no ofrece abrir el espacio de trabajo real');
     await page.getByRole('button', { name: 'Cerrar', exact: true }).last().click();
     await page.getByRole('combobox', { name: 'Mostrar' }).selectOption('mine');
     await page.getByRole('heading', { name: 'Normalizar espacios', exact: true }).waitFor();

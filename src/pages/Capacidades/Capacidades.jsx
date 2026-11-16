@@ -11,7 +11,7 @@ function totalCargado(page, loaded) {
   return `${page.items.length}${page.next_cursor ? '+' : ''}`;
 }
 
-export default function Capacidades() {
+export default function Capacidades({ onAbrirCapacidad }) {
   const [seccion, setSeccion] = useState('mis');
   const [pages, setPages] = useState({ mine: EMPTY_PAGE, community: EMPTY_PAGE });
   const [loaded, setLoaded] = useState(false);
@@ -88,6 +88,7 @@ export default function Capacidades() {
             setAviso(`“${capacidad.name}” guardada como borrador privado. Su implementación y pruebas siguen pendientes.`);
             setSeccion('mis');
             retry();
+            onAbrirCapacidad?.(capacidad);
           }} />
         </>
       ) : error ? (
@@ -104,6 +105,7 @@ export default function Capacidades() {
           esMisCapacidades={scope === 'mine'}
           onCrearClick={() => setSeccion('crear')}
           onClonar={clone}
+          onAbrir={onAbrirCapacidad}
           onCargarMas={page.next_cursor ? loadMore : undefined}
           cargandoMas={loadingMore}
         />

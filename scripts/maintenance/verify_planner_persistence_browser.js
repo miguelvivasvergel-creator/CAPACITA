@@ -23,4 +23,4 @@ async (page) => {
   }, { id: original.id, definition: original.definition });
   if (!checks.same_definition) throw new Error('La definición cambió al recargar');
   return { save_status: 201, workflow_id: original.id, ...checks, executed: false };
-};
+}

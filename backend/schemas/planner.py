@@ -8,6 +8,7 @@ from schemas.workflows import WorkflowDefinition
 class PlannerSearch(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     objective: str = Field(min_length=10, max_length=2000)
+    mode: Literal['text', 'semantic'] = 'text'
 
 
 class PlannerRequest(PlannerSearch):

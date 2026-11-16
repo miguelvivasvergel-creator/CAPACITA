@@ -2,9 +2,9 @@ import { useId, useState } from 'react';
 import { objetivoDeEjemplo } from '../../mocks/objetivos';
 import { interpretarObjetivo } from '../../services/objetivos';
 
-export default function InterpretarObjetivo({ onPropuesta, onClonar, disabled, onBusy }) {
+export default function InterpretarObjetivo({ onPropuesta, onClonar, disabled, onBusy, initialObjective = '' }) {
   const id = useId();
-  const [objective, setObjective] = useState('');
+  const [objective, setObjective] = useState(initialObjective);
   const [consent, setConsent] = useState(false);
   const [answers, setAnswers] = useState({});
   const [history, setHistory] = useState([]);

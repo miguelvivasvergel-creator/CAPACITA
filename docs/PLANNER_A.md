@@ -6,6 +6,14 @@ existentes. El usuario selecciona hasta doce y revisa nombres, descripciones y
 contratos antes de consentir su envío a Gemini, incluidas las capacidades privadas.
 No se envían código ni resultados de ejecuciones.
 
+Actualización de cierre: selector text/semantic explícito, semántica local aceptada
+con sesión real y una opción propia habilitada. En modo semantic la consulta de
+búsqueda usa los primeros 200 caracteres y hasta 200 capacidades autorizadas;
+la propuesta a Gemini conserva el objetivo completo consentido. Modelo ausente
+produce error y permite elegir texto, sin fallback oculto. POST options/propose
+aceptan `mode` con text por defecto. La decisión create o una búsqueda vacía
+permiten pasar el objetivo a definición sin autoguardado ni consentimiento heredado.
+
 ## Contrato
 
 - `POST /api/planner/options`: `{objective}`; no llama a IA. Devuelve
@@ -77,7 +85,9 @@ capacidades distintas ni ejecución funcional. Ambos procesos privados de prueba
 quedan conservados en la cuenta; los procesos anteriores no se modificaron.
 Capturas ignoradas en `output/playwright/planner-compose-{real,saved}.png`.
 
-Pendientes: privacidad remota con segunda identidad (no hay sesión B ni cuenta
-worker configurada en este equipo), composición real de dos capacidades distintas
-(solo hay una versión habilitada) y ejecución de las propuestas en sandbox B.
+Privacidad posterior verificada realmente con segunda identidad: versión privada
+ausente, selección forzada 409 antes de IA, workflows/runs privados de A devuelven
+404 y no aparecen en los listados B. Pendientes: composición real de dos capacidades
+distintas (la segunda candidata está preparada en ENTREGA_MARTES.md, aún no habilitada)
+y ejecución de las propuestas en sandbox B con worker autorizado.
 No crear cuentas, migraciones ni versiones para sustituir estas comprobaciones.

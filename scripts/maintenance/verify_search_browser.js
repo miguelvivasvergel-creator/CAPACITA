@@ -1,6 +1,7 @@
 // Escenarios interceptados de búsqueda; no consume IA ni escribe registros reales.
 // eslint-disable-next-line no-unused-expressions -- La CLI evalúa la expresión de función.
 async (page) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
   const fixture = await page.evaluate(async () => (await import('/src/mocks/busqueda.js')).respuestaBusqueda);
   const requests = [];
@@ -33,7 +34,7 @@ async (page) => {
     assert(requests.some(request => request.capabilities_cursor === 'next-page'), 'Cursor no enviado');
     checks.push('paginación real con deduplicación');
     await page.getByRole('button', { name: 'Ver Otro resultado', exact: true }).click();
-    assert(await page.getByRole('button', { name: 'Ejecución pendiente', exact: true }).isDisabled(), 'Detalle ofrece ejecución inexistente');
+    assert(!await page.getByRole('button', { name: 'Abrir capacidad →', exact: true }).isDisabled(), 'Detalle no ofrece abrir el trabajo con la capacidad');
     await page.getByRole('button', { name: 'Cerrar', exact: true }).last().click();
     checks.push('detalle del resultado sin ejecución ficticia');
 

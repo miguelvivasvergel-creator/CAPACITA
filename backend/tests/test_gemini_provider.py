@@ -65,6 +65,20 @@ class GeminiProviderTests(unittest.IsolatedAsyncioTestCase):
         proposal = await self.provider(handle).generate(self.definition)
         self.assertIn("def run", proposal.source)
 
+    async def test_repair_sends_only_explicit_definition_code_and_feedback(self):
+        source = "def run(inputs, parameters): return inputs"
+        feedback = "Conservar los acentos y limpiar los espacios exteriores"
+        def handle(request):
+            body = json.loads(request.content)
+            data = json.loads(body['contents'][0]['parts'][0]['text'])
+            self.assertEqual(data, {'definition': self.definition.model_dump(mode='json'),
+                'previous_source': source, 'feedback': feedback})
+            self.assertNotIn('tools', body)
+            self.assertNotIn('test-only-secret', str(request.url))
+            return httpx.Response(200, json=response())
+        proposal = await self.provider(handle).repair(self.definition, source, feedback)
+        self.assertIn('def run', proposal.source)
+
     async def test_provider_failures_are_sanitized_and_never_sign_user_out(self):
         for status in (302, 400, 401, 403, 404, 429, 500):
             calls = []

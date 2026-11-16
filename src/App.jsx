@@ -10,7 +10,7 @@ import Workflows from './pages/Workflows';
 import Comunidad from './pages/Comunidad';
 import Configuracion from './pages/Configuracion';
 import Perfil from './pages/Perfil';
-import Ejecutar from './pages/Ejecutar';
+import TrabajoCapacidad from './pages/TrabajoCapacidad';
 import Buscar from './pages/Buscar';
 import {
   supabase,
@@ -34,6 +34,7 @@ const SECCIONES_VALIDAS = [
 
 // La sección es la primera parte del hash: '#perfil/fahida' → 'perfil', '#ejecutar/workflow/wf-001' → 'ejecutar'
 const esSeccionValida = (hash) => SECCIONES_VALIDAS.includes(hash.split('/')[0]);
+const decodificarParametro = (value = '') => { try { return decodeURIComponent(value); } catch { return ''; } };
 
 export default function App() {
   const [modo, setModo] = useState(() =>
@@ -48,6 +49,14 @@ export default function App() {
   const [vista, setVista] = useState(
     esSeccionValida(initialHash) ? initialHash : 'auth'
   );
+
+  useEffect(() => {
+    const titles = { inicio: 'Inicio', capacidades: 'Capacidades', workflows: 'Workflows',
+      comunidad: 'Comunidad', configuracion: 'Configuración', perfil: 'Perfil',
+      ejecutar: 'Capacidad', buscar: 'Buscar' };
+    const title = titles[vista.split('/')[0]];
+    if (usuarioActual && title) document.title = `${title} — Capacita`;
+  }, [vista, usuarioActual]);
 
   const toastTimeoutRef = useRef(null);
 
@@ -240,7 +249,7 @@ export default function App() {
         {seccion === 'inicio' && (
           <Inicio usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
-        {seccion === 'capacidades' && <Capacidades />}
+        {seccion === 'capacidades' && <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />}
         {seccion === 'workflows' && <Workflows _usuario={usuarioActual} />}
         {seccion === 'comunidad' && <Comunidad key={usuarioActual.id} _usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />}
         {seccion === 'configuracion' && (
@@ -250,7 +259,7 @@ export default function App() {
           <Perfil
             key={parametros[0]}
             usuario={usuarioActual}
-            username={parametros[0] || usuarioActual.username}
+            username={decodificarParametro(parametros[0]) || usuarioActual.username}
             onCambiarSeccion={handleCambiarSeccion}
             onConfigurar={() => handleCambiarSeccion('configuracion')}
             onPerfilActualizado={(perfil) => setUsuarioActual((previous) => previous?.id === perfil.id
@@ -259,15 +268,20 @@ export default function App() {
           />
         )}
         {seccion === 'ejecutar' && (
-          <Ejecutar key={vista} tipo={parametros[0]} id={parametros[1]} />
+          parametros[0] === 'workflow'
+            ? <Workflows key={vista} _usuario={usuarioActual} />
+            : <TrabajoCapacidad key={`${usuarioActual.id}:${vista}`} id={parametros[1]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
         {seccion === 'buscar' && (
           <Buscar
             key={vista}
-            texto={decodeURIComponent(parametros[0] || '')}
+            texto={decodificarParametro(parametros[0])}
             capacidadId={parametros[1]}
             metodo={parametros[2]}
             alcance={parametros[3]}
+            categoria={decodificarParametro(parametros[4])}
+            autor={decodificarParametro(parametros[5])}
+            tipoDato={parametros[6] || ''}
             usuario={usuarioActual}
             onCambiarSeccion={handleCambiarSeccion}
           />

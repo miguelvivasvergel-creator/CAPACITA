@@ -13,6 +13,15 @@ IMPORTS = re.compile(r"(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['\"]([^'\"]+)['\"]")
 ASSETS = re.compile(r"(?:url\(\s*|(?:src|href)\s*=\s*)['\"]?([^\s'\"\)<>]+)")
 EXTENSIONS = (".js", ".jsx", ".css", ".json")
 EXPECTED_INACTIVE = {
+    "src/mocks/trabajo.js": "fixture visual de integración A/B3 y reparación; nunca fallback",
+    "src/pages/Ejecutar.jsx": "pantalla heredada B conservada; App usa integración A con B3/B4",
+    "src/services/ejecucion.js": "cliente heredado con fallback; fuera del recorrido activo",
+    "src/mocks/runs.js": "fixture del cliente heredado, fuera del recorrido activo",
+    "src/components/runs/EntradaEjecucion.jsx": "componente heredado B conservado, fuera del recorrido activo",
+    "src/components/runs/EstadoBadge.jsx": "componente heredado B conservado, fuera del recorrido activo",
+    "src/components/runs/PasosEjecucion.jsx": "componente heredado B conservado, fuera del recorrido activo",
+    "src/components/runs/PermisosModal.jsx": "componente heredado B conservado, fuera del recorrido activo",
+    "src/components/runs/ResultadoEjecucion.jsx": "componente heredado B conservado, fuera del recorrido activo",
     "src/mocks/planner.js": "fixture visual planner A; nunca fallback de IA",
     "src/mocks/dashboard.js": "fixture visual A4; métricas reales sin fallback",
     "src/mocks/busqueda.js": "fixture de pruebas interceptadas; no fallback de búsqueda",

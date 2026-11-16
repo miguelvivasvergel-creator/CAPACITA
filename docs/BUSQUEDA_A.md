@@ -3,6 +3,14 @@
 15/11/2026. Autocompletado y Buscar usan FastAPI. .NET queda conservado e
 inactivo. No modifica workflows, versiones, builds ni ejecución de Fahida.
 
+Actualización 16/11: SearchRequest acepta category, owner (username) y data_type.
+Son filtros de capacidades ejecutados en servidor, conservados en URL y páginas.
+La categoría es coincidencia exacta, tipo aplica a entrada o salida; las personas
+se buscan por la consulta. Semántica incorpora filtros al fingerprint del cursor
+y revalida autor/tipo después de inferencia. Lectura real con los tres filtros
+recupera la capacidad propia esperada. El planner también consume esta semántica
+local de forma explícita; no se modifican los contratos B.
+
 ## Recorrido y API
 
 Autocompletado textual con detalle/perfil reales. Buscar ofrece texto/significado

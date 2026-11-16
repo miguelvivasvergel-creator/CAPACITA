@@ -50,7 +50,7 @@ export function ListaCapacidades({ capacidades }) {
               <span className="text-slate-400 text-xs">→</span>
               <TipoDato tipo={cap.output_type} />
             </div>
-            <span className="text-xs font-medium text-slate-400">{cap.uses_count} usos</span>
+            <span className="text-xs font-medium text-slate-400">Uso por verificar</span>
           </div>
         </article>
       ))}

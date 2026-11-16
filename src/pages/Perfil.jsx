@@ -4,10 +4,12 @@ import PerfilTarjetas from '../components/profile/PerfilTarjetas';
 import EditarPerfilModal from '../components/profile/EditarPerfilModal';
 import { ListaCapacidades, EstadoVacio } from '../components/profile/PerfilListas';
 import { cargarPerfil, listarCapacidadesPerfil } from '../services/perfil';
+import HistorialPropio from '../components/profile/HistorialPropio';
+import ResumenTrabajo from '../components/profile/ResumenTrabajo';
 
 const PESTANAS = [{ id: 'capacidades', label: 'Capacidades' }, { id: 'workflows', label: 'Workflows' }, { id: 'actividad', label: 'Actividad' }];
 
-export default function Perfil({ usuario, username, onConfigurar, onPerfilActualizado }) {
+export default function Perfil({ usuario, username, onConfigurar, onPerfilActualizado, onCambiarSeccion }) {
   const [datos, setDatos] = useState(undefined);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -57,6 +59,7 @@ export default function Perfil({ usuario, username, onConfigurar, onPerfilActual
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
       <PerfilEncabezado perfil={perfil} esPropio={esPropio} onEditar={() => setEditando(true)} onConfigurar={onConfigurar} />
       <PerfilTarjetas stats={perfil.stats} />
+      {esPropio && <ResumenTrabajo key={userId} onCambiarSeccion={onCambiarSeccion} />}
       <p className="text-xs text-slate-500">El perfil muestra capacidades públicas. Las métricas sin datos integrados aparecen como —.</p>
       <div className="inline-flex flex-wrap gap-1 rounded-xl border border-slate-200/60 bg-slate-100/90 p-1" aria-label="Secciones del perfil">
         {PESTANAS.map(({ id, label }) => <button key={id} type="button" aria-pressed={pestana === id} onClick={() => setPestana(id)} className={`rounded-lg px-3 py-2 text-sm font-medium ${pestana === id ? 'bg-white font-semibold text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
@@ -68,8 +71,8 @@ export default function Perfil({ usuario, username, onConfigurar, onPerfilActual
         {!datos.capacidadesError && <ListaCapacidades capacidades={perfil.capabilities} />}
         {datos.next_cursor && <button onClick={loadMore} disabled={cargandoMas} className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50">{cargandoMas ? 'Cargando…' : 'Cargar más capacidades públicas'}</button>}
       </>}
-      {pestana === 'workflows' && <EstadoVacio icono="🔗" titulo="Workflows del perfil pendientes de integración" texto="Aquí aparecerán los workflows públicos cuando esté disponible su integración." />}
-      {pestana === 'actividad' && <EstadoVacio icono="📋" titulo="Actividad del perfil pendiente de integración" texto="Las entradas, salidas y archivos de tus ejecuciones siguen siendo privados." />}
+      {pestana === 'workflows' && (esPropio ? <HistorialPropio key={`${userId}:workflows`} kind="workflows" onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="🔗" titulo="Workflows públicos pendientes de integración" texto="Los workflows privados de esta persona no se publican en su perfil." />)}
+      {pestana === 'actividad' && (esPropio ? <HistorialPropio key={`${userId}:runs`} kind="runs" /> : <EstadoVacio icono="📋" titulo="Actividad privada" texto="Las entradas, salidas y archivos de las ejecuciones solo los ve quien ejecutó." />)}
       {editando && esPropio && <EditarPerfilModal perfil={perfil} onCerrar={() => setEditando(false)} onGuardado={updated => {
         setDatos(previous => ({ ...previous, perfil: { ...previous.perfil, ...updated, stats: previous.perfil.stats } }));
         setEditando(false);

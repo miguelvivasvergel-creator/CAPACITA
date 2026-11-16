@@ -37,6 +37,12 @@ class CandidateGenerateRequest(BaseModel):
     consent_to_provider: bool = False
 
 
+class CandidateRepairRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    feedback: str = Field(min_length=10, max_length=1500)
+    consent_to_provider: bool = False
+
+
 class CandidateResponse(BaseModel):
     id: UUID
     capability_id: UUID

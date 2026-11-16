@@ -19,6 +19,7 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [propuesta, setPropuesta] = useState(null);
+  const [objetivoPendiente, setObjetivoPendiente] = useState(null);
   const [detalle, setDetalle] = useState(null);
   const [cloning, setCloning] = useState(false);
   const [cloneError, setCloneError] = useState('');
@@ -92,7 +93,7 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
         {notice && <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
         {cloneError && !detalle && <p role="alert" className="mb-4 text-sm text-red-700">{cloneError}</p>}
         <div hidden={modo !== 'objetivo'}>
-          <InterpretarObjetivo disabled={cloning} onClonar={clone} onPropuesta={(definition) => {
+          <InterpretarObjetivo key={objetivoPendiente?.id || 'objetivo'} initialObjective={objetivoPendiente?.text || ''} disabled={cloning} onClonar={clone} onPropuesta={(definition) => {
             setPropuesta({ id: crypto.randomUUID(), definition });
             setNotice('Propuesta cargada. Revisa el formulario y comprueba la definición antes de guardarla.');
           }} />
@@ -100,9 +101,13 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
             setNotice(`“${saved.name}” guardada como borrador privado. Su implementación y pruebas siguen pendientes.`);
             setPropuesta(null);
             refresh();
+            onCambiarSeccion?.(`ejecutar/capability/${saved.id}`);
           }} />}
         </div>
-        {modo === 'planificar' && <PlanificarObjetivo onCambiarSeccion={onCambiarSeccion} />}
+        {modo === 'planificar' && <PlanificarObjetivo onCambiarSeccion={onCambiarSeccion} onDefinirObjetivo={(text) => {
+          setObjetivoPendiente({ id: crypto.randomUUID(), text }); setPropuesta(null); setModo('objetivo');
+          setNotice('Objetivo trasladado. Aclara la capacidad faltante y revisa su definición antes de generar código.');
+        }} />}
         <form hidden={modo !== 'buscar'} onSubmit={(event) => {
           event.preventDefault();
           changeSearch({ q: consulta.trim() });
@@ -145,7 +150,7 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
         {!loading && page.next_cursor && <button type="button" onClick={loadMore} disabled={loadingMore} className={`${BUTTON} mt-5`}>{loadingMore ? 'Cargando más…' : 'Cargar más capacidades'}</button>}
         <button type="button" onClick={() => onCambiarSeccion?.('capacidades')} className="mt-5 block text-sm font-semibold text-blue-700 underline">Ir a Mis capacidades y crear manualmente</button>
       </section>
-      {detalle && <DetalleCapacidad capacidad={detalle} esDuenio={detalle.owner_id === usuario?.id} onCerrar={() => setDetalle(null)} onClonar={() => clone(detalle)} clonando={cloning} accionError={cloneError} />}
+      {detalle && <DetalleCapacidad capacidad={detalle} esDuenio={detalle.owner_id === usuario?.id} onCerrar={() => setDetalle(null)} onClonar={() => clone(detalle)} onUsar={() => onCambiarSeccion?.(`ejecutar/capability/${detalle.id}`)} clonando={cloning} accionError={cloneError} />}
     </div>
   );
 }

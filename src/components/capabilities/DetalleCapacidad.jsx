@@ -17,7 +17,15 @@ export default function DetalleCapacidad({
   const isPublic = capacidad.visibility === 'public';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200">
+    <div role="dialog" aria-modal="true" aria-label={`Detalle de ${capacidad.name}`} onKeyDown={(event) => {
+      if (event.key === 'Escape') { event.preventDefault(); onCerrar?.(); }
+      if (event.key === 'Tab') {
+        const controls = [...event.currentTarget.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary')].filter((element) => element.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6">
         
         {/* Encabezado del Modal */}
@@ -43,7 +51,7 @@ export default function DetalleCapacidad({
             <p className="text-xs text-slate-500">
               Creado por{' '}
               <a
-                href={`#u/${encodeURIComponent(capacidad.owner_username || capacidad.owner_id)}`}
+                href={`#perfil/${encodeURIComponent(capacidad.owner_username || capacidad.owner_id)}`}
                 className="text-blue-600 font-semibold hover:underline"
               >
                 {capacidad.owner_username ? `@${capacidad.owner_username}` : 'Autor sin nombre de usuario'}
@@ -53,6 +61,7 @@ export default function DetalleCapacidad({
 
           <button
             type="button"
+            autoFocus
             onClick={onCerrar}
             className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition cursor-pointer"
             title="Cerrar"
@@ -139,15 +148,7 @@ export default function DetalleCapacidad({
           </div>
         </div>
 
-        {/* Estadísticas de uso */}
-        <div className="flex items-center gap-6 py-2 border-y border-slate-100 text-xs text-slate-500">
-          <div>
-            <strong className="text-slate-800 font-bold">{capacidad.uses_count || 0}</strong> ejecuciones realizadas
-          </div>
-          <div>
-            <strong className="text-slate-800 font-bold">{capacidad.clones_count || 0}</strong> veces clonado
-          </div>
-        </div>
+        <p className="text-xs text-slate-500">Las métricas de uso de esta capacidad todavía no están integradas.</p>
 
         {/* Botones de Acción */}
         {accionError && <p role="alert" className="text-sm text-red-700">{accionError}</p>}
@@ -198,7 +199,7 @@ export default function DetalleCapacidad({
               disabled={!onUsar}
               className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-full shadow-md shadow-blue-500/25 transition active:scale-[0.99] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span>{onUsar ? 'Usar capacidad →' : 'Ejecución pendiente'}</span>
+              <span>{onUsar ? 'Abrir capacidad →' : 'Ejecución pendiente'}</span>
             </button>
           </div>
         </div>

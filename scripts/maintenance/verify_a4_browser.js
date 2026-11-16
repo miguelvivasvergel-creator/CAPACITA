@@ -74,7 +74,7 @@ async (page) => {
     if (await page.locator('article').count() !== 2) throw new Error('Comunidad duplicó filas');
     checks.push('comunidad paginada, texto literal y sin duplicados');
     await page.getByRole('button', { name: `Ver ${item.name}`, exact: true }).click();
-    await page.getByRole('button', { name: 'Ejecución pendiente', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Abrir capacidad →', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Cerrar', exact: true }).last().click();
     await page.getByRole('button', { name: `Clonar ${item.name}`, exact: true }).click();
     await page.getByText('“Copia privada” guardada como borrador privado en Mis capacidades.', { exact: true }).waitFor();

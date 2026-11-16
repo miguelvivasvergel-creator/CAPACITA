@@ -1,8 +1,52 @@
 # Capacita — contexto y continuidad
 
-Actualizado: 15/11/2026, America/Bogota. Estado actual; las sesiones anteriores se conservan en [historial](historial/README.md).
+Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores se conservan en [historial](historial/README.md).
 
 ## Punto exacto para retomar
+
+Avance de entrega Miguel, 16/11/2026: usuario pide implementar pendientes rápido,
+consumiendo B3/B4 integrados y manteniendo SOLO archivos A. Reitera que Fahida
+entrega su bloque siguiente mañana; no se autoriza asumir su motor/SQL/workers.
+App deja fuera el cliente de ejecución heredado con mocks y monta TrabajoCapacidad,
+que integra los componentes B existentes. Catálogo/búsqueda y guardado de definición
+abren ese espacio. Planner create/vacío traslada objetivo a definición con nuevo
+consentimiento; selector semántico local añadido y verificado realmente.
+
+Reparación A explícita con límite configurable (2/h/proceso por defecto y cuota
+general), crea candidato nuevo draft sin heredar evidencia. Aceptación Gemini
+real 201: 5ef7a607, nuevo hash persistido, código/hash anteriores intactos. Segunda
+capacidad distinta preparada: mayúsculas, c7e2ed9f / candidato ba6d86d4, hash y
+casos independientes en [ENTREGA_MARTES.md](ENTREGA_MARTES.md). Ambos candidatos
+nuevos SIN ejecutar/probar/habilitar; no se aplicó SQL ni configuró worker.
+
+Filtros reales por categoría/autor/tipo y perfil propio con resumen, workflows y
+runs/detalles privados sobre B. Dos sesiones Auth verificadas y distintas: planner
+oculta versión A, selección forzada 409, seis GET privados ajenos 404, listas sin
+workflows/runs A; perfil ajeno no consulta listas privadas. A carga realmente dos
+runs y tres workflows en esa observación. Módulo Vite servido vacío detectado por
+HTTP frente a build válido; invalidada caché de desarrollo y pruebas repetidas.
+
+160 pruebas backend pasan, lint/build/imports/enlaces y siete checks dashboard.
+Grupos visuales interceptados: Buscar 7, Perfil 6, Inicio 8, A4 6, Planner 5,
+Trabajo/reparación 4. No certifican ejecución de candidatos nuevos. Guías y borrador
+de PR en ENTREGA_MARTES.md / PR_MIGUEL_A.md. Publicación ejecutable entre cuentas
+sigue BLOQUEADA por contrato B: propuesta en CONTRATO_PUBLICACION_A_B.md, no API
+implementada. Siguiente: laboratorio/habilitación B de segunda candidata, plan con
+transferencia entre dos capacidades y publicación/reutilización A/B. Modalidad
+local/enlace público aún no definida. Consultar Git para entrega de este bloque.
+
+Auditoría de cierre Miguel solicitada el 16/11/2026: inventario completo A1–A5
+en [CIERRE_MIGUEL.md](CIERRE_MIGUEL.md), con quince bloques pendientes, aceptación
+y dependencias B. Hallazgos centrales: publicación/versiones entre cuentas sin
+contrato operativo; Usar del catálogo pendiente; ruta Ejecutar heredada aún
+montada, con fallback a mocks y payload incompatible con runs actuales; enlace
+de autor #u distinto de la ruta perfil. También faltan cierre de pieza faltante,
+reparación acotada, privacidad planner real y aceptación de dos capacidades distintas.
+Sin cambios de producto ni nuevas pruebas remotas en esta auditoría. Commit
+funcional local 8f879ab verificado; tracking local miguel cinco commits por
+delante de origin/miguel, sin consultar GitHub. Lista nueva no equivale a ejecución
+ni a autorización para editar archivos B. Siguiente prioridad: acordar contrato
+de publicación/consumo B y cerrar recorrido integrado A/B.
 
 Cierre de avance Miguel, 16/11/2026: usuario pide avanzar lo máximo posible.
 Guardado real de propuesta de un paso: 201, workflow f61664e5, misma definición

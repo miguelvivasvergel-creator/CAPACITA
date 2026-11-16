@@ -18,6 +18,10 @@ EMPTY = {'items': [], 'next_cursor': None}
 admission = threading.Lock()
 
 
+def catalog_filters(request):
+    return {'category': request.category, 'owner': request.owner, 'data_type': request.data_type}
+
+
 def descriptor(row):
     return '\n'.join(str(row.get(key) or '') for key in ('name', 'description', 'category'))
 
@@ -89,12 +93,12 @@ async def semantic_capabilities(request, catalog, encoder, cache):
         raise HTTPException(503, 'La búsqueda semántica local no está instalada. Usa búsqueda textual.')
     rows, cursor = [], None
     while len(rows) < POOL_LIMIT:
-        page = await catalog.list(scope=request.scope, cursor=cursor, limit=min(100, POOL_LIMIT - len(rows)))
+        page = await catalog.list(scope=request.scope, cursor=cursor, limit=min(100, POOL_LIMIT - len(rows)), **catalog_filters(request))
         rows.extend(page['items'])
         cursor = page['next_cursor']
         if not cursor:
             break
-    fingerprint = hashlib.sha256(json.dumps([request.query, request.scope, catalog.user_id, encoder.model_id,
+    fingerprint = hashlib.sha256(json.dumps([request.query, request.scope, catalog_filters(request), catalog.user_id, encoder.model_id,
         [(row['id'], digest(row)) for row in rows]], ensure_ascii=False).encode()).hexdigest()
     offset = 0
     if request.capabilities_cursor:
@@ -125,6 +129,10 @@ async def semantic_capabilities(request, catalog, encoder, cache):
         by_id = {row['id']: row for row in fresh}
         if any(row['id'] not in by_id or digest(by_id[row['id']]) != digest(row) for row in items):
             raise HTTPException(409, 'Cambió el catálogo durante la búsqueda. Vuelve a buscar.')
+        if any((request.owner and by_id[row['id']].get('owner_username') != request.owner)
+               or (request.data_type and request.data_type not in {by_id[row['id']]['input_type'], by_id[row['id']]['output_type']})
+               for row in items):
+            raise HTTPException(409, 'Cambió el catálogo durante la búsqueda. Vuelve a buscar.')
         items = [{**by_id[row['id']], 'similarity': row['similarity']} for row in items]
     next_cursor = None
     if offset + len(items) < len(ranked):
@@ -146,6 +154,6 @@ async def search(request, catalog, encoder=local_embeddings, cache=None):
                 cursor = UUID(request.capabilities_cursor) if request.capabilities_cursor else None
             except ValueError:
                 raise HTTPException(422, 'Cursor de búsqueda inválido') from None
-            capabilities = await catalog.list(scope=request.scope, q=request.query, cursor=cursor, limit=request.limit)
+            capabilities = await catalog.list(scope=request.scope, q=request.query, cursor=cursor, limit=request.limit, **catalog_filters(request))
     return {'mode': request.mode, 'profiles': profiles, 'capabilities': capabilities,
             'semantic_available': encoder.available(), 'semantic_scanned': scanned, 'semantic_truncated': truncated}

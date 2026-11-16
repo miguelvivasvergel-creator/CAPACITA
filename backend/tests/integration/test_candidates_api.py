@@ -13,6 +13,7 @@ from core.supabase import SupabaseGateway, get_supabase_gateway
 from schemas.candidates import PythonSourceProposal
 from services.candidate_generation import limiter
 from services.candidate_generation import GenerationLimiter
+from services.candidate_repair import repair_limiter
 from tests.fixtures.definitions import definition
 from tests.fixtures.supabase_catalog import SupabaseFixture, MIGUEL, FAHIDA, PUBLIC_ID
 
@@ -55,9 +56,15 @@ class FakeGenerator:
             self.on_generate()
         return PythonSourceProposal(source=self.source)
 
+    async def repair(self, definition, source, feedback):
+        self.calls += 1
+        return PythonSourceProposal(source=source + '\n# Proposed correction\n')
+
 
 class CandidateAPITests(unittest.TestCase):
     def setUp(self):
+        repair_limiter.attempts.clear()
+        repair_limiter.active.clear()
         limiter.attempts.clear()
         limiter.active.clear()
         self.database, self.generator = CandidateFixture(), FakeGenerator()
@@ -82,6 +89,27 @@ class CandidateAPITests(unittest.TestCase):
         self.client.close()
         limiter.attempts.clear()
         limiter.active.clear()
+        repair_limiter.attempts.clear()
+        repair_limiter.active.clear()
+
+    def test_repair_requires_owner_and_consent_and_inserts_a_new_candidate(self):
+        original = self.generate().json()['data']
+        original_snapshot = json.loads(json.dumps(self.database.candidates[0]))
+        path = f"/api/candidates/{original['id']}/repair"
+        payload = {'feedback': 'Conservar los espacios interiores y los acentos', 'consent_to_provider': True}
+        other = self.client.post(path, headers={'Authorization': 'Bearer fahida-token'}, json=payload)
+        self.assertEqual(other.status_code, 404)
+        self.assertEqual(self.client.post(path, headers=self.headers, json=payload | {'consent_to_provider': False}).status_code, 422)
+        self.assertEqual(self.generator.calls, 1)
+        limiter.attempts.clear()  # Simular que transcurrió el cooldown de generación inicial.
+        response = self.client.post(path, headers=self.headers, json=payload)
+        self.assertEqual(response.status_code, 201, response.text)
+        repaired = response.json()['data']
+        self.assertNotEqual(repaired['id'], original['id'])
+        self.assertNotEqual(repaired['manifest']['artifact_hash'], original['manifest']['artifact_hash'])
+        self.assertFalse(repaired['manifest']['implementation_verified'])
+        self.assertEqual(self.database.candidates[0], original_snapshot)
+        self.assertEqual(len(self.database.candidates), 2)
 
     def generate(self, **changes):
         return self.client.post(self.path, headers=self.headers, json=self.payload | changes)

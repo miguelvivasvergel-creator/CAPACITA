@@ -131,6 +131,29 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(caught.exception.status_code, 409)
         self.provider.plan.assert_not_awaited()
 
+    async def test_semantic_options_use_authorized_search_without_provider(self):
+        shared = SimpleNamespace(rpc=AsyncMock(return_value={'items': [], 'next_cursor': None}))
+        search = AsyncMock(return_value={'capabilities': {'items': [], 'next_cursor': None}, 'semantic_truncated': False})
+        with patch('services.planner_service.search_authorized', search), \
+             patch('services.planner_service.SharedExecutionRepository', return_value=shared):
+            result = await planner_options('Normalizar espacios ' * 20, self.catalog, mode='semantic')
+        request, catalog = search.await_args.args
+        self.assertIs(catalog, self.catalog)
+        self.assertEqual(request.mode, 'semantic')
+        self.assertEqual(request.kind, 'capabilities')
+        self.assertEqual(request.query, ('Normalizar espacios ' * 20)[:200].strip())
+        self.assertEqual(result['search_kind'], 'semantic')
+        self.assertTrue(result['search_truncated'])
+        self.provider.plan.assert_not_awaited()
+
+    async def test_missing_semantic_model_is_an_explicit_error(self):
+        with patch('services.planner_service.search_authorized', AsyncMock(side_effect=HTTPException(503, 'Modelo no disponible'))), \
+             patch('services.planner_service.search_catalog', AsyncMock()) as textual:
+            with self.assertRaises(HTTPException) as caught:
+                await planner_options('Normalizar espacios', self.catalog, mode='semantic')
+        self.assertEqual(caught.exception.status_code, 503)
+        textual.assert_not_awaited()
+
     async def test_model_cannot_invent_or_choose_unselected_versions(self):
         self.provider.plan.return_value['definition']['nodes'][0]['version_id'] = str(uuid4())
         with self.assertRaises(HTTPException) as caught:

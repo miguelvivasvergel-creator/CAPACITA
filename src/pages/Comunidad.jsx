@@ -95,6 +95,6 @@ export default function Comunidad({ _usuario, onCambiarSeccion }) {
       </article>)}
     </div>
     {!loading && page.next_cursor && <button type="button" disabled={loadingMore} onClick={loadMore} className={`${BUTTON} mt-5`}>{loadingMore ? 'Cargando más…' : 'Cargar más capacidades públicas'}</button>}
-    {detail && <DetalleCapacidad capacidad={detail} esDuenio={detail.owner_id === _usuario?.id} onCerrar={() => setDetail(null)} onClonar={() => clone(detail)} clonando={cloning} accionError={cloneError} />}
+    {detail && <DetalleCapacidad capacidad={detail} esDuenio={detail.owner_id === _usuario?.id} onCerrar={() => setDetail(null)} onClonar={() => clone(detail)} onUsar={() => onCambiarSeccion?.(`ejecutar/capability/${detail.id}`)} clonando={cloning} accionError={cloneError} />}
   </div>;
 }

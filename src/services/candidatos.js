@@ -13,3 +13,5 @@ export function listarCandidatos(capabilityId, options = {}) {
 export function generarCandidato(capabilityId, payload) {
   return api(`/capabilities/${encodeURIComponent(capabilityId)}/candidates`, { method: 'POST', body: payload });
 }
+
+export const repararCandidato = (candidateId, payload) => api(`/candidates/${encodeURIComponent(candidateId)}/repair`, { method: 'POST', body: payload });

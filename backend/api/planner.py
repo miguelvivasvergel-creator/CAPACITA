@@ -12,7 +12,7 @@ router = APIRouter(prefix="/planner", tags=["Planificación para revisar"])
 
 @router.post("/options", response_model=APIResponse[dict])
 async def options(payload: PlannerSearch, repository: Repository):
-    return APIResponse(data=await planner_options(payload.objective, repository))
+    return APIResponse(data=await planner_options(payload.objective, repository, mode=payload.mode))
 
 
 @router.post("/propose", response_model=APIResponse[dict])

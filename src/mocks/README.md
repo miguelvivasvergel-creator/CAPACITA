@@ -22,3 +22,6 @@ Los mocks no prueban que exista una implementación. Las rutas reales de catálo
 | catalog/community.js | Fixture antigua de comunidad/rankings, sin consumidor actual. No reintroducir como fallback de producción. |
 
 Los tests del backend tienen sus datos separados en backend/tests/fixtures/. El ejemplo de definición no calcula resultados: la salida esperada la declara el usuario.
+`trabajo.js`: fixtures del espacio de trabajo A, integración con componentes B3 y
+reparación de candidatos. Usadas solo por pruebas interceptadas, nunca como
+respuesta ni fallback de las APIs reales.

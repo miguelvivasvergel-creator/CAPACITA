@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { revisarGeneracion, listarCandidatos, generarCandidato } from '../../services/candidatos';
 import LaboratorioCandidato from './LaboratorioCandidato';
+import RepararCandidato from './RepararCandidato';
 
 export default function CandidatosCapacidad({ capacidad }) {
   const [revision, setRevision] = useState(null);
@@ -16,6 +17,7 @@ export default function CandidatosCapacidad({ capacidad }) {
     setError('');
     setNotice('');
     setRevision(null);
+    setConsent(false);
     setAcknowledge(false);
     try {
       const [checked, candidates] = await Promise.all([revisarGeneracion(capacidad.id), listarCandidatos(capacidad.id)]);
@@ -91,6 +93,10 @@ export default function CandidatosCapacidad({ capacidad }) {
           <p className="mt-2 break-all text-xs text-slate-500">SHA-256: {candidate.manifest.artifact_hash}</p>
           <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 text-xs text-slate-800">{candidate.manifest.proposal.source}</pre>
           <LaboratorioCandidato candidate={candidate} />
+          <RepararCandidato candidate={candidate} onGuardado={(saved) => {
+            setPage((previous) => ({ ...previous, items: [saved, ...previous.items] }));
+            setNotice('Corrección guardada como candidato nuevo. Repite las pruebas aisladas antes de habilitarlo.');
+          }} />
         </details>)}
         {page.next_cursor && <button type="button" disabled={busy} onClick={loadMore} className="rounded-xl border px-4 py-2 text-sm">Cargar más candidatos</button>}
       </div>}

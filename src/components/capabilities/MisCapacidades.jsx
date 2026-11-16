@@ -18,6 +18,7 @@ export default function MisCapacidades({
   onCrearClick,
   esMisCapacidades = false,
   onClonar,
+  onAbrir,
   onCargarMas,
   cargandoMas = false,
 }) {
@@ -68,9 +69,7 @@ export default function MisCapacidades({
     }
   };
 
-  const handleUsar = () => {
-    setAccionError('La ejecución real de este catálogo todavía está pendiente de integración.');
-  };
+  const handleUsar = onAbrir ? (capacidad) => onAbrir(capacidad) : undefined;
 
   return (
     <div className="space-y-6">

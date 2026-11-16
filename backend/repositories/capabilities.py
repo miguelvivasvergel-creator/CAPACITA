@@ -29,7 +29,7 @@ class CapabilityRepository:
         row["owner_username"] = owner.get("username")
         return row
 
-    async def list(self, *, scope="available", q=None, data_type=None, owner=None, cursor=None, limit=20):
+    async def list(self, *, scope="available", q=None, data_type=None, owner=None, category=None, cursor=None, limit=20):
         filters = {"order": "id.asc", "limit": str(limit + 1)}
         if scope == "mine":
             filters["owner_id"] = f"eq.{self.user_id}"
@@ -42,10 +42,11 @@ class CapabilityRepository:
             conditions.append(f'or(name.ilike."%{term}%",description.ilike."%{term}%")')
         if data_type:
             conditions.append(f"or(input_type.eq.{data_type},output_type.eq.{data_type})")
+        if category:
+            filters["category"] = f"eq.{category}"
         if owner:
             filters["select"] = "*,owner:profiles!capabilities_owner_id_fkey!inner(username)"
-            escaped = owner.replace("\\", "\\\\").replace('"', '\\"')
-            filters["owner.username"] = f'eq."{escaped}"'
+            filters["owner.username"] = f'eq.{owner}'
         if cursor:
             filters["id"] = f"gt.{UUID(str(cursor))}"
         if conditions:

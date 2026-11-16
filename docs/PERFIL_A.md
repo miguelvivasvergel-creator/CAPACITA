@@ -4,6 +4,13 @@
 true,true,true,false,false. Aceptación remota superada con dos cuentas.
 No modifica motor, workflows, archivos de ejecución ni historial de Fahida.
 
+Actualización 16/11: el perfil propio monta ResumenTrabajo y HistorialPropio sobre
+/runs y /workflows B existentes, con páginas/detalle y salida privada como texto.
+No cambia el backend B. A real lee dos ejecuciones y tres workflows, incluyendo
+detalle de un run; B distinta abre el perfil A sin consultar esas listas ni montar
+el historial privado. El endpoint público /users/{username}/activity sigue 503:
+no se usa para publicar actividad privada. Workflows públicos siguen pendientes.
+
 ## Comportamiento
 
 El perfil se lee desde profiles de Supabase con el JWT verificado. Nombre y

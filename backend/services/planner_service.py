@@ -12,6 +12,8 @@ from services.candidate_generation import limiter
 from services.objective_service import search_catalog, search_terms
 from services.workflow_service import check_workflow
 from services.workflow_validation import bounded_json
+from schemas.search import SearchRequest
+from services.search_service import search as search_authorized
 
 
 def review_hash(option):
@@ -35,8 +37,13 @@ def arrange_definition(definition, order):
     return definition.model_copy(update={"nodes": [positioned[node.id] for node in definition.nodes]})
 
 
-async def planner_options(objective, catalog):
-    matches, truncated = await search_catalog(search_terms(objective), catalog)
+async def planner_options(objective, catalog, mode='text'):
+    if mode == 'semantic':
+        result = await search_authorized(SearchRequest(query=objective[:200], mode='semantic', kind='capabilities', limit=20), catalog)
+        matches = result['capabilities']['items']
+        truncated = result['semantic_truncated'] or bool(result['capabilities']['next_cursor']) or len(objective) > 200
+    else:
+        matches, truncated = await search_catalog(search_terms(objective), catalog)
     truncated = truncated or len(matches) > 20
     matches = matches[:20]
     allowed = {row["id"] for row in matches}
@@ -67,14 +74,14 @@ async def planner_options(objective, catalog):
         if not cursor:
             break
     bounded_json(options, 131072)
-    return {"items": options, "next_cursor": None, "search_kind": "text",
+    return {"items": options, "next_cursor": None, "search_kind": mode,
             "search_truncated": bool(cursor) or truncated}
 
 
 async def propose_plan(request, catalog, provider, limits=limiter):
     if not request.consent_to_provider:
         raise HTTPException(422, "Autoriza enviar el objetivo y los nombres, descripciones y contratos seleccionados a Gemini")
-    available = await planner_options(request.objective, catalog)
+    available = await planner_options(request.objective, catalog, mode=request.mode)
     selected = set(map(str, request.version_ids))
     options = [row for row in available["items"] if row["id"] in selected]
     if len(options) != len(selected):

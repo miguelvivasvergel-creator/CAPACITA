@@ -92,6 +92,23 @@ class SearchAPITests(unittest.TestCase):
         self.assertTrue(all(request.headers['authorization'] == 'Bearer fahida-token' for request in reads))
         self.assertEqual(self.encoder.seen, [])
 
+    def test_filters_reach_postgrest_without_losing_visibility(self):
+        response = self.search(category='Texto', owner='miguel', data_type='texto', kind='capabilities')
+        self.assertEqual(response.status_code, 200, response.text)
+        request = next(r for r in reversed(self.provider.requests) if r.url.path == '/rest/v1/capabilities')
+        self.assertEqual(request.url.params['category'], 'eq.Texto')
+        self.assertEqual(request.url.params['owner.username'], 'eq.miguel')
+        self.assertIn('input_type.eq.texto', request.url.params['and'])
+        self.assertEqual(request.url.params['or'], f'(visibility.eq.public,owner_id.eq.{MIGUEL})')
+
+    def test_semantic_cursor_cannot_be_reused_with_other_filters(self):
+        first = self.search(mode='semantic', limit=1, kind='capabilities')
+        self.assertEqual(first.status_code, 200, first.text)
+        cursor = first.json()['data']['capabilities']['next_cursor']
+        self.assertIsNotNone(cursor)
+        changed = self.search(mode='semantic', limit=1, kind='capabilities', category='Otra', capabilities_cursor=cursor)
+        self.assertEqual(changed.status_code, 409)
+
     def test_semantic_never_embeds_private_foreign_rows(self):
         self.headers = {'Authorization': 'Bearer fahida-token'}
         result = self.search(mode='semantic')

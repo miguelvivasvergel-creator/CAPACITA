@@ -6,8 +6,11 @@ import DetalleCapacidad from '../components/capabilities/DetalleCapacidad';
 
 const BUTTON = 'rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 
-export default function Buscar({ texto, capacidadId, metodo, alcance, usuario, onCambiarSeccion }) {
+export default function Buscar({ texto, capacidadId, metodo, alcance, usuario, onCambiarSeccion, categoria = '', autor = '', tipoDato = '' }) {
   const [entrada, setEntrada] = useState(texto);
+  const [category, setCategory] = useState(categoria);
+  const [owner, setOwner] = useState(autor);
+  const [dataType, setDataType] = useState(tipoDato);
   const modo = ['text', 'semantic'].includes(metodo) ? metodo : 'text';
   const scope = ['available', 'mine', 'community'].includes(alcance) ? alcance : 'available';
   const [revision, setRevision] = useState(0);
@@ -15,11 +18,12 @@ export default function Buscar({ texto, capacidadId, metodo, alcance, usuario, o
   const [notice, setNotice] = useState('');
   const [accionError, setAccionError] = useState('');
   const [cloning, setCloning] = useState(false);
-  const { res, cargando, error } = useBusqueda(texto, { limite: 20, delay: 0, modo, scope, revision });
+  const filtros = { category: categoria, owner: autor, dataType: tipoDato };
+  const { res, cargando, error } = useBusqueda(texto, { limite: 20, delay: 0, modo, scope, revision, ...filtros });
   useEffect(() => { document.title = 'Buscar — Capacita'; }, []);
 
   function navigate(query, nextMode = modo, nextScope = scope) {
-    onCambiarSeccion?.(`buscar/${encodeURIComponent(query.trim())}//${nextMode}/${nextScope}`);
+    onCambiarSeccion?.(`buscar/${encodeURIComponent(query.trim())}//${nextMode}/${nextScope}/${encodeURIComponent(category.trim())}/${encodeURIComponent(owner.trim())}/${dataType}`);
   }
 
   useEffect(() => {
@@ -61,19 +65,29 @@ export default function Buscar({ texto, capacidadId, metodo, alcance, usuario, o
           <select value={scope} onChange={event => navigate(texto, modo, event.target.value)} className="ml-2 rounded-xl border border-slate-300 py-2 pl-3 pr-8 text-sm"><option value="available">Visibles para mi cuenta</option><option value="mine">Propias</option><option value="community">Comunidad</option></select>
         </label>
       </div>
+      <form onSubmit={(event) => { event.preventDefault(); navigate(entrada); }} className="rounded-xl border border-slate-200 p-4">
+        <p className="text-sm font-semibold text-slate-800">Filtros del catálogo</p>
+        <p className="mt-1 text-xs text-slate-500">Se aplican en el servidor a capacidades; las personas se buscan por la consulta.</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label className="text-sm">Categoría<input value={category} maxLength={50} onChange={(event) => setCategory(event.target.value)} placeholder="Nombre exacto, por ejemplo Texto" className="mt-1 w-full rounded-lg border border-slate-300 p-2" /></label>
+          <label className="text-sm">Autor (usuario)<input value={owner} maxLength={50} onChange={(event) => setOwner(event.target.value)} placeholder="Nombre de usuario sin @" className="mt-1 w-full rounded-lg border border-slate-300 p-2" /></label>
+          <label className="text-sm">Tipo de datos<select value={dataType} onChange={(event) => setDataType(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"><option value="">Todos</option>{['texto', 'datos', 'pdf', 'imagen', 'audio'].map((type) => <option key={type} value={type}>{type}</option>)}</select></label>
+        </div>
+        <button type="submit" disabled={entrada.trim().length < 2} className={`${BUTTON} mt-3`}>Aplicar filtros</button>
+      </form>
       <p className="text-xs text-slate-500">{modo === 'semantic' ? 'Las capacidades se ordenan por significado en tu equipo. Las personas se buscan por texto. Revisa contratos y disponibilidad antes de reutilizar una sugerencia.' : 'Coincidencias por nombre y descripción de capacidades, y por nombre, usuario o biografía de personas.'} La búsqueda de workflows se integrará cuando esté disponible.</p>
       {notice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
       {accionError && !detalle && <p role="alert" className="text-sm text-red-700">{accionError}</p>}
       {texto.trim().length < 2 && <p className="text-sm text-slate-500">Escribe al menos 2 caracteres y pulsa Buscar.</p>}
       {cargando && <p role="status" className="text-sm text-slate-500">{modo === 'semantic' ? 'Buscando por significado… La primera consulta puede tardar más.' : 'Buscando…'}</p>}
       {error && <div role="alert" className="rounded-xl border border-red-200 p-4 text-sm text-red-700"><p>{error}</p><button type="button" onClick={() => setRevision(value => value + 1)} className={`${BUTTON} mt-3`}>Reintentar</button>{modo === 'semantic' && <button type="button" onClick={() => navigate(texto, 'text')} className={`${BUTTON} ml-2 mt-3`}>Usar búsqueda textual</button>}</div>}
-      {res && <Resultados key={JSON.stringify([texto, modo, scope, revision])} initial={res} texto={texto} modo={modo} scope={scope} onPerfil={username => onCambiarSeccion?.(`perfil/${encodeURIComponent(username)}`)} onDetalle={item => { setDetalle(item); setAccionError(''); }} />}
-      {detalle && <DetalleCapacidad capacidad={detalle} esDuenio={detalle.owner_id === usuario?.id} onCerrar={() => setDetalle(null)} onClonar={clone} clonando={cloning} accionError={accionError} />}
+      {res && <Resultados key={JSON.stringify([texto, modo, scope, revision, categoria, autor, tipoDato])} initial={res} texto={texto} modo={modo} scope={scope} filtros={filtros} onPerfil={username => onCambiarSeccion?.(`perfil/${encodeURIComponent(username)}`)} onDetalle={item => { setDetalle(item); setAccionError(''); }} />}
+      {detalle && <DetalleCapacidad capacidad={detalle} esDuenio={detalle.owner_id === usuario?.id} onCerrar={() => setDetalle(null)} onClonar={clone} onUsar={() => onCambiarSeccion?.(`ejecutar/capability/${detalle.id}`)} clonando={cloning} accionError={accionError} />}
     </div>
   );
 }
 
-function Resultados({ initial, texto, modo, scope, onPerfil, onDetalle }) {
+function Resultados({ initial, texto, modo, scope, filtros, onPerfil, onDetalle }) {
   const [data, setData] = useState(initial);
   const [tab, setTab] = useState('todo');
   const [busy, setBusy] = useState('');
@@ -86,7 +100,7 @@ function Resultados({ initial, texto, modo, scope, onPerfil, onDetalle }) {
     setBusy(group);
     setError('');
     try {
-      const next = await buscarTodo(texto, 20, { modo, scope, signal: controller.current.signal,
+      const next = await buscarTodo(texto, 20, { modo, scope, ...filtros, signal: controller.current.signal,
         tipo: group === 'usuarios' ? 'profiles' : 'capabilities',
         profilesCursor: group === 'usuarios' ? data.cursores[group] : undefined,
         capabilitiesCursor: group === 'capacidades' ? data.cursores[group] : undefined,

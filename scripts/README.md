@@ -26,6 +26,11 @@ Los SQL numerados para permisos están en db/, no son scripts de arranque. No ej
 
 ## Auditorías
 
+`maintenance/verify_trabajo_browser.js` monta consumidores A y componentes B3 reales
+con respuestas interceptadas: contrato de ejecución, reparación consentida, error
+sin fallback, protección de candidatos ajenos y traspaso de objetivo al formulario.
+No usa Gemini, no ejecuta sandbox ni escribe registros reales.
+
 `maintenance/verify_planner_browser.js` comprueba el planner con API interceptada:
 consentimiento, huellas de contratos, propuesta, aclaración, error y móvil. No usa
 IA ni escribe datos reales. Ejecutar desde una sesión Playwright con Vite activo.

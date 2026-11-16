@@ -9,7 +9,8 @@ from core.config import settings
 from core.responses import APIResponse
 from providers.gemini import GeminiProvider
 from repositories.candidates import CandidateRepository
-from schemas.candidates import CandidateGenerateRequest, CandidateResponse, CandidateListResponse
+from schemas.candidates import CandidateGenerateRequest, CandidateRepairRequest, CandidateResponse, CandidateListResponse
+from services.candidate_repair import repair_candidate
 from services.candidate_generation import owned_definition, review_generation, generate_candidate
 
 router = APIRouter(tags=["Candidatos privados"])
@@ -40,3 +41,10 @@ async def list_candidates(id: UUID, repository: Repository, cursor: UUID | None 
 @router.get("/candidates/{id}", response_model=APIResponse[CandidateResponse])
 async def get_candidate(id: UUID, repository: Repository):
     return APIResponse(data=await CandidateRepository(repository).get(id))
+
+
+@router.post("/candidates/{id}/repair", response_model=APIResponse[CandidateResponse], status_code=201)
+async def repair(id: UUID, payload: CandidateRepairRequest, repository: Repository,
+                 provider: Annotated[GeminiProvider, Depends(get_provider)]):
+    return APIResponse(message="Nuevo candidato privado guardado; requiere nuevas pruebas aisladas",
+        data=await repair_candidate(id, payload, CandidateRepository(repository), provider, settings.GEMINI_MODEL))

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from schemas.capabilities import CapabilityResponse
+from schemas.capabilities import CapabilityResponse, TipoDato
 from schemas.users import UserProfile
 
 
@@ -16,6 +16,9 @@ class SearchRequest(BaseModel):
     limit: int = Field(default=20, ge=1, le=50)
     capabilities_cursor: str | None = Field(default=None, max_length=512)
     profiles_cursor: UUID | None = None
+    category: str | None = Field(default=None, min_length=1, max_length=50)
+    owner: str | None = Field(default=None, min_length=1, max_length=50)
+    data_type: TipoDato | None = None
 
 
 class SearchCapability(CapabilityResponse):
