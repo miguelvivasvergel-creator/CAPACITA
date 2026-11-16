@@ -6,7 +6,7 @@ import DetalleCapacidad from '../components/capabilities/DetalleCapacidad';
 
 const BUTTON = 'rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 
-export default function Buscar({ texto, capacidadId, metodo, alcance, usuario, onCambiarSeccion, categoria = '', autor = '', tipoDato = '' }) {
+export default function Buscar({ texto, capacidadId, metodo, alcance, usuario, onCambiarSeccion, categoria = '', autor = '', tipoDato = '', experiencia = 'desarrollador' }) {
   const [entrada, setEntrada] = useState(texto);
   const [category, setCategory] = useState(categoria);
   const [owner, setOwner] = useState(autor);
@@ -82,7 +82,7 @@ export default function Buscar({ texto, capacidadId, metodo, alcance, usuario, o
       {cargando && <p role="status" className="text-sm text-slate-500">{modo === 'semantic' ? 'Buscando por significado… La primera consulta puede tardar más.' : 'Buscando…'}</p>}
       {error && <div role="alert" className="rounded-xl border border-red-200 p-4 text-sm text-red-700"><p>{error}</p><button type="button" onClick={() => setRevision(value => value + 1)} className={`${BUTTON} mt-3`}>Reintentar</button>{modo === 'semantic' && <button type="button" onClick={() => navigate(texto, 'text')} className={`${BUTTON} ml-2 mt-3`}>Usar búsqueda textual</button>}</div>}
       {res && <Resultados key={JSON.stringify([texto, modo, scope, revision, categoria, autor, tipoDato])} initial={res} texto={texto} modo={modo} scope={scope} filtros={filtros} onPerfil={username => onCambiarSeccion?.(`perfil/${encodeURIComponent(username)}`)} onDetalle={item => { setDetalle(item); setAccionError(''); }} />}
-      {detalle && <DetalleCapacidad capacidad={detalle} esDuenio={detalle.owner_id === usuario?.id} onCerrar={() => setDetalle(null)} onClonar={clone} onUsar={() => onCambiarSeccion?.(`ejecutar/capability/${detalle.id}`)} clonando={cloning} accionError={accionError} />}
+      {detalle && <DetalleCapacidad capacidad={detalle} experiencia={experiencia} esDuenio={detalle.owner_id === usuario?.id} onCerrar={() => setDetalle(null)} onClonar={clone} onUsar={() => onCambiarSeccion?.(`ejecutar/capability/${detalle.id}`)} clonando={cloning} accionError={accionError} />}
     </div>
   );
 }

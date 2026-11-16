@@ -9,7 +9,7 @@ import ResumenTrabajo from '../components/profile/ResumenTrabajo';
 
 const PESTANAS = [{ id: 'capacidades', label: 'Capacidades' }, { id: 'workflows', label: 'Workflows' }, { id: 'actividad', label: 'Actividad' }];
 
-export default function Perfil({ usuario, username, onConfigurar, onPerfilActualizado, onCambiarSeccion }) {
+export default function Perfil({ usuario, username, onConfigurar, onPerfilActualizado, onCambiarSeccion, experiencia = 'desarrollador' }) {
   const [datos, setDatos] = useState(undefined);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -59,11 +59,11 @@ export default function Perfil({ usuario, username, onConfigurar, onPerfilActual
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
       <PerfilEncabezado perfil={perfil} esPropio={esPropio} onEditar={() => setEditando(true)} onConfigurar={onConfigurar} />
       <PerfilTarjetas stats={perfil.stats} />
-      {esPropio && <ResumenTrabajo key={userId} onCambiarSeccion={onCambiarSeccion} />}
+      {esPropio && <ResumenTrabajo key={userId} experiencia={experiencia} onCambiarSeccion={onCambiarSeccion} />}
       <p className="text-xs text-slate-500">El perfil muestra capacidades públicas. Las métricas sin datos integrados aparecen como —.</p>
       <div className="inline-flex flex-wrap gap-1 rounded-xl border border-slate-200/60 bg-slate-100/90 p-1" aria-label="Secciones del perfil">
         {PESTANAS.map(({ id, label }) => <button key={id} type="button" aria-pressed={pestana === id} onClick={() => setPestana(id)} className={`rounded-lg px-3 py-2 text-sm font-medium ${pestana === id ? 'bg-white font-semibold text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
-          {label}{id === 'capacidades' && <span className="ml-2 text-xs">{datos.capacidadesError ? '—' : `${perfil.capabilities.length}${datos.next_cursor ? '+' : ''}`}</span>}
+          {id === 'workflows' && experiencia === 'guiado' ? 'Soluciones' : label}{id === 'capacidades' && <span className="ml-2 text-xs">{datos.capacidadesError ? '—' : `${perfil.capabilities.length}${datos.next_cursor ? '+' : ''}`}</span>}
         </button>)}
       </div>
       {pestana === 'capacidades' && <>
@@ -71,8 +71,8 @@ export default function Perfil({ usuario, username, onConfigurar, onPerfilActual
         {!datos.capacidadesError && <ListaCapacidades capacidades={perfil.capabilities} />}
         {datos.next_cursor && <button onClick={loadMore} disabled={cargandoMas} className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50">{cargandoMas ? 'Cargando…' : 'Cargar más capacidades públicas'}</button>}
       </>}
-      {pestana === 'workflows' && (esPropio ? <HistorialPropio key={`${userId}:workflows`} kind="workflows" onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="🔗" titulo="Workflows públicos pendientes de integración" texto="Los workflows privados de esta persona no se publican en su perfil." />)}
-      {pestana === 'actividad' && (esPropio ? <HistorialPropio key={`${userId}:runs`} kind="runs" onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="📋" titulo="Actividad privada" texto="Las entradas, salidas y archivos de las ejecuciones solo los ve quien ejecutó." />)}
+      {pestana === 'workflows' && (esPropio ? <HistorialPropio key={`${userId}:workflows`} kind="workflows" experiencia={experiencia} onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="🔗" titulo="Workflows públicos pendientes de integración" texto="Los workflows privados de esta persona no se publican en su perfil." />)}
+      {pestana === 'actividad' && (esPropio ? <HistorialPropio key={`${userId}:runs`} kind="runs" experiencia={experiencia} onCambiarSeccion={onCambiarSeccion} /> : <EstadoVacio icono="📋" titulo="Actividad privada" texto="Las entradas, salidas y archivos de las ejecuciones solo los ve quien ejecutó." />)}
       {editando && esPropio && <EditarPerfilModal perfil={perfil} onCerrar={() => setEditando(false)} onGuardado={updated => {
         setDatos(previous => ({ ...previous, perfil: { ...previous.perfil, ...updated, stats: previous.perfil.stats } }));
         setEditando(false);

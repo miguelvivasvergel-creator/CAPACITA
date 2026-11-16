@@ -5,6 +5,11 @@ import AuthCard from './components/auth/AuthCard';
 import Toast from './components/common/Toast';
 import AppLayout from './components/layout/AppLayout';
 import Inicio from './pages/Inicio';
+import InicioGuiado from './pages/InicioGuiado';
+import SolucionesGuiadas from './pages/SolucionesGuiadas';
+import ResultadosGuiados from './pages/ResultadosGuiados';
+import HerramientasGuiadas from './pages/HerramientasGuiadas';
+import { leerExperiencia, guardarExperiencia } from './utils/experiencia';
 import Capacidades from './pages/Capacidades/Capacidades';
 import Workflows from './pages/Workflows';
 import Historial from './pages/Historial';
@@ -46,6 +51,8 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [usuarioActual, setUsuarioActual] = useState(null);
+  const [experienciaElegida, setExperienciaElegida] = useState(null);
+  const experiencia = experienciaElegida && experienciaElegida.userId === usuarioActual?.id ? experienciaElegida.value : leerExperiencia(usuarioActual?.id);
   const [cargandoSesion, setCargandoSesion] = useState(true);
   
   const initialHash = window.location.hash.replace('#', '');
@@ -54,12 +61,12 @@ export default function App() {
   );
 
   useEffect(() => {
-    const titles = { inicio: 'Inicio', capacidades: 'Capacidades', workflows: 'Workflows', historial: 'Mis ejecuciones',
+    const titles = { inicio: 'Inicio', capacidades: experiencia === 'guiado' ? 'Herramientas' : 'Capacidades', workflows: experiencia === 'guiado' ? 'Soluciones' : 'Workflows', historial: experiencia === 'guiado' ? 'Mis resultados' : 'Mis ejecuciones',
       comunidad: 'Comunidad', configuracion: 'Configuración', perfil: 'Perfil',
       ejecutar: 'Capacidad', buscar: 'Buscar' };
     const title = titles[vista.split('/')[0]];
     if (usuarioActual && title) document.title = `${title} — Capacita`;
-  }, [vista, usuarioActual]);
+  }, [vista, usuarioActual, experiencia]);
 
   const toastTimeoutRef = useRef(null);
 
@@ -253,14 +260,23 @@ export default function App() {
         seccionActiva={seccion}
         onCambiarSeccion={handleCambiarSeccion}
         onCerrarSesion={handleCerrarSesion}
+        experiencia={experiencia}
+        onCambiarExperiencia={(value) => {
+          if (value === experiencia) return;
+          if (document.querySelector('[data-task-busy="true"]')) { mostrarToast('Espera a que termine la operación antes de cambiar de modo.'); return; }
+          const event = new Event('beforeunload', {cancelable:true});
+          if (!window.dispatchEvent(event) && !window.confirm('Hay trabajo en esta pantalla que podrías perder al cambiar de modo. ¿Quieres continuar?')) return;
+          guardarExperiencia(usuarioActual.id,value);
+          setExperienciaElegida({userId:usuarioActual.id,value});
+        }}
       >
         {seccion === 'inicio' && (
-          <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
+          experiencia === 'guiado' ? <InicioGuiado key={`${usuarioActual.id}:guiado`} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion}/> : <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
-        {seccion === 'capacidades' && <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />}
-        {seccion === 'workflows' && <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} _usuario={usuarioActual} />}
-        {seccion === 'historial' && <Historial key={`${usuarioActual.id}:${vista}`} runId={parametros[0]} onCambiarSeccion={handleCambiarSeccion} />}
-        {seccion === 'comunidad' && <Comunidad key={usuarioActual.id} _usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />}
+        {seccion === 'capacidades' && (experiencia === 'guiado' ? <HerramientasGuiadas key={usuarioActual.id} onCambiarSeccion={handleCambiarSeccion}/> : <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />)}
+        {seccion === 'workflows' && (experiencia === 'guiado' ? <SolucionesGuiadas key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} onCambiarSeccion={handleCambiarSeccion}/> : <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} _usuario={usuarioActual} />)}
+        {seccion === 'historial' && (experiencia === 'guiado' ? <ResultadosGuiados key={`${usuarioActual.id}:${vista}`} runId={parametros[0]} onCambiarSeccion={handleCambiarSeccion}/> : <Historial key={`${usuarioActual.id}:${vista}`} runId={parametros[0]} onCambiarSeccion={handleCambiarSeccion} />)}
+        {seccion === 'comunidad' && <Comunidad key={usuarioActual.id} experiencia={experiencia} _usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />}
         {seccion === 'configuracion' && (
           <Configuracion key={usuarioActual?.id} usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />
         )}
@@ -268,6 +284,7 @@ export default function App() {
           <Perfil
             key={parametros[0]}
             usuario={usuarioActual}
+            experiencia={experiencia}
             username={decodificarParametro(parametros[0]) || usuarioActual.username}
             onCambiarSeccion={handleCambiarSeccion}
             onConfigurar={() => handleCambiarSeccion('configuracion')}
@@ -278,8 +295,8 @@ export default function App() {
         )}
         {seccion === 'ejecutar' && (
           parametros[0] === 'workflow'
-            ? <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[1]} _usuario={usuarioActual} />
-            : <TrabajoCapacidad key={`${usuarioActual.id}:${vista}`} id={parametros[1]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
+            ? experiencia === 'guiado' ? <SolucionesGuiadas key={`${usuarioActual.id}:${vista}`} workflowId={parametros[1]} onCambiarSeccion={handleCambiarSeccion}/> : <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[1]} _usuario={usuarioActual} />
+            : <TrabajoCapacidad key={`${usuarioActual.id}:${experiencia}:${vista}`} id={parametros[1]} usuario={usuarioActual} experiencia={experiencia} onCambiarSeccion={handleCambiarSeccion} />
         )}
         {seccion === 'buscar' && (
           <Buscar
@@ -291,6 +308,7 @@ export default function App() {
             categoria={decodificarParametro(parametros[4])}
             autor={decodificarParametro(parametros[5])}
             tipoDato={parametros[6] || ''}
+            experiencia={experiencia}
             usuario={usuarioActual}
             onCambiarSeccion={handleCambiarSeccion}
           />

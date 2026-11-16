@@ -5,7 +5,7 @@ import DetalleCapacidad from '../components/capabilities/DetalleCapacidad';
 const EMPTY = { items: [], next_cursor: null };
 const BUTTON = 'rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 
-export default function Comunidad({ _usuario, onCambiarSeccion }) {
+export default function Comunidad({ _usuario, onCambiarSeccion, experiencia = 'desarrollador' }) {
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState({ q: '', revision: 0 });
   const [page, setPage] = useState(EMPTY);
@@ -95,6 +95,6 @@ export default function Comunidad({ _usuario, onCambiarSeccion }) {
       </article>)}
     </div>
     {!loading && page.next_cursor && <button type="button" disabled={loadingMore} onClick={loadMore} className={`${BUTTON} mt-5`}>{loadingMore ? 'Cargando más…' : 'Cargar más capacidades públicas'}</button>}
-    {detail && <DetalleCapacidad capacidad={detail} esDuenio={detail.owner_id === _usuario?.id} onCerrar={() => setDetail(null)} onClonar={() => clone(detail)} onUsar={() => onCambiarSeccion?.(`ejecutar/capability/${detail.id}`)} clonando={cloning} accionError={cloneError} />}
+    {detail && <DetalleCapacidad capacidad={detail} experiencia={experiencia} esDuenio={detail.owner_id === _usuario?.id} onCerrar={() => setDetail(null)} onClonar={() => clone(detail)} onUsar={() => onCambiarSeccion?.(`ejecutar/capability/${detail.id}`)} clonando={cloning} accionError={cloneError} />}
   </div>;
 }

@@ -14,6 +14,7 @@ significa que todos los módulos estén implementados.
 - [Estado verificado](docs/estado.md): implementado, pendiente y bloqueos.
 - [Reparto Miguel/Fahida](docs/PLAN_DOS_PERSONAS_MARTES.md): Miguel (A), objetivos/catálogo/generación; Fahida (B), pruebas/workflows/ejecución.
 - [Entrega del martes en el PC de Fahida](docs/ENTREGA_MARTES.md): integración, arranque y ensayo pendientes en ese equipo, con evidencia y límites actuales.
+- [Modo guiado y desarrollador](docs/MODOS_USO_A.md): experiencia por cuenta, recorrido sin JSON manual y alcance de validación.
 - [Estructura y organización](docs/ESTRUCTURA.md): dónde va cada archivo y movimientos realizados.
 - [Reglas del repositorio](AGENTS.md).
 

@@ -1,9 +1,55 @@
 # Cierre completo del frente Miguel
 
+## Entrega actual — 16/11/2026
+
+Nuevo bloque A: modos Guiado/Desarrollador implementados; evidencia y límites en
+[modos de uso](MODOS_USO_A.md). Guiado sin JSON manual, con formularios,
+aprobación y resultado. Siete grupos simulados y helpers pasan; propuesta Gemini
+y ejecución guiada reales con resultado persistente y privacidad entre cuentas.
+La creación nueva desde esta UI tiene aceptación simulada, no otra generación
+remota. Usuario prefiere mantener entrega en miguel; no PR ni main para ensayar.
+
+Bloque anterior entregado y verificado en `origin/miguel`: `0b06172` (consulta directa a
+GitHub y HEAD coincidentes). Árbol limpio al iniciar este cierre. B3/B4/B5 de
+Fahida están integrados; los últimos cambios de producto son exclusivamente A.
+La entrega se prepara para el PC de Fahida. No hay merge a main ni despliegue.
+
+**Verificado:** catálogo/búsqueda/perfil, definición y generación privada,
+reparación acotada, planner real con dos capacidades distintas, guardado y
+reapertura, ejecución real, historial tras recarga/reinicio API y privacidad con
+dos cuentas normales. Inicio y perfil enlazan a recursos exactos; móvil sin
+desborde a 320/390/640. Lint/build/imports y regresiones A pasan; batería backend
+previa de 160 pruebas, sin cambios backend posteriores por estos enlaces.
+
+**Pendientes que impiden afirmar «todo terminado»:**
+
+- Ensayo del modo guiado en el PC de Fahida y, si se exige para la aceptación,
+  nueva creación remota desde esa UI. Los modos ya están implementados y probados
+  con los alcances diferenciados en su guía.
+- Publicación/retiro ejecutable y reutilización entre autores: A tiene propuesta
+  de contrato y espera soporte B de resolución/ejecución compartida. No se ha
+  implementado la publicación A ni se ha aceptado retirarla de la entrega.
+- Revisión del PR e integración/ensayo en el PC de Fahida, pendientes hasta que
+  se realicen allí. [Guion y arranque](ENTREGA_MARTES.md).
+  [Comparación oficial para abrir el PR](https://github.com/miguelvivasvergel-creator/CAPACITA/compare/main...miguel),
+  con [descripción preparada](PR_MIGUEL_A.md); aún no creado al revisar este cierre.
+- OAuth y cambios reales de correo/contraseña no certificados. Las sesiones de
+  presentación previstas usan correo/contraseña; los fallos de Configuración
+  tienen aceptación simulada, sin alterar credenciales personales.
+- pgvector global y búsqueda de workflows públicos permanecen pendientes de
+  decisión de alcance. La semántica local actual no se presenta como pgvector.
+
+Miguel no asume las pruebas internas/desarrollo B6, motor, sandbox, workers,
+archivos de ejecución ni conectores de Fahida. El candidato de reparación nuevo
+requiere evidencia B antes de habilitarse; no es código A pendiente de generar.
+
+La auditoría original conservada debajo explica los hitos previos. Sus casillas
+no constituyen el estado actual; prevalecen este resumen y la tabla actualizada.
+
 Auditoría del 16/11/2026 sobre `miguel`, HEAD `8f879ab`. Fuentes: reparto A1–A5,
 visión maestra, continuidad, guías A/B y código actual. Inspección documental y
 estática; no se ejecutaron nuevas pruebas remotas durante esta auditoría.
-Las tareas siguientes son pendientes, no implementación ni nuevas asignaciones a B.
+Las tareas de aquella auditoría eran pendientes entonces, no nuevas asignaciones a B.
 
 ## Avance posterior a esta auditoría — 16/11/2026
 
@@ -30,16 +76,16 @@ M13 dispone de worker activo. B5 integrado en
 | --- | --- | --- |
 | M01–M02 | Propuesta de contrato en CONTRATO_PUBLICACION_A_B.md; sin abrir candidatos privados | Acordar e integrar el soporte B para publicar versiones ejecutables |
 | M03 | Catálogo/búsqueda abren TrabajoCapacidad; mayúsculas habilitada y proceso de dos versiones ejecutado realmente; worker local activo | Uso por otro autor depende de publicación B |
-| M04 | Pieza faltante → definición → espacio de implementación; objetivo recuperable por cuenta durante 48 h en la pestaña, retorno directo al planner y nueva revisión; seis grupos visuales pasan | Aceptación real después de habilitar la segunda capacidad depende del worker B |
+| M04 | Pieza faltante → definición → espacio de implementación; retorno del objetivo por cuenta hasta 48 h y nueva revisión; seis grupos visuales pasan; segunda capacidad habilitada y planner real aceptado | Ensayo de la transición completa en el PC de Fahida |
 | M05 | Reparación explícita acotada implementada y aceptada con Gemini real 201; candidato anterior intacto, nuevo borrador persistido | Pruebas/habilitación del nuevo candidato por B |
 | M06 | Mayúsculas 5/5, habilitada; planner real, guardado/reapertura, aprobación y dos pasos distintos completed; reinicio API conserva ocho huellas e historial; privacidad con worker y segunda cuenta normal pasa | Errores/resto de matriz B6 |
 | M07 | Dos identidades reales distintas: versión oculta, selección forzada 409, seis lecturas privadas 404 y listados sin recursos ajenos | Repetir privacidad para publicación cuando exista ese contrato |
 | M09 | Filtros servidor por categoría/autor/tipo y paginación; planner con semántica local explícita, aceptada realmente | pgvector global y búsqueda de workflows no implementados; interpretación/generación conservan búsquedas textuales |
 | M10 | Perfil propio con resumen y listas/detalles privados B; lectura real de dos runs/tres workflows; perfil ajeno no consulta listas privadas | Workflows públicos dependen de publicación B; la actividad privada no se publica |
-| M11 | Autor #perfil, títulos, URI inválida tolerada, diálogo con Escape/Tab; regresiones visuales pasan | Ensayo final con la entrega B siguiente |
+| M11 | Autor #perfil, títulos, teclado; resumen/perfil enlazan al historial B5 y recursos exactos; menú móvil 320/390/640 correcto | Ensayo final en PC de Fahida |
 | M12 | Sesiones A/B reales; Configuración recupera errores de red y distingue confirmación de correo, cinco grupos con Auth simulado | Confirmaciones reales de correo/contraseña y OAuth no certificadas; no se alteraron credenciales reales |
 | M13–M14 | A/B3/B4/B5 integrados; worker autorizado activo, 160 pruebas y recorrido positivo real de dos capacidades con historial tras recarga | Resto de matriz B6 y publicación conjunta |
-| M15 | Guías y evidencia actualizadas; ef8feb0/e4c3990 subidos a miguel, borrador PR preparado | Entregar avance nuevo; PR y revisión cruzada aún pendientes, integración GitHub sin conectar |
+| M15 | Código y guías actualizados y subidos a origin/miguel 0b06172, remoto confirmado; borrador PR preparado | Crear/comprobar PR y revisión cruzada; ensayo en PC Fahida |
 
 El usuario reiteró que solo se edita el frente Miguel; no se transfirieron archivos B.
 Los registros nuevos son privados: una reparación y una segunda definición/candidato

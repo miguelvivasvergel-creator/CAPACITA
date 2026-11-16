@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import BuscadorGlobal from './BuscadorGlobal';
 
-export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSeccion, onCerrarSesion }) {
+export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSeccion, onCerrarSesion, experiencia = 'desarrollador' }) {
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
   const [failedAvatar, setFailedAvatar] = useState(null);
   const menuRef = useRef(null);
@@ -12,7 +12,7 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
     { id: 'capacidades',  label: 'Capacidades' },
     { id: 'workflows',    label: 'Workflows' },
     { id: 'historial',    label: 'Mis ejecuciones' },
-  ];
+  ].map(item => ({...item,label: experiencia === 'guiado' ? ({capacidades:'Herramientas',workflows:'Soluciones',historial:'Resultados'}[item.id] || item.label) : item.label}));
 
   // Cerrar menú de usuario al hacer clic fuera
   useEffect(() => {
@@ -96,9 +96,9 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
 
           {/* Botón "+ Crear" arreglado */}
           <button
-            onClick={() => onCambiarSeccion?.('workflows')}
+            onClick={() => onCambiarSeccion?.(experiencia === 'guiado' ? 'inicio' : 'workflows')}
             className="flex items-center gap-1.5 bg-[#1a56db] hover:bg-blue-700 active:scale-[0.98] text-white text-[13px] font-semibold px-3.5 py-2 rounded-lg transition-all shadow-xs shrink-0 cursor-pointer"
-            title="Crear workflow o capacidad"
+            title={experiencia === 'guiado' ? 'Describir una necesidad nueva' : 'Crear workflow o capacidad'}
             aria-label="Crear"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,7 +181,7 @@ export default function Navbar({ usuario, seccionActiva = 'inicio', onCambiarSec
                   <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
-                  Mis Capacidades
+                  {experiencia === 'guiado' ? 'Mis herramientas' : 'Mis Capacidades'}
                 </button>
 
                 <button

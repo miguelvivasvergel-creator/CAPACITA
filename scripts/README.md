@@ -78,6 +78,22 @@ persistir ni ejecutar código. Es prueba aislada del proveedor.
 La auditoría comprueba imports locales del frontend y señala módulos fuera del recorrido estático de main.jsx. Distingue componentes/fixtures pendientes documentados. No detecta todos los usos dinámicos y nunca borra archivos. El segundo script comprueba destinos de enlaces Markdown locales de README/AGENTS/docs; no visita URLs ni verifica anclas.
 # Verificación de resultados e historial B5
 
+## Experiencia guiada de Miguel
+
+`node scripts/maintenance/verify_guided_data.mjs` comprueba preferencias aisladas,
+formularios tipados y orden de lectura. `maintenance/verify_guided_browser.js`
+se ejecuta con Playwright CLI en un navegador aislado abierto en Vite; intercepta
+identidad y todas las APIs de negocio. No requiere iniciar sesión, no usa Supabase
+ni Gemini y no crea datos reales. Fixtures en `src/mocks/guiado.js`.
+Ver alcance y evidencia real separada en [modos de uso](../docs/MODOS_USO_A.md).
+
+```powershell
+npx.cmd --yes --package @playwright/cli playwright-cli -s=capacita-qa open http://127.0.0.1:5173
+npx.cmd --yes --package @playwright/cli playwright-cli -s=capacita-qa run-code --filename scripts/maintenance/verify_guided_browser.js
+```
+
+## Resultados e historial B5
+
 `maintenance/verify_history_ui.py` abre Chrome temporal en escritorio y móvil,
 con HTTP simulado y sin sesión de usuario. Usa `history_harness.html` y el
 controlador CDP compartido `workflow_browser.mjs`. No usa Supabase.

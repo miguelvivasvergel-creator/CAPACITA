@@ -50,11 +50,20 @@ Estas instrucciones no acreditan que el ensayo ya haya pasado en ese equipo.
 
 ## Ensayo del frente Miguel en ese PC
 
+- [ ] Abrir en modo **Guiado** (inicial por cuenta): necesidad → autorización IA
+  → propuesta automática → guardar solución → completar campos normales →
+  confirmar y ejecutar → resultado. No copiar JSON ni seleccionar versiones.
+- [ ] Cambiar a **Desarrollador** para inspeccionar contratos, código y constructor
+  avanzado; ambos modos conservan los permisos. Consultar [guía de modos](MODOS_USO_A.md).
+- [ ] Para pieza faltante, revisar definición/similares y consentimiento separado
+  de generación. Aportar una referencia conocida y esperar reporte B antes de
+  habilitar. Si hay cola/cuota/recurso pendiente, mostrar ese estado real.
 - [ ] API responde en `/api/health` y frontend abre `http://127.0.0.1:5173`.
 - [ ] Entrar con las dos cuentas de prueba en ventanas aisladas. Método previsto:
   correo/contraseña, ya usado en la aceptación de Miguel; confirmarlo allí.
   OAuth y cambio de credenciales reales no se declaran certificados.
-- [ ] Inicio: capacidades/resumen reales; «Abrir mis ejecuciones» abre Historial.
+- [ ] Inicio: herramientas/resumen reales; «Abrir mis resultados» abre resultados
+  guiados («Abrir mis ejecuciones» en desarrollador).
 - [ ] Perfil propio: Actividad → detalle → resultado completo; Workflows → detalle
   → abrir proceso exacto, sin aprobación heredada. Perfil ajeno sin listas privadas.
 - [ ] Búsqueda textual, filtros, detalle, autor y clonación privada con atribución.

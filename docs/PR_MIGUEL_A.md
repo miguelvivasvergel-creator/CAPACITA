@@ -1,4 +1,29 @@
-# Integrar capacidades, planner y actividad privada con B3/B4/B5
+# Añadir experiencia guiada y conservar herramientas de desarrollador
+
+Descripción preparada para una eventual revisión de `miguel`; el destino se
+acordará antes de abrir un PR. Instrucción vigente: entrega y ensayo desde
+`miguel`, sin crear PR ni modificar `main`. La rama incorpora B1–B5 de Fahida;
+es integración de su trabajo, no una reimplementación de B por Miguel. Este PR
+no declara completadas publicación entre autores, toda la matriz B6 ni el ensayo
+en el equipo de presentación.
+
+El modo Guiado es la experiencia inicial por cuenta. La persona describe su
+necesidad y la IA selecciona herramientas autorizadas y propone una solución;
+se guarda directamente, sin copiar JSON. Los contratos se convierten en campos
+normales y la confirmación solicita aprobación exacta antes de encolar en B.
+Resultados y soluciones guardadas tienen vistas legibles. El modo Desarrollador
+conserva las pantallas técnicas y la preferencia no cambia permisos.
+
+Creación guiada incluye revisión de similares, definición privada, consentimiento
+de generación, referencia de prueba aportada por la persona y consumo del laboratorio
+B existente antes de habilitar. Recursos o esquemas no soportados se explican;
+no hay fallback de éxito ni ejecución de código dentro de frontend/API.
+
+Validación nueva: siete grupos guiados con identidad/API simuladas, helpers de
+preferencia/formularios y regresión de perfil desarrollador. Una propuesta Gemini
+real y un run sobre el workflow existente producen «CAFÉ NUEVO», dos pasos,
+historial tras recarga, móvil y 404 para segunda cuenta. Creación nueva guiada
+aceptada con fixtures; no se generó otro candidato remoto para esta validación.
 
 El recorrido del catálogo no conectaba con los contratos privados B3/B4 y la ruta
 de ejecución conservaba un cliente heredado con fallback a mocks. App conecta ahora

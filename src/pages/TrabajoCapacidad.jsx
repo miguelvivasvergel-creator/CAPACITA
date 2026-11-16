@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { obtenerCapacidad } from '../services/capacidades';
 import CandidatosCapacidad from '../components/capabilities/CandidatosCapacidad';
 import { leerObjetivoPlan } from '../utils/plannerDraft';
+import PrepararHerramientaGuiada from '../components/capabilities/PrepararHerramientaGuiada';
 
 // Integración A: reutiliza el laboratorio y uso de versiones B3/B4 existentes.
-export default function TrabajoCapacidad({ id, usuario, onCambiarSeccion }) {
+export default function TrabajoCapacidad({ id, usuario, onCambiarSeccion, experiencia = 'desarrollador' }) {
   const [capacidad, setCapacidad] = useState(null);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -29,8 +30,8 @@ export default function TrabajoCapacidad({ id, usuario, onCambiarSeccion }) {
       : !capacidad ? <p role="status">Cargando capacidad…</p> : <>
         <header><h1 className="break-words text-2xl font-bold text-slate-900">{capacidad.name}</h1><p className="mt-2 break-words text-sm text-slate-600">{capacidad.description}</p></header>
         {completa ? <>
-          <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">Revisa tus candidatos y reportes guardados. Desde cada candidato puedes probar una implementación, habilitar una versión probada y usarla con datos nuevos. Cada acción requiere tu revisión.</p>
-          <CandidatosCapacidad key={capacidad.id} capacidad={capacidad} />
+          <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">{experiencia === 'guiado' ? 'Revisa cómo está preparada esta herramienta. Si todavía falta probarla, puedes aportar un ejemplo y comprobarlo antes de permitir su uso privado.' : 'Revisa tus candidatos y reportes guardados. Desde cada candidato puedes probar una implementación, habilitar una versión probada y usarla con datos nuevos. Cada acción requiere tu revisión.'}</p>
+          {experiencia === 'guiado' ? <PrepararHerramientaGuiada key={capacidad.id} capacidad={capacidad} definition={{name:capacidad.name,description:capacidad.description,category:capacidad.category,input_type:capacidad.input_type,output_type:capacidad.output_type,input_schema:capacidad.input_schema,output_schema:capacidad.output_schema,parameter_schema:capacidad.config.definition.parameter_schema,required_permissions:capacidad.permissions||[],resources:capacidad.config.definition.resources||[],constraints:capacidad.config.definition.constraints||[],examples:capacidad.config.definition.examples||[]}} onRetomar={()=>onCambiarSeccion?.('inicio')}/> : <CandidatosCapacidad key={capacidad.id} capacidad={capacidad} />}
         </> : <p className="rounded-xl border border-slate-200 p-4 text-sm text-slate-700">{propia ? 'Esta capacidad necesita una definición estructurada privada para preparar su implementación.' : 'Esta definición es pública. El uso de versiones de otro autor todavía requiere el contrato de publicación; puedes guardar una copia privada desde el catálogo.'}</p>}
         <button type="button" onClick={() => onCambiarSeccion?.('workflows')} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Abrir constructor de workflows</button>
       </>}

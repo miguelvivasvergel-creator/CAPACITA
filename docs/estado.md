@@ -4,6 +4,35 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+Modos de experiencia A implementados: Guiado inicial por cuenta y Desarrollador.
+Guiado interpreta/busca y selecciona herramientas, propone, guarda sin copiar
+JSON, pide datos en formularios y aprobación y muestra resultados legibles.
+Ruta de herramienta faltante implementada con revisión, generación consentida,
+ejemplo conocido aportado por persona, laboratorio B y habilitación explícita.
+Siete grupos interceptados y helpers Node pasan. Propuesta Gemini real 200 y
+run 024402c8 completed sobre workflow existente: «  Café nuevo  » → «CAFÉ NUEVO»;
+dos pasos, recarga e historial móvil y 404 de segunda cuenta verificados.
+Nuevo ciclo de creación guiada solo aceptado con fixtures, sin otra generación
+remota. Mismos permisos; no cambios a backend/B/SQL. Detalle en MODOS_USO_A.md.
+Entrega en rama miguel, sin PR ni main por preferencia vigente del usuario;
+ensayo en PC Fahida/publicación entre cuentas siguen pendientes.
+
+### Antecedentes (el estado vigente está arriba)
+
+Pendiente UX confirmado por usuario: modo guiado donde la IA interpreta y busca
+soluciones existentes/nuevas, separado del modo desarrollador. Aún NO implementado.
+El flujo actual exige copiar/importar JSON y entender conceptos técnicos; por
+tanto la evidencia de ejecución privada no certifica la experiencia final para
+personas sin conocimientos técnicos. Requisito detallado en VISION_MAESTRA.md.
+Miguel integra A; ambos modos conservan permisos y aprobación reales.
+
+Revisión final de Miguel: entrega funcional 0b06172 ya en origin/miguel y guías
+actualizadas; no nuevos cambios de producto ni pruebas B. PR draft preparado,
+creación aún no verificada. A petición del usuario se abrió Opera con comparación
+main...miguel, título y descripción precargados. No PR confirmado ni merge. Publicación A sigue bloqueada
+por contrato/soporte B, y ensayo en PC Fahida no realizado. El cierre no
+certifica toda la visión ni convierte pendientes en completados.
+
 Prioridad vigente: entrega martes en el PC de Fahida, SOLO Miguel; extras después
 si queda tiempo. Guía portátil y checklist preparados en ENTREGA_MARTES.md,
 ensayo allí pendiente. Inicio/perfil conectados al historial B5 y recursos exactos;

@@ -8,7 +8,7 @@ const CARDS = [
 ];
 const STATES = { queued: 'En cola', running: 'En curso', completed: 'Completadas', failed: 'Fallidas', interrupted: 'Interrumpidas' };
 
-export default function ResumenTrabajo({ onCambiarSeccion }) {
+export default function ResumenTrabajo({ onCambiarSeccion, experiencia = 'desarrollador' }) {
   const [metrics, setMetrics] = useState({});
   const [revision, setRevision] = useState(0);
   const [updated, setUpdated] = useState(null);
@@ -36,7 +36,8 @@ export default function ResumenTrabajo({ onCambiarSeccion }) {
     </div>
     <p className="mt-2 text-sm text-slate-500">Solo tu cuenta. Las ejecuciones incluyen capacidades y workflows; no incluyen pruebas del laboratorio.</p>
     <div className="mt-4 grid gap-4 sm:grid-cols-3">
-      {CARDS.map(([key, title, section]) => {
+      {CARDS.map(([key, originalTitle, section]) => {
+        const title = experiencia === 'guiado' ? ({capabilities:'Mis herramientas',workflows:'Mis soluciones',runs:'Mis resultados'}[key]) : originalTitle;
         const result = metrics[key];
         return <article key={key} className="min-w-0 rounded-xl border border-slate-200 p-4">
           <h3 className="font-semibold text-slate-800">{title}</h3>

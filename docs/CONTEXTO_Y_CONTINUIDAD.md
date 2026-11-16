@@ -4,6 +4,67 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Modos guiado/desarrollador implementados por instrucción explícita del usuario,
+16/11/2026. Guiado inicial por cuenta: necesidad → búsqueda autorizada de versiones
+→ selección automática (hasta 12) y propuesta IA → revisión/guardado directo →
+campos normales → confirmar/aprobar/encolar → resultado legible e historial.
+No exige copiar JSON. Desarrollador conserva pantallas técnicas existentes;
+preferencia local aislada por cuenta, sin conceder permisos. Generación nueva
+guiada: definición revisada, consentimiento separado, candidato, referencia
+humana mediante formularios, laboratorio B y habilitación explícita. Recursos
+externos/esquemas no soportados quedan pendientes; no se simulan como funcionales.
+Nuevas pantallas/componentes A consumen APIs B sin editar sus módulos ni SQL.
+Siete grupos guiados con identidad/APIs simuladas pasan, más verificaciones Node
+de preferencias, almacenamiento bloqueado, contratos y orden de lectura.
+Aceptación real: una llamada Gemini 200 compose con dos versiones distintas,
+sin guardado de otro workflow. Formulario guiado sobre workflow a1518d9e:
+run 024402c8-6183-4669-bc18-99bc20d3023d completado, «  Café nuevo  » →
+«CAFÉ NUEVO», dos pasos. Mis resultados conserva salida al recargar, móvil 390
+correcto; segunda cuenta real obtiene 404 y no ve salida. El worker anterior se
+había detenido; reiniciada una copia EXISTENTE, procesó ese mismo run sin reenviar.
+No se generó otro código real: el nuevo ciclo creación/laboratorio guiado tiene
+aceptación con fixtures, no una generación remota adicional. Perfil desarrollador
+6 grupos e Inicio desarrollador 8 grupos pasan sin escrituras reales.
+Lint, build, helpers, imports y enlaces locales pasan; build conserva aviso
+de tamaño del bundle. Guía detallada en MODOS_USO_A.md.
+Rama vigente miguel; usuario indicó mantener entrega allí, sin necesidad de PR
+para el ensayo. No crear PR/merge a main. Consultar Git para entrega de este bloque.
+Siguiente: ensayo en PC Fahida, aceptación de creación guiada real si se necesita
+y soporte coordinado de publicación A/B. No asumir desarrollo B6.
+
+### Antecedentes de esta sesión (superados por el estado anterior)
+
+Corrección de experiencia del usuario, 16/11/2026: recuerda el plan de que la IA
+haga la mayoría de la preparación. Solicita distinguir modo guiado para personas
+sin conocimientos técnicos y modo desarrollador. Persona describe necesidad →
+IA interpreta/aclara → búsqueda interna autorizada → reutilización/configuración/
+composición o creación de faltantes → pruebas/revisión/aprobación → resultado.
+No exigir JSON manual ni comprensión de candidatos/contratos/versiones en el
+recorrido guiado. Misma cuenta, permisos y controles en ambos modos.
+Requisito registrado en VISION_MAESTRA.md; NO implementado todavía. La revisión
+actual detectó transferencia manual JSON planner→constructor y entradas JSON en
+ejecución como barreras. No presentar el cierre técnico privado como experiencia
+final intuitiva. Este turno solo revisó código y registró el requisito; sin cambios
+de producto, llamadas IA ni datos. Alcance vigente: SOLO Miguel; consumir B sin
+modificar unilateralmente motor/laboratorio/workers/SQL de Fahida.
+
+Cierre solicitado por usuario («termina»), 16/11/2026: revisión final sin cambios
+de producto. Entrega funcional 0b06172 confirmada en origin/miguel; CIerre_MIGUEL
+actualizado para distinguir evidencia vigente de casillas históricas, alcance
+solo A y dependencias pendientes. PR_MIGUEL_A describe también B1–B5 importados,
+sin atribuirlos como desarrollo nuevo de A. No se declara publicación terminada.
+GitHub plugin localizado pero no conectado (ya sugerido hoy, sin reiterarlo).
+Consulta de PR mediante credencial Git existente agotó tiempo; no se imprimieron
+ni guardaron credenciales. Comparación oficial abierta en navegador
+capacita-github: main...miguel, sin sesión GitHub. Solicitado login en esa ventana
+para crear PR draft; PR aún NO creado. No main, despliegue ni ediciones B.
+Usuario pidió abrirlo en Opera: lanzada comparación oficial allí con título y
+descripción de docs/PR_MIGUEL_A.md precargados. No se trasladó sesión ni tokens
+desde otro navegador. Creación del PR aún sin verificar; Opera no es la sesión
+controlada de Playwright. Siguiente: confirmar URL del PR o conexión GitHub,
+evitando duplicados; no afirmar que abrir el formulario equivale a crearlo. Después revisión humana
+y ensayo en PC Fahida. Publicación necesita contrato/soporte de B; no asumirlo.
+
 Prioridad de entrega confirmada, 16/11/2026: usuario pide cerrar para el martes
 y avanzar extras solo si queda tiempo; reitera SOLO Miguel. Presentación en el
 PC de Fahida. No asumir desarrollo B6, motor, workers, sandbox ni SQL de B.

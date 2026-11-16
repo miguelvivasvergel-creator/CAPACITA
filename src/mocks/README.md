@@ -29,3 +29,8 @@ respuesta ni fallback de las APIs reales.
 
 `historial.js` contiene resultados de fixture para pruebas visuales; nunca se
 usa como fallback de la API del historial.
+# Experiencia guiada
+
+`guiado.js` contiene contratos, propuestas y herramientas de prueba para la
+aceptación interceptada de los modos. No se importa desde el producto ni se usa
+para sustituir respuestas de IA, laboratorio o ejecución.
