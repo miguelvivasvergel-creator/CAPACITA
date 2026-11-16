@@ -4,6 +4,31 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Reanudación guiada Miguel, 16/11/2026: usuario autoriza iniciar el cierre paso a
+paso. API en 127.0.0.1:8000 y Vite en 127.0.0.1:5173 arrancados; navegador de
+prueba capacita-a abierto sin sesión. Pendiente login del dueño para consultar
+el build existente 8a2c1355; NO se ha consultado su estado remoto en esta sesión,
+encolado otra prueba ni habilitado una versión. Configuración local comprobada
+sin mostrar valores: credenciales de worker ausentes y WORKFLOW_PROTOCOL=1.
+No se cambió configuración ni se arrancó worker. Confirmar disponibilidad de
+worker autorizado con protocolo B4 antes de ejecutar; no repetir SQL 07/08.
+B3/B4 integrados; usuario confirma que B5 aún no fue subido por Fahida.
+Usuario aclara que el trabajador está en este equipo. Comprobación posterior:
+Ubuntu-24.04 instalado (estaba detenido), Docker 29.1.3 accesible por socket
+exclusivo y runtime runsc registrado. No se identificó shared_worker/build_worker
+en los procesos Windows observados; sigue pendiente localizar configuración
+autorizada del worker, distinta del backend/.env comprobado, antes de arrancarlo.
+Esta lectura de infraestructura no certifica aislamiento ni ejecución de candidatos.
+Localización aclarada tras revisar instalación: el trabajador instalado/probado
+en Miguel el 15/11 era B2, backend/services/build_worker.py, con cola SQLite.
+El trabajador B3/B4 integrado está en backend/services/shared_worker.py y usa
+la cola Supabase; arrancar B2 no procesará el build 8a2c1355. Se comprobó ausencia
+de SUPABASE_WORKER_EMAIL/PASSWORD tanto en .env raíz, backend/.env como en el
+entorno del proceso, sin imprimir valores. Falta configurar localmente la cuenta
+dedicada ya autorizada; no recrearla ni repetir SQL, ni usar la cuenta del usuario.
+Siguiente: login en ventana de prueba, recuperar reporte y, si pasa, revisar
+habilitación; después aceptar Normalizar espacios → Mayúsculas realmente.
+
 Avance Miguel posterior al cierre remoto e4c3990, 16/11/2026: retorno al planner
 implementado en A. Al definir una pieza faltante conserva solo objetivo, modo y
 asociación con la definición en sessionStorage por cuenta, máximo 48 h; se puede
