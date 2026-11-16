@@ -4,6 +4,23 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Privacidad/persistencia del cierre privado, 16/11/2026: comparación de identidad
+Auth dueña frente a cuenta worker autenticada mediante huellas, distintas.
+Solo lecturas con esa cuenta: capacidad c7e2ed9f, candidato ba6d86d4, build
+8a2c1355, workflow a1518d9e y run f89dd4c7 devuelven 404. Listas completas de
+builds/workflows/runs/versiones no contienen los recursos privados; versión
+28be84c1 tampoco disponible en selector de workflows. Reporte ignorado
+output/playwright/new-records-privacy-report.json passed=true. Alcance técnico:
+cuenta worker distinta, no segundo recorrido de usuario normal en navegador.
+API local detenida tras comprobar identidad exacta de su proceso y reiniciada
+en 8000; worker NO reiniciado. Dueño reautenticado: ocho huellas idénticas antes
+y después (definición/hash/revisión workflow, salida/reporte/estado run,
+reporte/estado build). Historial B5 y resultado conservados tras recargar.
+No ejecución nueva, cambio de datos, SQL, generación ni publicación.
+Siguiente: recorrido con otra cuenta normal si se requiere aceptación UI,
+resto de errores B6 y contrato/implementación A-B de publicación ejecutable.
+No declarar publicación ni toda la matriz B6 completas. Consultar Git para entrega.
+
 Aceptación integrada privada A/B, 16/11/2026: sesión dueña recupera build
 8a2c1355 pasado, cinco casos (3 matched, 2 input_rejected), hash esperado y
 perfil gvisor-python-stdlib-v1/runtime runsc. Habilitación explícita UI POST

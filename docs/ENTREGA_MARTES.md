@@ -126,7 +126,9 @@ La aceptación positiva de esta composición ya pasó, según la actualización 
 2. Worker local autorizado con protocolo 2 ya activo; configuración solo en .env
    ignorados. Confirmar disponibilidad al retomar, sin duplicados ni repetir SQL 07/08.
 3. Mayúsculas probada/habilitada y proceso de dos capacidades completado con
-   historial tras recarga. Faltan reinicio API y privacidad de estos nuevos recursos.
+   historial tras recarga. Reinicio API conserva ocho huellas; privacidad técnica
+   pasa con cuenta worker distinta (cinco 404 y listas sin recursos ajenos).
+   Falta recorrido UI con segunda cuenta normal y resto de errores B6.
 4. Modalidad de entrega y eventual alojamiento público siguen sin definir.
    No hay servicio contratado, facturación activada ni despliegue de esta rama.
 

@@ -4,6 +4,14 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+Privacidad técnica y reinicio API aceptados para recursos nuevos: identidad
+worker autenticada distinta obtiene cinco 404 (capacidad/candidato/build/workflow/run),
+listas sin recursos ajenos y versión privada ausente de selector. Solo lecturas;
+no es recorrido UI con segunda cuenta normal. Reiniciada únicamente API local,
+ocho huellas idénticas desde dueño y resultado B5 conservado tras recargar.
+Sin nuevas ejecuciones, SQL ni publicación. Pendientes: resto B6, segundo
+recorrido UI si requerido y contrato de publicación A/B.
+
 Dos capacidades distintas aceptadas realmente en recorrido privado: reporte de
 mayúsculas 5/5 y habilitación UI 201, versión 28be84c1. Planner Gemini 200 compose,
 importación, guardado 201 y reapertura idéntica del workflow a1518d9e. Aprobación

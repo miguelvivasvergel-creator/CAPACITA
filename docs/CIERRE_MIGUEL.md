@@ -13,8 +13,10 @@ Aceptación posterior con worker local protocolo 2: mayúsculas build 8a2c1355
 5/5, habilitación privada 28be84c1, planner real compose con dos versiones
 distintas y transferencia resultado → texto. Workflow a1518d9e guardado/reabierto
 idéntico y run f89dd4c7 completed, ambos pasos correctos en gVisor. M06 ya tiene
-aceptación positiva integrada; faltan errores/reinicio/privacidad de estos recursos
-nuevos y publicación conjunta. M13 dispone de worker activo. B5 integrado en
+aceptación positiva integrada. Reinicio API conserva ocho huellas y resultado UI;
+privacidad técnica pasa con cuenta worker distinta (5 GET 404 y listas sin recursos).
+Faltan errores B6, segundo recorrido UI normal y publicación conjunta.
+M13 dispone de worker activo. B5 integrado en
 9ef14a5; no incluye publicación. Detalle y UUID completos en continuidad.
 
 | Bloque | Avance verificado | Lo que sigue pendiente |
@@ -23,7 +25,7 @@ nuevos y publicación conjunta. M13 dispone de worker activo. B5 integrado en
 | M03 | Catálogo/búsqueda abren TrabajoCapacidad; mayúsculas habilitada y proceso de dos versiones ejecutado realmente; worker local activo | Uso por otro autor depende de publicación B |
 | M04 | Pieza faltante → definición → espacio de implementación; objetivo recuperable por cuenta durante 48 h en la pestaña, retorno directo al planner y nueva revisión; seis grupos visuales pasan | Aceptación real después de habilitar la segunda capacidad depende del worker B |
 | M05 | Reparación explícita acotada implementada y aceptada con Gemini real 201; candidato anterior intacto, nuevo borrador persistido | Pruebas/habilitación del nuevo candidato por B |
-| M06 | Mayúsculas 5/5, habilitada; planner real, guardado/reapertura, aprobación y dos pasos distintos completed; historial B5 conserva resultado tras recarga | Errores, reinicio API y privacidad de estos recursos nuevos |
+| M06 | Mayúsculas 5/5, habilitada; planner real, guardado/reapertura, aprobación y dos pasos distintos completed; reinicio API conserva ocho huellas e historial; privacidad técnica con identidad worker distinta pasa | Errores B6 y recorrido UI de segunda cuenta normal |
 | M07 | Dos identidades reales distintas: versión oculta, selección forzada 409, seis lecturas privadas 404 y listados sin recursos ajenos | Repetir privacidad para publicación cuando exista ese contrato |
 | M09 | Filtros servidor por categoría/autor/tipo y paginación; planner con semántica local explícita, aceptada realmente | pgvector global y búsqueda de workflows no implementados; interpretación/generación conservan búsquedas textuales |
 | M10 | Perfil propio con resumen y listas/detalles privados B; lectura real de dos runs/tres workflows; perfil ajeno no consulta listas privadas | Workflows públicos dependen de publicación B; la actividad privada no se publica |
