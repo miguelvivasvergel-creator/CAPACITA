@@ -1,8 +1,30 @@
 # Estado del proyecto
 
-Actualizado: 15/11/2026. Estado actual; reportes anteriores completos en [historial](historial/README.md).
+Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md).
 
 ## Reanudación inmediata
+
+Estado vigente Miguel: B3/B4 integrados como consumidores desde A; catálogo,
+definiciones, candidatos y reparación acotada, filtros, planner y actividad
+privada conectados. Privacidad aceptada realmente con dos cuentas distintas.
+Bloque ef8feb0 y cierre documental e4c3990 subidos a origin/miguel. Los párrafos
+anteriores conservados más abajo son hitos históricos, no el estado vigente.
+
+Avance posterior: objetivo pendiente recuperable desde Inicio y TrabajoCapacidad,
+aislado por cuenta en esta pestaña hasta 48 h, descartable y limpiado al salir.
+No hereda consentimientos ni versiones. Configuración se recupera de fallos de
+red y diferencia solicitud/confirmación del correo. Seis grupos visuales de
+retorno, cinco de Configuración con Auth simulado y pruebas Node pasan; regresiones
+Inicio 8, Planner 5 y Trabajo/B3 4, lint/build correctos. Backend sin cambios,
+última batería completa: 160 pruebas. Sin cambios de credenciales reales ni SQL.
+
+Pendientes reales: build 8a2c1355 queued, segunda versión sin habilitar, ejecución
+del plan de dos capacidades y publicación/reutilización entre cuentas con B.
+PR preparado pero no creado; revisión cruzada y modalidad de entrega pendientes.
+Detalle reproducible en [ENTREGA_MARTES.md](ENTREGA_MARTES.md), inventario actualizado
+en [CIERRE_MIGUEL.md](CIERRE_MIGUEL.md). Consultar Git para entrega del avance nuevo.
+
+## Hitos anteriores (conservar como historial)
 
 Cierre GitHub verificado: commit principal **965e369**, 50 archivos de
 Inicio/perfil/búsqueda y documentación, subido a **origin/miguel**. Hash local,

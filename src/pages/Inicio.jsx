@@ -5,12 +5,14 @@ import DefinirCapacidad from '../components/capabilities/DefinirCapacidad';
 import DetalleCapacidad from '../components/capabilities/DetalleCapacidad';
 import ResumenTrabajo from '../components/profile/ResumenTrabajo';
 import PlanificarObjetivo from '../components/capabilities/PlanificarObjetivo';
+import { descartarObjetivoPlan, guardarObjetivoPlan, leerObjetivoPlan } from '../utils/plannerDraft';
 
 const EMPTY_PAGE = { items: [], next_cursor: null };
 const BUTTON = 'rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 
-export default function Inicio({ usuario, onCambiarSeccion }) {
-  const [modo, setModo] = useState('objetivo');
+export default function Inicio({ usuario, onCambiarSeccion, initialMode }) {
+  const [modo, setModo] = useState(initialMode === 'planificar' ? 'planificar' : 'objetivo');
+  const [retomar, setRetomar] = useState(() => leerObjetivoPlan(usuario?.id));
   const [consulta, setConsulta] = useState('');
   const [search, setSearch] = useState({ q: '', scope: 'available', revision: 0 });
   const [page, setPage] = useState(EMPTY_PAGE);
@@ -85,6 +87,12 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
         <p className="mt-4 text-base text-slate-600">Encuentra capacidades y define las herramientas que te faltan para avanzar en tu trabajo.</p>
       </header>
       <div className="mx-auto mt-8 max-w-4xl">
+        {retomar && <aside aria-label="Objetivo pendiente" className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
+          <p className="font-semibold text-slate-900">Puedes retomar tu plan</p><p className="mt-2 whitespace-pre-wrap break-words text-slate-700">{retomar.objective}</p>
+          <p className="mt-2 text-xs text-slate-600">El objetivo se conserva en esta pestaña hasta descartarlo, cerrar sesión o durante un máximo de dos días. Al retomar revisarás las versiones y autorizarás cualquier nueva propuesta.</p>
+          <button type="button" className={`${BUTTON} mt-3`} onClick={() => setModo('planificar')}>Retomar objetivo pendiente</button>
+          <button type="button" className={`${BUTTON} ml-2 mt-3`} onClick={() => { descartarObjetivoPlan(usuario?.id); setRetomar(null); setModo('objetivo'); }}>Descartar objetivo pendiente</button>
+        </aside>}
         <div className="mb-5 flex flex-wrap justify-center gap-2" aria-label="Cómo empezar">
           {[['objetivo', 'Describir un objetivo'], ['planificar', 'Planificar un proceso'], ['buscar', 'Buscar capacidades']].map(([value, label]) => (
             <button key={value} type="button" aria-pressed={modo === value} onClick={() => setModo(value)} className={`${BUTTON} ${modo === value ? '!border-blue-600 !bg-blue-600 !text-white' : ''}`}>{label}</button>
@@ -98,15 +106,17 @@ export default function Inicio({ usuario, onCambiarSeccion }) {
             setNotice('Propuesta cargada. Revisa el formulario y comprueba la definición antes de guardarla.');
           }} />
           {propuesta && <DefinirCapacidad key={propuesta.id} initialDefinition={propuesta.definition} mostrarInterprete={false} onGuardado={(saved) => {
+            if (retomar) setRetomar(guardarObjetivoPlan(usuario?.id, { ...retomar, capabilityId: saved.id }));
             setNotice(`“${saved.name}” guardada como borrador privado. Su implementación y pruebas siguen pendientes.`);
             setPropuesta(null);
             refresh();
             onCambiarSeccion?.(`ejecutar/capability/${saved.id}`);
           }} />}
         </div>
-        {modo === 'planificar' && <PlanificarObjetivo onCambiarSeccion={onCambiarSeccion} onDefinirObjetivo={(text) => {
+        {modo === 'planificar' && <PlanificarObjetivo key={retomar?.updatedAt || 'planificador'} initialObjective={retomar?.objective || ''} initialMode={retomar?.mode || 'text'} onCambiarSeccion={onCambiarSeccion} onDefinirObjetivo={(text, context) => {
+          const saved = guardarObjetivoPlan(usuario?.id, context || { objective: text, mode: 'text' }); setRetomar(saved);
           setObjetivoPendiente({ id: crypto.randomUUID(), text }); setPropuesta(null); setModo('objetivo');
-          setNotice('Objetivo trasladado. Aclara la capacidad faltante y revisa su definición antes de generar código.');
+          setNotice(saved ? 'Objetivo conservado para retomar el plan después de preparar la capacidad. Revisa la definición antes de generar código.' : 'Objetivo trasladado al formulario. El navegador no pudo conservarlo para volver después; copia el objetivo antes de salir.');
         }} />}
         <form hidden={modo !== 'buscar'} onSubmit={(event) => {
           event.preventDefault();

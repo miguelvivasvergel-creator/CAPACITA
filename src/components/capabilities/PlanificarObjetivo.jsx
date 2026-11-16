@@ -4,9 +4,9 @@ import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
 const BUTTON = 'rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 const LABELS = { reuse: 'Reutilizar una capacidad', compose: 'Combinar capacidades', create: 'Faltan capacidades', clarify: 'Necesita aclaraciones', blocked: 'Recurso pendiente' };
 
-export default function PlanificarObjetivo({ onCambiarSeccion, onDefinirObjetivo }) {
-  const [objective, setObjective] = useState('');
-  const [mode, setMode] = useState('text');
+export default function PlanificarObjetivo({ onCambiarSeccion, onDefinirObjetivo, initialObjective = '', initialMode = 'text' }) {
+  const [objective, setObjective] = useState(initialObjective);
+  const [mode, setMode] = useState(initialMode);
   const [options, setOptions] = useState(null);
   const [selected, setSelected] = useState([]);
   const [consent, setConsent] = useState(false);
@@ -53,7 +53,7 @@ export default function PlanificarObjetivo({ onCambiarSeccion, onDefinirObjetivo
       <p className="mt-1 text-xs text-slate-500">{options.search_kind === 'semantic' ? 'Coincidencias por significado local' : 'Coincidencias textuales'}; no garantizan equivalencia. Elige hasta doce versiones.</p>
       {options.search_truncated && <p className="mt-2 text-sm text-amber-800">Búsqueda parcial. Puede haber otras versiones; concreta el objetivo para afinar.</p>}
       {!options.items.length && <p className="mt-3 text-sm text-slate-600">No se encontraron versiones habilitadas para este objetivo. Puedes ajustar la búsqueda o definir y probar la capacidad que falta.</p>}
-      {!options.items.length && onDefinirObjetivo && <button type="button" className={`${BUTTON} mt-3`} onClick={() => onDefinirObjetivo(objective)}>Definir la capacidad que falta</button>}
+      {!options.items.length && onDefinirObjetivo && <button type="button" className={`${BUTTON} mt-3`} onClick={() => onDefinirObjetivo(objective, { objective, mode })}>Definir la capacidad que falta</button>}
       {options.items.map((version) => <div key={version.id} className="mt-3 rounded-xl border border-slate-200 p-3">
         <label className="flex items-start gap-3 text-sm font-semibold text-slate-800"><input type="checkbox" checked={selected.includes(version.id)} disabled={busy || (!selected.includes(version.id) && selected.length >= 12)} onChange={(event) => {
           setSelected((previous) => event.target.checked ? [...previous, version.id] : previous.filter((id) => id !== version.id)); setConsent(false); setResult(null); setNotice('');
@@ -72,7 +72,7 @@ export default function PlanificarObjetivo({ onCambiarSeccion, onDefinirObjetivo
       <p className="mt-2 text-sm text-slate-700">{proposal.explanation}</p>
       {!!proposal.questions.length && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">{proposal.questions.map((question, index) => <li key={index}>{question}</li>)}</ul>}
       {!!proposal.missing.length && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">{proposal.missing.map((item, index) => <li key={index}>{item}</li>)}</ul>}
-      {proposal.decision === 'create' && onDefinirObjetivo && <button type="button" className={`${BUTTON} mt-3`} onClick={() => onDefinirObjetivo(`${objective}\nCapacidades faltantes: ${proposal.missing.join('; ')}`.slice(0, 2000))}>Definir la capacidad que falta</button>}
+      {proposal.decision === 'create' && onDefinirObjetivo && <button type="button" className={`${BUTTON} mt-3`} onClick={() => onDefinirObjetivo(`${objective}\nCapacidades faltantes: ${proposal.missing.join('; ')}`.slice(0, 2000), { objective, mode })}>Definir la capacidad que falta</button>}
       {definition && <>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm">{(result.validation?.order || definition.nodes.map((node) => node.id)).map((id) => {
           const node = definition.nodes.find((item) => item.id === id);

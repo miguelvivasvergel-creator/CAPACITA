@@ -6,6 +6,18 @@ mañana. Modalidad local/enlace público todavía no definida; no hay despliegue
 
 ## Avance A del bloque
 
+- Retorno al planner: objetivo y modo conservados en la pestaña por cuenta,
+  máximo 48 h, asociación al guardar la definición y botón de regreso desde el
+  espacio de capacidad. Requiere nueva búsqueda, selección y consentimiento;
+  descartable y limpiado al cerrar sesión. No conserva código ni resultados.
+- Configuración se recupera de caídas de red, presenta errores accesibles y
+  diferencia solicitud de cambio de correo de confirmación. Auth simulado:
+  cinco grupos pasan, sin cambios de correo/contraseña reales ni prueba OAuth.
+- Nueva verificación: seis grupos visuales de retorno con API interceptada,
+  pruebas Node de aislamiento/caducidad y regresiones Inicio 8, planner 5 y
+  trabajo/B3 4 pasan. Lint/build correctos; backend sin cambios (160 pruebas
+  del bloque anterior). Bundle >500 kB sigue advertido.
+
 - App ya no monta Ejecutar.jsx ni el servicio heredado con fallback a mocks.
   Conserva esos archivos B. Abrir una capacidad usa TrabajoCapacidad, con datos
   reales y los componentes LaboratorioCandidato/VersionPrivada existentes de B.

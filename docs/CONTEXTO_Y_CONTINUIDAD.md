@@ -4,6 +4,28 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Avance Miguel posterior al cierre remoto e4c3990, 16/11/2026: retorno al planner
+implementado en A. Al definir una pieza faltante conserva solo objetivo, modo y
+asociación con la definición en sessionStorage por cuenta, máximo 48 h; se puede
+descartar y se limpia al cerrar sesión/cambiar de cuenta. Inicio y el espacio de
+capacidad permiten retomar sin copiar el objetivo. No conserva consentimiento,
+selección, código ni resultados; exige nueva búsqueda/revisión. La asociación
+tras guardar está implementada; la prueba visual simula ese guardado, no worker.
+
+Configuración A recupera los controles tras excepciones de red, muestra errores
+accesibles, distingue solicitud de correo de confirmación y limpia la contraseña
+tras respuesta exitosa. No se cambiaron credenciales reales. Se reprodujo primero
+el bloqueo del formulario y luego pasaron cinco grupos con Auth simulado.
+Seis grupos visuales del retorno pasan, más pruebas Node de aislamiento/expiración
+y regresiones Inicio 8, Planner 5 e integración Trabajo/B3 4. Lint/build correctos;
+sin cambios backend/B/SQL. Sigue vigente la batería backend previa de 160 pruebas.
+
+Build real 8a2c1355 sigue queued en la última lectura, sin versión mayúsculas
+habilitada. No repetir encolado. Publicación entre cuentas y ejecución de dos
+capacidades siguen pendientes de soporte B. PR preparado en PR_MIGUEL_A.md;
+GitHub no conectado a la herramienta disponible, PR aún no creado. No confundir
+push con PR, revisión o despliegue. Consultar Git para la entrega de este avance.
+
 Cierre funcional local ef8feb0, 16/11/2026: 59 archivos A/guías, 160 pruebas y
 aceptación descrita debajo. Se intentó aceptación de la segunda candidata usando
 solo el laboratorio B3 existente: POST builds 202, build

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { supabase } from '../services/supabase';
 
 export default function Configuracion({ usuario, onCerrarSesion }) {
@@ -6,43 +6,48 @@ export default function Configuracion({ usuario, onCerrarSesion }) {
   const [nuevaContrasena, setNuevaContrasena] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [esError, setEsError] = useState(false);
+  const temporizador = useRef(null);
+  const formId = useId();
+  useEffect(() => () => clearTimeout(temporizador.current), []);
 
-  const mostrarMensaje = (texto) => {
+  const mostrarMensaje = (texto, error = false) => {
+    clearTimeout(temporizador.current);
+    setEsError(error);
     setMensaje(texto);
-    setTimeout(() => setMensaje(''), 3500);
+    temporizador.current = setTimeout(() => setMensaje(''), 7000);
   };
 
   const handleCambiarCorreo = async (e) => {
     e.preventDefault();
     if (!correo.trim() || !correo.includes('@')) {
-      mostrarMensaje('Ingresa un correo válido.');
+      mostrarMensaje('Ingresa un correo válido.', true);
       return;
     }
     setCargando(true);
-    const { error } = await supabase.auth.updateUser({ email: correo.trim() });
-    setCargando(false);
-    if (error) {
-      mostrarMensaje(`Error: ${error.message}`);
-    } else {
-      mostrarMensaje('Correo actualizado. Revisa tu bandeja para confirmar.');
-    }
+    try {
+      const { error } = await supabase.auth.updateUser({ email: correo.trim() });
+      if (error) mostrarMensaje(`Error: ${error.message}`, true);
+      else mostrarMensaje('Cambio solicitado. Revisa los mensajes de confirmación antes de usar el nuevo correo.');
+    } catch {
+      mostrarMensaje('No se pudo contactar al servicio de cuentas. Comprueba tu conexión e inténtalo de nuevo.', true);
+    } finally { setCargando(false); }
   };
 
   const handleCambiarContrasena = async (e) => {
     e.preventDefault();
     if (nuevaContrasena.length < 8) {
-      mostrarMensaje('La contraseña debe tener mínimo 8 caracteres.');
+      mostrarMensaje('La contraseña debe tener mínimo 8 caracteres.', true);
       return;
     }
     setCargando(true);
-    const { error } = await supabase.auth.updateUser({ password: nuevaContrasena });
-    setCargando(false);
-    if (error) {
-      mostrarMensaje(`Error: ${error.message}`);
-    } else {
-      mostrarMensaje('Contraseña actualizada ✓');
-      setNuevaContrasena('');
-    }
+    try {
+      const { error } = await supabase.auth.updateUser({ password: nuevaContrasena });
+      if (error) mostrarMensaje(`Error: ${error.message}`, true);
+      else { mostrarMensaje('Contraseña actualizada ✓'); setNuevaContrasena(''); }
+    } catch {
+      mostrarMensaje('No se pudo contactar al servicio de cuentas. Comprueba tu conexión e inténtalo de nuevo.', true);
+    } finally { setCargando(false); }
   };
 
   return (
@@ -64,7 +69,7 @@ export default function Configuracion({ usuario, onCerrarSesion }) {
 
       {/* Mensaje */}
       {mensaje && (
-        <div className="mt-4 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold font-body px-3 py-2 rounded-full inline-block">
+        <div role={esError ? 'alert' : 'status'} className={`mt-4 border text-xs font-semibold font-body px-3 py-2 rounded-xl ${esError ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
           {mensaje}
         </div>
       )}
@@ -75,10 +80,16 @@ export default function Configuracion({ usuario, onCerrarSesion }) {
           Correo electrónico
         </h2>
         <p className="text-xs text-slate-500 font-body mb-3">
-          Supabase enviará un enlace de confirmación al nuevo correo.
+          Revisa los correos de confirmación que solicite el servicio de cuentas.
         </p>
         <form onSubmit={handleCambiarCorreo} className="flex flex-col sm:flex-row gap-2">
+          <label className="sr-only" htmlFor={`${formId}-email`}>Nuevo correo electrónico</label>
           <input
+            id={`${formId}-email`}
+            name="email"
+            autoComplete="email"
+            required
+            disabled={cargando}
             type="email"
             value={correo}
             onChange={(e) => setCorreo(e.target.value)}
@@ -103,7 +114,14 @@ export default function Configuracion({ usuario, onCerrarSesion }) {
           Mínimo 8 caracteres.
         </p>
         <form onSubmit={handleCambiarContrasena} className="flex flex-col sm:flex-row gap-2">
+          <label className="sr-only" htmlFor={`${formId}-password`}>Nueva contraseña</label>
           <input
+            id={`${formId}-password`}
+            name="new-password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            disabled={cargando}
             type="password"
             value={nuevaContrasena}
             onChange={(e) => setNuevaContrasena(e.target.value)}

@@ -41,6 +41,22 @@ dependiendo del contrato B; este módulo no implementa publicación de versiones
 
 ## Revisión y constructor
 
+Si faltan versiones, «Definir la capacidad que falta» conserva el objetivo
+original y modo de búsqueda en esta pestaña, separados por cuenta hasta 48 h.
+No guarda código, resultados, selección ni consentimiento. Al guardar la
+definición se asocia su ID y se abre el espacio de implementación B existente.
+Desde allí, «Retomar plan con capacidades disponibles» vuelve a Inicio/planner
+con el objetivo prellenado. Se exige buscar de nuevo y revisar las versiones;
+no se genera, aprueba ni ejecuta automáticamente. Puede descartarse en Inicio;
+cerrar sesión/cambiar de cuenta limpia el contexto. Si sessionStorage está
+bloqueado, la UI avisa y el traslado inmediato al formulario sigue funcionando.
+
+Pruebas: `node scripts/maintenance/verify_planner_draft.mjs` verifica aislamiento,
+caducidad, asociación, datos corruptos y almacenamiento bloqueado; el script
+`verify_planner_resume_browser.js` pasa seis grupos visuales con API interceptada,
+incluido retorno desde el espacio de capacidad, nueva revisión, descarte y móvil.
+La asociación simula el guardado; no acredita habilitación ni ejecución real B.
+
 La UI muestra pasos, conexiones y JSON completo. La transferencia al constructor
 B es manual: Copiar propuesta → Workflows → Nuevo workflow → Campos de entrada
 e importar propuesta → pegar → Cargar propuesta validada. Guardar, aprobar y

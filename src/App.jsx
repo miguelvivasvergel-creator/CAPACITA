@@ -12,6 +12,7 @@ import Configuracion from './pages/Configuracion';
 import Perfil from './pages/Perfil';
 import TrabajoCapacidad from './pages/TrabajoCapacidad';
 import Buscar from './pages/Buscar';
+import { limpiarObjetivosPlan } from './utils/plannerDraft';
 import {
   supabase,
   registrarUsuario,
@@ -99,6 +100,7 @@ export default function App() {
 
   const handleCerrarSesion = async () => {
     await cerrarSesion();
+    limpiarObjetivosPlan();
     setUsuarioActual(null);
     setVista('auth');
     setModo('login');
@@ -132,6 +134,7 @@ export default function App() {
     obtenerUsuarioActual()
       .then((user) => {
         if (user) {
+          limpiarObjetivosPlan(user.id);
           setUsuarioActual(user);
           const hash = window.location.hash.replace('#', '');
           if (esSeccionValida(hash)) {
@@ -141,6 +144,7 @@ export default function App() {
             window.history.replaceState({ vista: 'inicio' }, '', '#inicio');
           }
         } else {
+          limpiarObjetivosPlan();
           const hash = window.location.hash.replace('#', '');
           if (esSeccionValida(hash)) {
             setVista('auth');
@@ -155,12 +159,14 @@ export default function App() {
     // 3. Suscripción en tiempo real a cambios de sesión (Google OAuth, refresh de token, logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
+        limpiarObjetivosPlan(session.user.id);
         const user = await obtenerUsuarioActual();
         if (user) {
           setUsuarioActual(user);
           setVista((prev) => (esSeccionValida(prev) ? prev : 'inicio'));
         }
       } else if (event === 'SIGNED_OUT') {
+        limpiarObjetivosPlan();
         setUsuarioActual(null);
         setVista('auth');
       }
@@ -247,13 +253,13 @@ export default function App() {
         onCerrarSesion={handleCerrarSesion}
       >
         {seccion === 'inicio' && (
-          <Inicio usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
+          <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
         {seccion === 'capacidades' && <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />}
         {seccion === 'workflows' && <Workflows _usuario={usuarioActual} />}
         {seccion === 'comunidad' && <Comunidad key={usuarioActual.id} _usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />}
         {seccion === 'configuracion' && (
-          <Configuracion usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />
+          <Configuracion key={usuarioActual?.id} usuario={usuarioActual} onCerrarSesion={handleCerrarSesion} />
         )}
         {seccion === 'perfil' && (
           <Perfil

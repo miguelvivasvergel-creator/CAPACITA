@@ -13,16 +13,16 @@ El inventario original de abajo se conserva como referencia. Estado actualizado:
 | --- | --- | --- |
 | M01–M02 | Propuesta de contrato en CONTRATO_PUBLICACION_A_B.md; sin abrir candidatos privados | Acordar e integrar el soporte B para publicar versiones ejecutables |
 | M03 | Catálogo/búsqueda abren TrabajoCapacidad y sus componentes B3; versión existente recuperada con sesión real; pantalla heredada fuera de App | Uso por otro autor depende de publicación B; ejecución integrada requiere worker |
-| M04 | Pieza faltante → objetivo prellenado, consentimiento nuevo; definición guardada → espacio de implementación | Recuperar automáticamente el plan después de la habilitación sigue pendiente |
+| M04 | Pieza faltante → definición → espacio de implementación; objetivo recuperable por cuenta durante 48 h en la pestaña, retorno directo al planner y nueva revisión; seis grupos visuales pasan | Aceptación real después de habilitar la segunda capacidad depende del worker B |
 | M05 | Reparación explícita acotada implementada y aceptada con Gemini real 201; candidato anterior intacto, nuevo borrador persistido | Pruebas/habilitación del nuevo candidato por B |
 | M06 | Segunda capacidad distinta generada/persistida: mayúsculas; casos independientes en ENTREGA_MARTES.md | Laboratorio B, habilitación y transferencia real entre las dos capacidades |
 | M07 | Dos identidades reales distintas: versión oculta, selección forzada 409, seis lecturas privadas 404 y listados sin recursos ajenos | Repetir privacidad para publicación cuando exista ese contrato |
 | M09 | Filtros servidor por categoría/autor/tipo y paginación; planner con semántica local explícita, aceptada realmente | pgvector global y búsqueda de workflows no implementados; interpretación/generación conservan búsquedas textuales |
 | M10 | Perfil propio con resumen y listas/detalles privados B; lectura real de dos runs/tres workflows; perfil ajeno no consulta listas privadas | Workflows públicos dependen de publicación B; la actividad privada no se publica |
 | M11 | Autor #perfil, títulos, URI inválida tolerada, diálogo con Escape/Tab; regresiones visuales pasan | Ensayo final con la entrega B siguiente |
-| M12 | Sesiones A/B reales verificadas, login realizado por usuario | Cambios de correo/contraseña y OAuth no se certifican en esta sesión |
+| M12 | Sesiones A/B reales; Configuración recupera errores de red y distingue confirmación de correo, cinco grupos con Auth simulado | Confirmaciones reales de correo/contraseña y OAuth no certificadas; no se alteraron credenciales reales |
 | M13–M14 | Consumidores A sobre B3/B4 existentes, 160 pruebas backend y batería visual | Worker autorizado, ensayo integrado y publicación conjunta |
-| M15 | Guía ENTREGA_MARTES.md, contratos y evidencia actualizados | Consultar Git para commit/push/PR del bloque y revisión cruzada |
+| M15 | Guías y evidencia actualizadas; ef8feb0/e4c3990 subidos a miguel, borrador PR preparado | Entregar avance nuevo; PR y revisión cruzada aún pendientes, integración GitHub sin conectar |
 
 El usuario reiteró que solo se edita el frente Miguel; no se transfirieron archivos B.
 Los registros nuevos son privados: una reparación y una segunda definición/candidato
