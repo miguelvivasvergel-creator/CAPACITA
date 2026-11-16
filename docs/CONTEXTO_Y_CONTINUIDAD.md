@@ -4,6 +4,20 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
+Privacidad con segunda cuenta normal completada, 16/11/2026: sesiones de navegador
+capacita-a y capacita-b autenticadas por Supabase; huella de B distinta de la dueña.
+B obtiene 404 en capacidad c7e2ed9f, candidato ba6d86d4, build 8a2c1355,
+workflow a1518d9e y run f89dd4c7. Listas completas de capacidades/builds/workflows/
+runs/versiones sin recursos privados de A. Planner no ofrece versión 28be84c1;
+selección forzada rechazada 409 antes de proveedor. Enlaces directos B5 historial
+y B4 workflow muestran error; sin resultado guardado ni editor privado montados.
+Capturas/scripts ignorados output/playwright/new-private-{run,workflow}-denied-b.png
+y verify-new-records-user-b.js. No IA, escritura, SQL ni nueva ejecución.
+Esta aceptación supera el pendiente de segunda cuenta normal anotado debajo.
+Junto al reinicio API ya verificado, queda cerrado este bloque de privacidad y
+persistencia de los recursos nuevos. Siguen pendientes errores/resto B6,
+publicación ejecutable A/B, revisión PR y modalidad de entrega; no B6 completo.
+
 Privacidad/persistencia del cierre privado, 16/11/2026: comparación de identidad
 Auth dueña frente a cuenta worker autenticada mediante huellas, distintas.
 Solo lecturas con esa cuenta: capacidad c7e2ed9f, candidato ba6d86d4, build

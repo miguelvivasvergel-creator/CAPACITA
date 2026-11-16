@@ -128,7 +128,9 @@ La aceptación positiva de esta composición ya pasó, según la actualización 
 3. Mayúsculas probada/habilitada y proceso de dos capacidades completado con
    historial tras recarga. Reinicio API conserva ocho huellas; privacidad técnica
    pasa con cuenta worker distinta (cinco 404 y listas sin recursos ajenos).
-   Falta recorrido UI con segunda cuenta normal y resto de errores B6.
+   Recorrido con segunda cuenta normal también pasa: cinco 404, listas sin
+   recursos A, planner rechaza selección forzada 409 y rutas directas bloqueadas.
+   Falta resto de errores/matriz B6 y publicación conjunta.
 4. Modalidad de entrega y eventual alojamiento público siguen sin definir.
    No hay servicio contratado, facturación activada ni despliegue de esta rama.
 

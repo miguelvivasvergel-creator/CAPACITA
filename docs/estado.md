@@ -4,6 +4,14 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+Privacidad de recursos nuevos aceptada también con segunda cuenta normal en
+navegador: identidad B verificada distinta, cinco 404, listas completas sin
+privados A, versión ausente del planner y selección forzada 409 antes de IA.
+Enlaces directos a historial y workflow bloqueados sin mostrar salida/editor.
+Supera el pendiente de recorrido UI anotado abajo. Sin IA ni nuevas escrituras.
+Privacidad y persistencia tras reinicio API cerradas para este caso concreto;
+resto de matriz B6 y publicación ejecutable entre cuentas continúan pendientes.
+
 Privacidad técnica y reinicio API aceptados para recursos nuevos: identidad
 worker autenticada distinta obtiene cinco 404 (capacidad/candidato/build/workflow/run),
 listas sin recursos ajenos y versión privada ausente de selector. Solo lecturas;

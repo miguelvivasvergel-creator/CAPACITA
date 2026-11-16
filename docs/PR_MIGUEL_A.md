@@ -29,8 +29,16 @@ Verificación adicional: seis grupos visuales del retorno al planner, cinco de
 Configuración con Auth simulado y pruebas Node de caducidad/aislamiento. Regresiones
 Inicio, planner e integración B3 pasan; no se modificaron credenciales reales.
 
-Límites: candidatos nuevos sin ejecutar/habilitar; composición de dos capacidades
-distintas depende del laboratorio B. Publicación ejecutable entre cuentas requiere
+Aceptación integrada posterior: B5 incorporado, worker local protocolo 2 activo,
+build mayúsculas 5/5 y versión habilitada. Planner Gemini real compone dos
+capacidades distintas, workflow guardado/reabierto idéntico y dos pasos completados
+en gVisor con transferencia resultado → texto. Historial conserva salida tras
+recargar y reiniciar API (ocho huellas idénticas). Segunda cuenta normal verifica
+cinco 404, listas sin privados, selección planner forzada 409 y rutas directas
+historial/workflow bloqueadas. No se llamó IA ni escribió en esa prueba de privacidad.
+
+Límites: candidato de reparación todavía sin probar/habilitar. Resto de matriz B6
+pendiente. Publicación ejecutable entre cuentas requiere
 el contrato propuesto en CONTRATO_PUBLICACION_A_B.md; no está implementada.
 Semántica local acotada a 200 capacidades, cuotas por proceso y bundle >500 kB.
 Detalle de evidencia y ensayo en ENTREGA_MARTES.md.
