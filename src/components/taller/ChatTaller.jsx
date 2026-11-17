@@ -3,7 +3,7 @@ import { api } from '../../api';
 import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
 import { interpretarObjetivo } from '../../services/objetivos';
 import { guardarWorkflow } from '../../services/workflows';
-import { campoUnico, esquemaDatos } from '../../utils/formularioDatos';
+import { campoUnico } from '../../utils/formularioDatos';
 import FabricaHerramienta from './FabricaHerramienta';
 import ResultadoDatos from '../common/ResultadoDatos';
 import LienzoTaller from './LienzoTaller';
@@ -149,7 +149,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
       if (proposal.decision === 'clarify') {
         setPendientes(proposal.questions); agregar({ de: 'capacita', tipo: 'preguntas', preguntas: proposal.questions });
       } else if (proposal.definition) {
-        const campo = campoUnico(esquemaDatos(proposal.definition.input_schema));
+        const campo = campoUnico(proposal.definition.input_schema);
         setPlan(proposal.definition); setCreando(''); setPidiendo(campo);
         agregar({ de: 'capacita', tipo: 'plan', definicion: proposal.definition });
         if (campo) agregar({ de: 'capacita', tipo: 'texto', texto: `Para ejecutarla necesito: ${campo.etiqueta}. Escríbelo abajo 👇` });

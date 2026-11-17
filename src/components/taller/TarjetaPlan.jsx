@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { aprobarWorkflow, ejecutarWorkflow } from '../../services/workflows';
-import { admiteFormulario, campoUnico, datosIniciales, esquemaDatos, pasosEnOrden } from '../../utils/formularioDatos';
+import { admiteFormulario, campoUnico, datosIniciales, pasosEnOrden } from '../../utils/formularioDatos';
 import FormularioDatos from '../common/FormularioDatos';
 
 const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50';
@@ -12,7 +12,7 @@ const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opac
  * esos datos exactos y ejecuta. Editar los datos invalida la aprobación anterior.
  */
 export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupadoExterno, onEjecucion }) {
-  const esquema = esquemaDatos(definition.input_schema);
+  const esquema = definition.input_schema;
   const campo = campoUnico(esquema);
   const formulario = admiteFormulario(esquema);
   const [inputs, setInputs] = useState(() => datosIniciales(esquema));
