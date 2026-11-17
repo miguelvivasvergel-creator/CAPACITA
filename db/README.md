@@ -35,7 +35,7 @@ aplicar y activar PUBLICATIONS_ENABLED. No repetir migraciones anteriores.
 
 # Caja de herramientas del sandbox
 
-`10_toolbox_profile.sql`: PENDIENTE de aplicar (preparado 17/11/2026). Requiere 07, 08
+`10_toolbox_profile.sql`: aplicado por Fahida en Supabase el 17/11/2026 (solo reemplaza la función; verificado `activar_acepta_toolbox = true`). Requiere 07, 08
 y 09. Activar versiones acepta pruebas del perfil `gvisor-python-toolbox-v1` (imagen de
 `scripts/sandbox/Dockerfile.toolbox`) además de `gvisor-python-stdlib-v1`, y guarda el
 perfil real de cada versión. Reiniciar API y trabajador solo después de aplicarlo.

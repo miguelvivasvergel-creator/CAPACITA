@@ -61,10 +61,22 @@ Avance registrado:
    Idea de Fahida: entrada y salida en otros formatos (PDF, Word…) → conversores
    como capacidades base en el paso 2/3 (propuesta, no implementada).
 
-Siguiente (plan hasta el jueves 19/11): paso 2 caja de herramientas del sandbox
-(Pillow, pypdf, reportlab, python-docx, openpyxl; ojo: SQL de habilitar versión
-exige `report.profile = 'gvisor-python-stdlib-v1'`), paso 3 archivos de entrada y
-salida + perfil pesado, paso 4 demo real, compartir desde el chat y menú.
+8. 17/11 — Paso 2 caja de herramientas (implementado y aplicado): imagen
+   `scripts/sandbox/Dockerfile.toolbox` (pypdf 5.1.0, python-docx 1.1.2, openpyxl
+   3.1.5, reportlab 4.2.5, Pillow 11.0.0 + dependencias fijadas, bytecode
+   precompilado) construida con `build_toolbox_image_wsl.sh`, ID
+   sha256:b114eaf6…. Perfiles: stdlib (12 s, 0,5 CPU, 256 MB; versiones antiguas)
+   y toolbox (30 s, 1 CPU, 512 MB; pruebas nuevas). Runner y motor eligen imagen y
+   límites por perfil desde lista cerrada; test exige que ambas copias coincidan.
+   prepare_candidate rechaza imports fuera de stdlib+toolbox; Gemini conoce las
+   librerías. gVisor real: PDF creado y leído + docx + xlsx + png en 6,9 s.
+   SQL 10 aplicado por Fahida (solo reemplaza execution_enable; la restricción de
+   tabla se retiró porque hay 13 versiones desactivadas `managed-tools-v1`).
+   Tests 171/173 (2 planner Supabase 503 ajenos).
+
+Siguiente (plan hasta el jueves 19/11): paso 3 archivos de entrada y salida
+(📎 en el chat, piezas conversoras leer/crear PDF-Word-Excel, descarga), paso 4
+demo real, compartir desde el chat y menú.
 Las pantallas Guiado antiguas (AsistenteGuiado, PlanGuiado) quedan sin uso desde
 Inicio y se retirarán tras validar el chat. No afirmar versión final completa.
 
