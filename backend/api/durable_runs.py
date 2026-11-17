@@ -13,6 +13,7 @@ from core.responses import APIResponse
 from repositories.candidates import CandidateRepository
 from schemas.executions import ExecutionRequest, ExecutionResponse
 from services.build_validation import validate_manifest
+from services.contract_validation import DATA_BYTES
 
 router = APIRouter(prefix="/runs", tags=["Ejecuciones persistentes privadas"])
 
@@ -26,10 +27,10 @@ async def create(payload: ExecutionRequest, repository: Repository, shared: Shar
             if not Draft202012Validator(version['contracts'][field]).is_valid(value):
                 raise HTTPException(422, 'Entradas o parámetros incompatibles con la versión')
         try:
-            if len(json.dumps(payload.model_dump(mode='json'), allow_nan=False).encode()) > 65000:
+            if len(json.dumps(payload.model_dump(mode='json'), allow_nan=False).encode()) > DATA_BYTES - 1000:
                 raise ValueError()
         except (ValueError, TypeError, RecursionError):
-            raise HTTPException(422, 'La ejecución requiere JSON finito de hasta 64 KiB') from None
+            raise HTTPException(422, 'La ejecución requiere JSON finito de hasta 4 MB') from None
         return APIResponse(data=await shared.rpc('public_enqueue', p_id=version['publication_id'],
             p_key=idempotency_key, p_inputs=payload.inputs, p_parameters=payload.parameters))
     candidate = await CandidateRepository(repository).get(UUID(version["candidate_id"]))
@@ -47,10 +48,10 @@ async def create(payload: ExecutionRequest, repository: Repository, shared: Shar
         if not Draft202012Validator(schema).is_valid(value):
             raise HTTPException(422, "Entradas o parámetros incompatibles con la versión")
     try:
-        if len(json.dumps(payload.model_dump(mode="json"), ensure_ascii=False, allow_nan=False).encode()) > 65536:
+        if len(json.dumps(payload.model_dump(mode="json"), ensure_ascii=False, allow_nan=False).encode()) > DATA_BYTES:
             raise ValueError()
     except (ValueError, TypeError, RecursionError):
-        raise HTTPException(422, "La ejecución requiere JSON finito de hasta 64 KiB") from None
+        raise HTTPException(422, "La ejecución requiere JSON finito de hasta 4 MB") from None
     return APIResponse(message="Ejecución encolada",
                        data=await shared.rpc("enqueue", p_kind="run", p_key=idempotency_key,
                                              p_request=payload.model_dump(mode="json")))

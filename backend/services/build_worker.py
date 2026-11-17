@@ -4,8 +4,11 @@ Uso desde raíz: .venv/Scripts/python.exe backend/services/build_worker.py --onc
 Desde Linux: PYTHONPATH=backend python -m services.build_worker --once
 """
 import argparse
+import base64
+import binascii
 import builtins
 from contextlib import contextmanager
+import io
 import json
 import os
 from pathlib import Path
@@ -13,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import zipfile
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -28,6 +32,48 @@ from services.build_validation import accepts_input, validate_cases, validate_ma
 # estándar y nombres de campos esperados definidos por la persona.
 STANDARD_ERRORS = frozenset(name for name, value in vars(builtins).items()
                             if isinstance(value, type) and issubclass(value, BaseException))
+
+
+# Un archivo generado (PDF, imagen, Office) no es idéntico byte a byte entre ejecuciones:
+# si el ejemplo espera "ARCHIVO", basta con que sea base64 válido del formato declarado.
+FILE_EXPECTED = "ARCHIVO"
+SIGNATURES = {"image/jpeg": bytes([0xFF, 0xD8, 0xFF]), "image/png": bytes([0x89]) + b"PNG", "application/pdf": b"%PDF"}
+OFFICE_PARTS = {
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "word/document.xml",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xl/workbook.xml",
+}
+
+
+def valid_file(value, media_type):
+    if not isinstance(value, str) or not value:
+        return False
+    try:
+        data = base64.b64decode(value, validate=True)
+    except (binascii.Error, ValueError):
+        return False
+    if media_type in SIGNATURES:
+        return data.startswith(SIGNATURES[media_type])
+    if media_type in OFFICE_PARTS:
+        try:
+            # Solo lee el índice del zip; no extrae ni interpreta contenido.
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                return OFFICE_PARTS[media_type] in archive.namelist()
+        except (zipfile.BadZipFile, ValueError, OSError):
+            return False
+    return len(data) > 0
+
+
+def comparable(actual, expected, output_schema):
+    """Sustituye los archivos válidos por el marcador para comparar el resto exactamente."""
+    if not isinstance(actual, dict) or not isinstance(expected, dict):
+        return actual
+    fields = output_schema.get("properties", {})
+    result = dict(actual)
+    for key, rule in fields.items():
+        if (isinstance(rule, dict) and rule.get("contentEncoding") == "base64"
+                and expected.get(key) == FILE_EXPECTED and key in result):
+            result[key] = FILE_EXPECTED if valid_file(result[key], rule.get("contentMediaType")) else "archivo_invalido"
+    return result
 
 
 def error_type(output):
@@ -61,8 +107,8 @@ def invoke_runner(payload=None, recover=False):
                                 if payload is not None else b"", stdout=output, stderr=errors,
                                 env=environment, timeout=90)
         output.seek(0)
-        raw = output.read(524289)
-        if len(raw) > 524288:
+        raw = output.read(9437185)
+        if len(raw) > 9437184:
             raise RuntimeError("runner_response_limit")
         response = json.loads(raw.decode("utf-8"))
         if result.returncode != 0:
@@ -120,6 +166,7 @@ def execute_build(job, runner=invoke_runner):
                 canonical = lambda value: json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False)
                 schema_valid = (isinstance(actual, dict)
                                 and Draft202012Validator(manifest.definition.output_schema).is_valid(actual))
+                actual = comparable(actual, case.expected_output, manifest.definition.output_schema)
                 passed = schema_valid and canonical(actual) == canonical(case.expected_output)
                 reason = "matched" if passed else "output_mismatch"
                 if not passed:

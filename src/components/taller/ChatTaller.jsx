@@ -3,7 +3,8 @@ import { api } from '../../api';
 import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
 import { interpretarObjetivo } from '../../services/objetivos';
 import { guardarWorkflow } from '../../services/workflows';
-import { campoUnico } from '../../utils/formularioDatos';
+import { camposChat } from '../../utils/formularioDatos';
+import { infoTipo, leerArchivo, urlDatos } from '../../utils/archivos';
 import FabricaHerramienta from './FabricaHerramienta';
 import ResultadoDatos from '../common/ResultadoDatos';
 import LienzoTaller from './LienzoTaller';
@@ -38,8 +39,12 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   const [runId, setRunId] = useState(null);
   const [seleccionado, setSeleccionado] = useState(null);
   const [vistaMovil, setVistaMovil] = useState('chat');
-  const [pidiendo, setPidiendo] = useState(null); // dato único que el chat está pidiendo para el plan
-  const siguienteId = useRef(0), peticion = useRef(null), fin = useRef(null), entrada = useRef(null);
+  // Datos del plan que el chat pide uno por uno: { definicion, campos, indice, datos }.
+  const [pidiendo, setPidiendo] = useState(null);
+  const [adjunto, setAdjunto] = useState(null); // archivo enviado antes de tener solución
+  const [leyendo, setLeyendo] = useState(false);
+  const siguienteId = useRef(0), peticion = useRef(null), fin = useRef(null), entrada = useRef(null), selector = useRef(null);
+  const campoActual = plan && pidiendo ? pidiendo.campos[pidiendo.indice] : null;
   const solucion = useRef({ definicion: null, guardada: null, incierta: false });
 
   const agregar = useCallback((mensaje) => setMensajes((old) => [...old, { id: ++siguienteId.current, ...mensaje }]), []);
@@ -95,15 +100,72 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
     agregar({ de: 'capacita', tipo: 'resultado', runId: id });
   }
 
+  // Pide el siguiente dato o, si ya están todos, muestra la confirmación.
+  function pedirSiguiente(estado) {
+    setPidiendo(estado);
+    const campo = estado.campos[estado.indice];
+    if (!campo) { agregar({ de: 'capacita', tipo: 'confirmar', definicion: estado.definicion, datos: estado.datos }); return; }
+    const inicio = estado.indice ? 'Ahora necesito' : 'Para ejecutarla necesito';
+    agregar({ de: 'capacita', tipo: 'texto', texto: campo.archivo ? `${inicio}: ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}). Súbelo con el botón 📎 de abajo 👇` : `${inicio}: ${campo.etiqueta}. Escríbelo abajo 👇` });
+  }
+
+  // Tras ejecutar, un dato nuevo vuelve a empezar la recogida para ejecutarla otra vez.
+  const estadoParaDato = () => (pidiendo.indice >= pidiendo.campos.length ? { ...pidiendo, indice: 0, datos: {} } : pidiendo);
+
   function recibirDato(valor) {
-    const numero = pidiendo.tipo !== 'string';
-    const dato = numero ? Number(valor.trim().replace(',', '.')) : valor;
+    const estado = estadoParaDato(), campo = estado.campos[estado.indice];
     agregar({ de: 'tu', tipo: 'texto', texto: valor }); setTexto('');
-    if (numero && (!Number.isFinite(dato) || (pidiendo.tipo === 'integer' && !Number.isInteger(dato)))) {
-      agregar({ de: 'capacita', tipo: 'texto', texto: `Necesito un número${pidiendo.tipo === 'integer' ? ' entero' : ''} para ${pidiendo.etiqueta.toLowerCase()}. Escríbelo de nuevo.` });
+    if (campo.archivo) {
+      setPidiendo(estado);
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Aquí necesito un archivo: ${campo.etiqueta}. Súbelo con el botón 📎 de abajo 👇` });
       return;
     }
-    agregar({ de: 'capacita', tipo: 'confirmar', definicion: plan, datos: { [pidiendo.nombre]: dato } });
+    const numero = campo.tipo !== 'string';
+    const dato = numero ? Number(valor.trim().replace(',', '.')) : valor;
+    if (numero && (!Number.isFinite(dato) || (campo.tipo === 'integer' && !Number.isInteger(dato)))) {
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Necesito un número${campo.tipo === 'integer' ? ' entero' : ''} para ${campo.etiqueta.toLowerCase()}. Escríbelo de nuevo.` });
+      return;
+    }
+    pedirSiguiente({ ...estado, indice: estado.indice + 1, datos: { ...estado.datos, [campo.nombre]: dato } });
+  }
+
+  async function usarArchivo(archivo, estado) {
+    const campo = estado.campos[estado.indice];
+    setLeyendo(true);
+    try {
+      const base64 = await leerArchivo(archivo, campo.archivo);
+      agregar({ de: 'tu', tipo: 'archivo', nombre: archivo.name, vista: campo.archivo.startsWith('image/') ? urlDatos(base64, campo.archivo) : null });
+      pedirSiguiente({ ...estado, indice: estado.indice + 1, datos: { ...estado.datos, [campo.nombre]: base64 } });
+    } catch (cause) {
+      setPidiendo(estado); agregar({ de: 'capacita', tipo: 'error', texto: cause.message });
+    } finally { setLeyendo(false); }
+  }
+
+  function recibirArchivo(archivo) {
+    if (!archivo || leyendo) return;
+    if (plan && pidiendo) {
+      const estado = estadoParaDato(), campo = estado.campos[estado.indice];
+      if (campo.archivo) { usarArchivo(archivo, estado); return; }
+      setPidiendo(estado);
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Ahora necesito: ${campo.etiqueta}. Escríbelo abajo 👇` });
+      return;
+    }
+    // Aún no hay solución: se guarda y se usa cuando la solución pida un archivo.
+    setAdjunto(archivo);
+    agregar({ de: 'tu', tipo: 'archivo', nombre: archivo.name, vista: archivo.type.startsWith('image/') ? URL.createObjectURL(archivo) : null });
+    agregar({ de: 'capacita', tipo: 'texto', texto: 'Recibí tu archivo 👍. Cuéntame qué quieres hacer con él.' });
+  }
+
+  function empezarDatos(definicion) {
+    const campos = camposChat(definicion.input_schema);
+    if (!campos) { setPidiendo(null); return; }
+    const estado = { definicion, campos, indice: 0, datos: {} };
+    if (adjunto && campos[0].archivo) {
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Uso el archivo que me enviaste (${adjunto.name}).` });
+      const archivo = adjunto; setAdjunto(null); usarArchivo(archivo, estado);
+      return;
+    }
+    pedirSiguiente(estado);
   }
 
   function mostrarDefinicion(value, objetivoDefinido) {
@@ -149,10 +211,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
       if (proposal.decision === 'clarify') {
         setPendientes(proposal.questions); agregar({ de: 'capacita', tipo: 'preguntas', preguntas: proposal.questions });
       } else if (proposal.definition) {
-        const campo = campoUnico(proposal.definition.input_schema);
-        setPlan(proposal.definition); setCreando(''); setPidiendo(campo);
+        setPlan(proposal.definition); setCreando('');
         agregar({ de: 'capacita', tipo: 'plan', definicion: proposal.definition });
-        if (campo) agregar({ de: 'capacita', tipo: 'texto', texto: `Para ejecutarla necesito: ${campo.etiqueta}. Escríbelo abajo 👇` });
+        empezarDatos(proposal.definition);
       } else if (proposal.decision === 'create') {
         agregar({ de: 'capacita', tipo: 'faltan', faltan: proposal.missing });
       } else {
@@ -188,7 +249,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
       continuar({ ...conversacion, aclaraciones: [...conversacion.aclaraciones, respuesta].slice(-6) });
     } else {
       nuevoTaller();
-      continuar({ objetivo: valor, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
+      // Solo se cuenta el tipo de archivo adjunto, nunca su contenido.
+      const tipoAdjunto = !adjunto ? '' : adjunto.type.startsWith('image/') ? 'una foto' : adjunto.name.toLowerCase().endsWith('.pdf') ? 'un PDF'
+        : adjunto.name.toLowerCase().endsWith('.docx') ? 'un documento Word' : adjunto.name.toLowerCase().endsWith('.xlsx') ? 'un Excel' : 'un archivo';
+      continuar({ objetivo: tipoAdjunto ? `${valor}\n(Adjunté ${tipoAdjunto} como entrada.)` : valor, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
     }
   }
 
@@ -207,6 +271,12 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   }
 
   function renderMensaje(mensaje) {
+    if (mensaje.de === 'tu' && mensaje.tipo === 'archivo') {
+      return <div className="flex justify-end"><div className="max-w-[70%] rounded-2xl rounded-br-md bg-blue-700 p-2 text-sm text-white">
+        {mensaje.vista && <img src={mensaje.vista} alt={`Archivo enviado: ${mensaje.nombre}`} className="max-h-48 rounded-xl object-contain" />}
+        <p className="break-words px-2 py-1">📎 {mensaje.nombre}</p>
+      </div></div>;
+    }
     if (mensaje.de === 'tu') {
       return <div className="flex justify-end"><p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-blue-700 px-4 py-2.5 text-sm text-white">{mensaje.texto}</p></div>;
     }
@@ -272,15 +342,20 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
         {ocupado && <p role="status" className="taller-escribiendo"><span className="taller-puntos" aria-hidden="true"><i /><i /><i /></span>{fase}</p>}
         <div ref={fin} />
       </div>
-      {pidiendo && plan && <div className="flex items-center justify-between gap-2 px-1 pb-1 text-xs text-slate-600">
-        <span className="break-words">✍️ Esperando: {pidiendo.etiqueta}</span>
+      {campoActual && <div className="flex items-center justify-between gap-2 px-1 pb-1 text-xs text-slate-600">
+        <span className="break-words">{campoActual.archivo ? '📎' : '✍️'} Esperando: {campoActual.etiqueta}</span>
         <button type="button" className="shrink-0 rounded-lg px-2 py-1 font-semibold text-blue-700 hover:bg-blue-50" onClick={() => { setPidiendo(null); entrada.current?.focus(); }}>Pedir otra cosa</button>
       </div>}
       <form onSubmit={enviar} className="taller-compositor">
+        <input ref={selector} type="file" className="sr-only" tabIndex={-1} aria-hidden="true"
+          accept={campoActual?.archivo ? infoTipo(campoActual.archivo).acepta : 'image/*,.pdf,.docx,.xlsx'}
+          onChange={(event) => { recibirArchivo(event.target.files?.[0]); event.target.value = ''; }} />
+        <button type="button" className="taller-adjuntar" disabled={ocupado || leyendo} onClick={() => selector.current?.click()}
+          aria-label={campoActual?.archivo ? `Subir ${campoActual.etiqueta}` : 'Adjuntar foto, PDF, Word o Excel'} title="Adjuntar archivo">{leyendo ? '⏳' : '📎'}</button>
         <label htmlFor="taller-entrada" className="sr-only">Escribe tu necesidad</label>
         <textarea id="taller-entrada" ref={entrada} rows={2} maxLength={2000} value={texto} disabled={ocupado} onChange={(event) => setTexto(event.target.value)}
           onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) enviar(event); }}
-          placeholder={pendientes.length ? 'Responde a mis preguntas…' : pidiendo && plan ? `Escribe aquí: ${pidiendo.etiqueta}` : 'Ej.: tengo una lista de productos y quiero saber cuáles están agotados…'} />
+          placeholder={pendientes.length ? 'Responde a mis preguntas…' : campoActual ? (campoActual.archivo ? `Sube ${campoActual.etiqueta} con 📎` : `Escribe aquí: ${campoActual.etiqueta}`) : 'Ej.: mejora la foto de mi plato y ponle el nombre de mi restaurante…'} />
         <button type="submit" disabled={ocupado || !texto.trim()} aria-label="Enviar">➤</button>
       </form>
     </div>

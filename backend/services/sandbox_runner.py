@@ -28,12 +28,12 @@ PROFILE_LIMITS = {
                                 "cpus": 0.5, "guest_processes": 8, "host_tasks": 64,
                                 "temporary_bytes": 16777216, "network": "none", "uid": 65534},
     # Documentos e imágenes: importar lxml/reportlab/Pillow bajo gVisor necesita más margen.
-    "gvisor-python-toolbox-v1": {"timeout_seconds": 30, "output_bytes": 65536, "memory_bytes": 536870912,
+    "gvisor-python-toolbox-v1": {"timeout_seconds": 30, "output_bytes": 4194304, "memory_bytes": 536870912,
                                  "cpus": 1.0, "guest_processes": 8, "host_tasks": 64,
                                  "temporary_bytes": 16777216, "network": "none", "uid": 65534},
 }
 HARNESS = '''import json, sys
-request = json.loads(sys.stdin.buffer.read(196609))
+request = json.loads(sys.stdin.buffer.read(4194305))
 namespace = {"__name__": "main"}
 # Este exec ocurre exclusivamente dentro del invitado gVisor.
 exec(compile(request["source"], "main.py", "exec"), namespace)
@@ -168,8 +168,8 @@ def main():
                 return 0
             if sys.argv[1:]:
                 raise ValueError("arguments")
-            raw = sys.stdin.buffer.read(196609)
-            if len(raw) > 196608:
+            raw = sys.stdin.buffer.read(4194305)
+            if len(raw) > 4194304:
                 raise ValueError("payload_size")
             request = json.loads(raw)
             if set(request) - {"profile"} != {"source", "inputs", "parameters"} or request.get("profile", DEFAULT_PROFILE) not in IMAGES:

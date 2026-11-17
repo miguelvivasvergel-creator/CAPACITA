@@ -26,6 +26,9 @@ escribas el código en una sola línea ni encadenes bloques con punto y coma.
 Usa biblioteca estándar y, solo si hace falta, estas librerías ya instaladas (no las
 declares en dependencies): pypdf, docx (python-docx), openpyxl, reportlab y PIL (Pillow).
 Define una función síncrona run(inputs, parameters) que devuelve un dict JSON compatible con output_schema.
+Los campos con contentEncoding base64 son archivos: texto base64 sin prefijo data:. Decodifícalos
+con base64.b64decode, trabájalos en memoria (io.BytesIO) y devuelve los archivos de salida también
+en base64 (base64.b64encode(...).decode()) con el formato de su contentMediaType.
 Respeta contratos, parámetros, restricciones y ejemplos; no memorices solo los ejemplos.
 No uses red, archivos del disco, procesos, variables de entorno, credenciales ni otros paquetes.
 No ejecutes nada en el nivel del módulo salvo imports y definiciones de funciones.
@@ -70,7 +73,13 @@ los campos/required; ejemplos propuestos, nunca resultados ejecutados. Usa datos
 ficticios y anota límites relevantes en constraints. No especialices todo a marketing.
 Los recursos y permisos externos se declaran sin suponer que existen. Un borrador no
 es una implementación. No afirmes haber buscado equivalencias semánticas ni probado código.
-Devuelve exclusivamente JSON conforme al esquema, sin markdown."""
+Devuelve exclusivamente JSON conforme al esquema, sin markdown.
+Las fotos, PDF, Word y Excel sí se pueden procesar: cada archivo es un campo type string
+con file foto, png, pdf, word o excel (los demás campos llevan file ""). La salida puede
+ser un archivo en otro formato que la entrada. Pide como entrada el archivo y los datos
+simples que falten (por ejemplo el texto a poner). En los ejemplos, un archivo de entrada
+se escribe "MUESTRA:foto", "MUESTRA:pdf", "MUESTRA:word" o "MUESTRA:excel" y uno de
+salida "ARCHIVO"."""
         text = await self._structured(instruction, {
             "objective": request.objective,
             "clarifications": [item.model_dump() for item in request.clarifications],
@@ -114,7 +123,13 @@ clarify si faltan reglas esenciales: hasta tres preguntas. create si faltan capa
 aunque sean simples o ninguna versión sirva: explica missing sin crear código. blocked
 solo si la necesidad exige red, cuentas o servicios externos, hardware o permisos. Estas decisiones
 llevan definition=null. No declares ejecución, aprobación, publicación o éxito funcional.
-Devuelve JSON sin markdown; explicación en español. Un plan válido aún requiere revisión."""
+Devuelve JSON sin markdown; explicación en español. Un plan válido aún requiere revisión.
+Si la necesidad usa fotos, PDF, Word o Excel, cada archivo es un campo string con
+contentEncoding "base64" y contentMediaType (image/jpeg, image/png, application/pdf,
+application/vnd.openxmlformats-officedocument.wordprocessingml.document o
+application/vnd.openxmlformats-officedocument.spreadsheetml.sheet); la salida también
+puede ser un archivo en otro formato. En los ejemplos, un archivo de entrada se escribe
+"MUESTRA:foto", "MUESTRA:pdf", "MUESTRA:word" o "MUESTRA:excel" y uno de salida "ARCHIVO"."""
         text = await self._structured(instruction, {"objective": objective, "versions": versions},
                                       PlannerProposal.model_json_schema(), enforce_schema=False)
         try:

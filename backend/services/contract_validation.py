@@ -16,7 +16,11 @@ SCHEMA_KEYS = {
     "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
     "minLength", "maxLength", "minItems", "maxItems", "uniqueItems",
     "minProperties", "maxProperties",
+    # Anotaciones de archivo (base64 + tipo MIME); no cambian la validación.
+    "contentEncoding", "contentMediaType",
 }
+# Datos de una ejecución (entradas, salidas o casos), con archivos en base64.
+DATA_BYTES = 4000000
 TYPES = {"object", "array", "string", "number", "integer", "boolean", "null"}
 
 

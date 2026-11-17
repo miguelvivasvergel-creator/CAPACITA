@@ -4,6 +4,7 @@ import json
 from jsonschema import Draft202012Validator
 
 from services.build_validation import validate_manifest
+from services.contract_validation import DATA_BYTES
 from services.build_worker import execute_build, invoke_runner
 
 # Copia de sandbox_runner.IMAGES (ese módulo solo importa en Linux); un test exige igualdad.
@@ -21,7 +22,7 @@ PROFILE_LIMITS = {
                                 "cpus": 0.5, "guest_processes": 8, "host_tasks": 64,
                                 "temporary_bytes": 16777216, "network": "none", "uid": 65534},
     # Documentos e imágenes: importar lxml/reportlab/Pillow bajo gVisor necesita más margen.
-    "gvisor-python-toolbox-v1": {"timeout_seconds": 30, "output_bytes": 65536, "memory_bytes": 536870912,
+    "gvisor-python-toolbox-v1": {"timeout_seconds": 30, "output_bytes": 4194304, "memory_bytes": 536870912,
                                  "cpus": 1.0, "guest_processes": 8, "host_tasks": 64,
                                  "temporary_bytes": 16777216, "network": "none", "uid": 65534},
 }
@@ -87,7 +88,7 @@ def execute_job(job, runner=invoke_runner, progress=None):
         output = finite_json(result["output"])
         if (not isinstance(output, dict)
                 or not Draft202012Validator(manifest.definition.output_schema).is_valid(output)
-                or len(json.dumps(output, ensure_ascii=False, allow_nan=False).encode()) > 65536):
+                or len(json.dumps(output, ensure_ascii=False, allow_nan=False).encode()) > DATA_BYTES):
             raise ValueError("invalid_output")
     except (KeyError, ValueError, TypeError, RecursionError):
         return "failed", report | {"error": "output_contract"}, None

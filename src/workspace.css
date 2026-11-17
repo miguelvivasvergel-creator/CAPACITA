@@ -159,6 +159,7 @@
 .taller-compositor textarea:focus-visible { border-color:var(--color-brand-primary); box-shadow:0 0 0 3px #2563eb26; }
 .taller-compositor button { display:grid; width:46px; height:46px; flex-shrink:0; place-items:center; border-radius:14px; color:#fff; font-size:18px; background:var(--color-brand-primary); }
 .taller-compositor button:disabled { opacity:.45; }
+.taller-compositor .taller-adjuntar { color:var(--color-brand-primary); background:#eef3fc; border:1px solid #cfd9ea; }
 .taller-lienzo { display:flex; min-height:0; overflow:hidden; flex-direction:column; gap:12px; border:1px solid var(--color-brand-border); border-radius:24px; padding:16px; background:linear-gradient(180deg,#fff,#f6f9ff); box-shadow:var(--sombra-soft); }
 .taller-detalle { flex-shrink:0; max-height:40%; overflow-y:auto; border:1px solid var(--color-brand-border); border-radius:16px; padding:12px 14px; background:#fff; }
 .taller-pestanas { display:none; gap:6px; border-radius:14px; padding:4px; background:#eef3fc; }

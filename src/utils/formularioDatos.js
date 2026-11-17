@@ -17,14 +17,19 @@ export function datosIniciales(schema, depth = 0) {
 }
 export function nombreCampo(name, schema) { return schema.title || name.replaceAll('_', ' '); }
 
-// Un único dato simple (texto o número) se puede pedir como mensaje del chat.
-export function campoUnico(schema) {
+// Datos que el chat sabe pedir como mensajes, uno por uno: textos, números y archivos.
+// Devuelve los campos obligatorios en orden (archivos primero) o null si hace falta formulario.
+export function camposChat(schema) {
   const propiedades = Object.entries(schema?.properties || {});
-  if (schema?.type !== 'object' || propiedades.length !== 1 || !admiteFormulario(schema)) return null;
-  const [[nombre, spec]] = propiedades;
-  if (!['string', 'number', 'integer'].includes(spec.type) || spec.enum || spec.format) return null;
-  const descripcion = spec.description && spec.description.length <= 80 ? spec.description.replace(/\.$/, '') : '';
-  return { nombre, tipo: spec.type, etiqueta: spec.title || descripcion || nombre.replaceAll('_', ' ') };
+  if (schema?.type !== 'object' || !propiedades.length || propiedades.length > 6 || !admiteFormulario(schema)) return null;
+  const simple = ([, spec]) => spec.contentEncoding === 'base64' || (['string', 'number', 'integer'].includes(spec.type) && !spec.enum && !spec.format);
+  if (!propiedades.every(simple)) return null;
+  const campos = propiedades.filter(([nombre]) => schema.required?.includes(nombre)).map(([nombre, spec]) => {
+    const descripcion = spec.description && spec.description.length <= 80 ? spec.description.replace(/\.$/, '') : '';
+    return { nombre, tipo: spec.type, archivo: spec.contentEncoding === 'base64' ? spec.contentMediaType || 'application/octet-stream' : null,
+      etiqueta: spec.title || descripcion || nombre.replaceAll('_', ' ') };
+  });
+  return campos.length ? [...campos.filter((c) => c.archivo), ...campos.filter((c) => !c.archivo)] : null;
 }
 
 // Orden de lectura; el backend sigue validando y fijando el orden de ejecución.

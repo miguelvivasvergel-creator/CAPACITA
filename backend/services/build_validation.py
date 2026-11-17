@@ -6,6 +6,7 @@ from jsonschema import Draft202012Validator
 
 from schemas.candidates import CandidateManifest
 from services.candidate_preparation import prepare_candidate
+from services.contract_validation import DATA_BYTES
 
 
 def validate_manifest(raw) -> CandidateManifest:
@@ -26,8 +27,8 @@ def validate_cases(manifest, cases):
         raise HTTPException(422, "Incluye al menos un caso con salida esperada para probar la implementación")
     encoded = json.dumps([case.model_dump(mode="json") for case in cases],
                          ensure_ascii=False, allow_nan=False)
-    if len(encoded.encode("utf-8")) > 65536:
-        raise HTTPException(422, "Los casos superan 64 KiB")
+    if len(encoded.encode("utf-8")) > DATA_BYTES:
+        raise HTTPException(422, "Los casos superan 4 MB")
     spec = manifest.definition
     for case in cases:
         valid = (Draft202012Validator(spec.input_schema).is_valid(case.inputs)

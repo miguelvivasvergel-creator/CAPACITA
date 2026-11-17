@@ -43,3 +43,7 @@ perfil real de cada versión. Reiniciar API y trabajador solo después de aplica
 `version_executor` (experimento managed-tools, no versionado aquí) que exigía stdlib a
 las versiones de la fábrica; el SQL 11 la amplía al perfil toolbox y retira
 `versions_profile_known`, que quedó instalada por un intento del SQL 10.
+`12_file_limits.sql`: **pendiente de aplicar por Fahida**. Sube los límites de datos para
+archivos (entradas, salidas y casos: 64 KiB → 4 MB; foto del trabajo 350 KB → 8 MB; payload
+400 KB → 9 MB). Toma la definición viva de cada función y solo cambia el número; si no
+encuentra el texto esperado, cancela todo. Los reportes siguen en 64 KiB.

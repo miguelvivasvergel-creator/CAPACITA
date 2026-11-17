@@ -1,5 +1,6 @@
 // Lógica pura de la fábrica: casos de prueba, cuándo corregir y qué contarle a la IA.
 // El informe del entorno aislado nunca trae la salida del código; solo pistas seguras.
+import { conMuestras } from '../../utils/archivos';
 
 const CORREGIBLES = new Set(['output_mismatch', 'candidate_error', 'invalid_json_output', 'timeout', 'output_limit', 'memory_limit']);
 const MOTIVOS = {
@@ -11,10 +12,11 @@ const MOTIVOS = {
   memory_limit: 'superó el límite de memoria',
 };
 
-export const casosDesdeEjemplos = (ejemplos) => ejemplos.map((ejemplo, index) => ({
-  name: `Ejemplo ${index + 1}`, inputs: ejemplo.inputs, parameters: ejemplo.parameters || {},
+// Los archivos de los ejemplos ("MUESTRA:foto"…) se cambian por archivos reales de prueba.
+export const casosDesdeEjemplos = (ejemplos) => Promise.all(ejemplos.map(async (ejemplo, index) => ({
+  name: `Ejemplo ${index + 1}`, inputs: await conMuestras(ejemplo.inputs), parameters: ejemplo.parameters || {},
   expected_output: ejemplo.expected_output, expect_rejection: false,
-}));
+})));
 
 // Solo vale la pena corregir el código si cada fallo se debe al código, no al entorno o al ejemplo.
 export function pruebaReparable(build) {
@@ -35,5 +37,5 @@ export function observacionPruebas(definicion, build) {
     }
     return `Ejemplo ${caso.index + 1}: entradas ${json(ejemplo.inputs)}, parámetros ${json(ejemplo.parameters)}, salida esperada ${json(ejemplo.expected_output)}. El código ${detalle}.`;
   });
-  return `Las pruebas en el entorno aislado fallaron. ${partes.join(' ')} Corrige el código para cumplir los ejemplos y el contrato completo.`.slice(0, 1500);
+  return `Las pruebas en el entorno aislado fallaron. ${partes.join(' ')} ${JSON.stringify(definicion.examples || []).includes('MUESTRA:') ? 'MUESTRA:x en las entradas es un archivo real en base64; ARCHIVO en la salida exige base64 válido del contentMediaType. ' : ''}Corrige el código para cumplir los ejemplos y el contrato completo.`.slice(0, 1500);
 }

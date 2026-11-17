@@ -8,7 +8,7 @@ from jsonschema import Draft202012Validator
 
 from schemas.workflows import WorkflowDefinition
 from services.build_validation import validate_manifest
-from services.contract_validation import validate_schema
+from services.contract_validation import DATA_BYTES, validate_schema
 
 
 def compatible(source, target):
@@ -139,7 +139,7 @@ def compile_workflow(raw, versions, inputs=None):
             raise HTTPException(422, "La salida apunta a un paso inexistente")
         port_schema(binding)
     if inputs is not None:
-        bounded_json(inputs)
+        bounded_json(inputs, DATA_BYTES)
         if not Draft202012Validator(definition.input_schema).is_valid(inputs):
             raise HTTPException(422, "Los datos no cumplen la entrada del proceso")
     return definition, order

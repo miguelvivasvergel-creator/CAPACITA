@@ -11,6 +11,13 @@ from services.contract_validation import validate_definition
 
 FieldType = Literal["string", "number", "integer", "boolean", "array", "object"]
 ItemType = Literal["string", "number", "integer", "boolean", "object"]
+# Un campo archivo viaja como texto base64; el tipo indica el formato.
+FileType = Literal["", "foto", "png", "pdf", "word", "excel"]
+MEDIA_TYPES = {
+    "foto": "image/jpeg", "png": "image/png", "pdf": "application/pdf",
+    "word": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "excel": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
 
 
 class ClarificationAnswer(BaseModel):
@@ -33,6 +40,7 @@ class DraftField(BaseModel):
     type: FieldType
     required: bool = True
     items_type: ItemType = "string"
+    file: FileType = ""
 
 
 class DefinitionDraft(BaseModel):
@@ -91,9 +99,10 @@ def draft_to_definition(draft: DefinitionDraft) -> CapabilityDefinition:
         return {
             "type": "object",
             "properties": {field.name: {
-                "type": field.type,
+                "type": "string" if field.file else field.type,
                 **({"description": field.description} if field.description else {}),
-                **({"items": {"type": field.items_type}} if field.type == "array" else {}),
+                **({"items": {"type": field.items_type}} if field.type == "array" and not field.file else {}),
+                **({"contentEncoding": "base64", "contentMediaType": MEDIA_TYPES[field.file]} if field.file else {}),
             } for field in fields},
             "required": [field.name for field in fields if field.required],
             "additionalProperties": False,

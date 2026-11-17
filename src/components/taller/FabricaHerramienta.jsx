@@ -57,7 +57,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista }) {
     const ejemplos = candidato.manifest.definition.examples;
     anotar('🧪', `Probándola en el entorno aislado con ${ejemplos.length} ejemplo${ejemplos.length === 1 ? '' : 's'}…`);
     estado('probando');
-    let build = await crearPrueba(candidato, casosDesdeEjemplos(ejemplos), crypto.randomUUID());
+    let build = await crearPrueba(candidato, await casosDesdeEjemplos(ejemplos), crypto.randomUUID());
     for (let lecturas = 1; ['queued', 'testing'].includes(build.status); lecturas++) {
       await espera(2500, signal);
       build = await api(`/builds/${encodeURIComponent(build.id)}`, { signal });

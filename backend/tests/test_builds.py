@@ -175,6 +175,28 @@ class BuildTests(unittest.TestCase):
                     self.fail("Debe rechazar segundo trabajador")
 
 
+class FileComparisonTests(unittest.TestCase):
+    def test_generated_files_match_by_format_not_bytes(self):
+        import base64, io, zipfile
+        from services.build_worker import comparable, valid_file
+        schema = {"type": "object", "properties": {
+            "foto": {"type": "string", "contentEncoding": "base64", "contentMediaType": "image/png"},
+            "hoja": {"type": "string", "contentEncoding": "base64",
+                     "contentMediaType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+            "total": {"type": "integer"}}}
+        png = base64.b64encode(bytes([0x89]) + b"PNG resto").decode()
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("xl/workbook.xml", "<x/>")
+        xlsx = base64.b64encode(buffer.getvalue()).decode()
+        expected = {"foto": "ARCHIVO", "hoja": "ARCHIVO", "total": 3}
+        self.assertEqual(comparable({"foto": png, "hoja": xlsx, "total": 3}, expected, schema), expected)
+        self.assertEqual(comparable({"foto": xlsx, "hoja": png, "total": 3}, expected, schema)["foto"], "archivo_invalido")
+        self.assertFalse(valid_file("no es base64!", "image/png"))
+        # Un campo sin marcador se sigue comparando exactamente.
+        self.assertEqual(comparable({"foto": png}, {"foto": png}, schema), {"foto": png})
+
+
 class BuildAPITests(unittest.TestCase):
     def setUp(self):
         self.temp = TemporaryDirectory()

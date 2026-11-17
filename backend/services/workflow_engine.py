@@ -1,7 +1,14 @@
 """Ejecución secuencial de DAG: un invitado nuevo por paso y datos privados."""
 import json
 
+from services.contract_validation import DATA_BYTES
 from services.workflow_validation import bounded_json, compile_workflow
+
+
+def summary(output):
+    """El reporte (64 KiB) muestra los archivos como tamaño; el contenido viaja solo entre pasos."""
+    return {key: f"📎 archivo ({len(value) * 3 // 4 // 1024} KB)" if isinstance(value, str) and len(value) > 2000 else value
+            for key, value in output.items()}
 
 
 def execute_workflow(job, runner, progress=None):
@@ -50,7 +57,7 @@ def execute_workflow(job, runner, progress=None):
         step.update({key: details[key] for key in ("elapsed_seconds", "cleanup_verified") if key in details})
         if status == "completed":
             output_bytes += len(json.dumps(output, ensure_ascii=False, allow_nan=False).encode())
-            if output_bytes > 32768:
+            if output_bytes > 2 * DATA_BYTES:
                 status, details = "failed", {"error": "intermediate_output_limit"}
         if status != "completed":
             step.update(status="failed", error=details.get("error", "step_failed"))
@@ -58,9 +65,9 @@ def execute_workflow(job, runner, progress=None):
                 later["status"] = "skipped"
             checkpoint()
             return "failed", report | {"error": "workflow_step_failed", "failed_step": identity}, None
-        step.update(status="completed", output=output)
+        step.update(status="completed", output=summary(output))
         outputs[identity] = output
         checkpoint()
     result = {field: outputs[binding.source][binding.field] for field, binding in definition.outputs.items()}
-    bounded_json(result)
+    bounded_json(result, DATA_BYTES)
     return "completed", report, result
