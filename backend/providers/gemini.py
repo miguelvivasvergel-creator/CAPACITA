@@ -110,8 +110,9 @@ input_schema es un objeto con properties, required y additionalProperties false;
 tipos simples, nombres claros y una description breve en español para cada campo.
 Fija parameters según parameter_schema; values solo para constantes explícitas del objetivo.
 Comprueba tipos, campos obligatorios y orden acíclico. Outputs referencia campos obligatorios.
-clarify si faltan reglas esenciales: hasta tres preguntas. create si faltan capacidades:
-explica missing sin crear código. blocked para recursos incompatibles. Estas decisiones
+clarify si faltan reglas esenciales: hasta tres preguntas. create si faltan capacidades,
+aunque sean simples o ninguna versión sirva: explica missing sin crear código. blocked
+solo si la necesidad exige red, cuentas o servicios externos, hardware o permisos. Estas decisiones
 llevan definition=null. No declares ejecución, aprobación, publicación o éxito funcional.
 Devuelve JSON sin markdown; explicación en español. Un plan válido aún requiere revisión."""
         text = await self._structured(instruction, {"objective": objective, "versions": versions},

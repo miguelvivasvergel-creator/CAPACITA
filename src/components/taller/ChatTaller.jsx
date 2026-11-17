@@ -156,7 +156,11 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
       } else if (proposal.decision === 'create') {
         agregar({ de: 'capacita', tipo: 'faltan', faltan: proposal.missing });
       } else {
-        agregar({ de: 'capacita', tipo: 'bloqueado' });
+        // El planner a veces marca "blocked" cuando solo falta una herramienta. El
+        // diseñador tiene sus propios controles y bloquea si de verdad hace falta algo externo.
+        setFase('Ninguna de tus herramientas sirve para esto. Voy a diseñar una nueva…');
+        const value = await interpretarObjetivo(objetivo, aclaraciones, true, controller.signal);
+        if (!controller.signal.aborted) mostrarDefinicion(value, objetivo);
       }
     } catch (cause) {
       if (!controller.signal.aborted) agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Tu conversación sigue aquí; puedes volver a intentarlo.` });
