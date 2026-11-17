@@ -30,10 +30,7 @@ htmlcov/
 # Archivos locales de agentes y resultados de navegador
 .claude/
 .playwright-cli/
-output/playwright/
-output/sandbox/
-output/laboratory/
-output/search/
+output/
 test-results/
 
 # Compilación de .NET

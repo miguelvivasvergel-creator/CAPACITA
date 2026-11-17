@@ -3,9 +3,10 @@
 Leer al iniciar, en orden:
 
 1. [Continuidad](CONTEXTO_Y_CONTINUIDAD.md).
-2. [Visión maestra acordada](VISION_MAESTRA.md).
-3. [Estado y validación](estado.md).
-4. [Reparto Miguel/Fahida](PLAN_DOS_PERSONAS_MARTES.md).
+2. [Versión final soñada: producto objetivo y hoja de ruta](VISION_FINAL.md).
+3. [Visión maestra acordada: arquitectura y seguridad](VISION_MAESTRA.md).
+4. [Estado y validación](estado.md).
+5. [Reparto Miguel/Fahida](PLAN_DOS_PERSONAS_MARTES.md).
 
 Guías de trabajo:
 
