@@ -9,5 +9,8 @@ export const ESTADOS_NODO = {
   interrupted: { icono: '🔴', texto: 'Interrumpido', clase: 'border-red-500 bg-red-50' },
   skipped: { icono: '⏭️', texto: 'Omitido', clase: 'border-slate-300 bg-slate-100' },
   creando: { icono: '🛠️', texto: 'Creándose', clase: 'border-amber-500 bg-amber-50 taller-pulso' },
+  escribiendo: { icono: '✍️', texto: 'Escribiendo el código', clase: 'border-amber-500 bg-amber-50 taller-pulso' },
+  probando: { icono: '🧪', texto: 'Probándose aislada', clase: 'border-blue-500 bg-blue-50 taller-pulso' },
+  corrigiendo: { icono: '🔧', texto: 'Corrigiéndose', clase: 'border-amber-500 bg-amber-50 taller-pulso' },
   aprobar: { icono: '🔒', texto: 'Espera tu aprobación', clase: 'border-violet-500 bg-violet-50' },
 };

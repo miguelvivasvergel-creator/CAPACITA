@@ -21,11 +21,11 @@ const nodeTypes = { paso: Nodo };
  * Taller visual: dibuja el plan de izquierda a derecha (datos → pasos → resultado)
  * con el estado real de cada paso, o una herramienta nueva mientras se crea.
  */
-export default function LienzoTaller({ definicion, creando, estados = {}, seleccionado, onSeleccionar }) {
+export default function LienzoTaller({ definicion, creando, estadoCreacion, estados = {}, seleccionado, onSeleccionar }) {
   const contenedor = useRef(null), flujo = useRef(null);
   const { nodes, edges } = useMemo(() => {
     if (creando) {
-      return { nodes: [{ id: 'creando', type: 'paso', position: { x: 0, y: 0 }, data: { tipo: 'Herramienta nueva', label: creando, estado: 'creando' } }], edges: [] };
+      return { nodes: [{ id: 'creando', type: 'paso', position: { x: 0, y: 0 }, data: { tipo: 'Herramienta nueva', label: creando, estado: estadoCreacion || 'creando' } }], edges: [] };
     }
     if (!definicion) return { nodes: [], edges: [] };
     const pasos = pasosEnOrden(definicion.nodes);
@@ -44,7 +44,7 @@ export default function LienzoTaller({ definicion, creando, estados = {}, selecc
     for (const binding of Object.values(definicion.outputs || {})) conexiones.set(`${binding.source}>$output`, { source: binding.source, target: '$output' });
     const activa = (edge) => estados[edge.target] === 'running';
     return { nodes: nodos, edges: [...conexiones.entries()].map(([id, edge]) => ({ id, ...edge, type: 'smoothstep', animated: activa(edge), style: { strokeWidth: 2 } })) };
-  }, [definicion, creando, estados, seleccionado]);
+  }, [definicion, creando, estadoCreacion, estados, seleccionado]);
 
   const cantidad = nodes.length;
   // Reencuadra al cambiar de tamaño (pestañas en móvil, panel de detalle) o al crecer el plan.
@@ -65,7 +65,8 @@ export default function LienzoTaller({ definicion, creando, estados = {}, selecc
     </div>;
   }
   return <div ref={contenedor} className="h-full min-h-[200px] rounded-2xl border border-slate-200 bg-slate-50" aria-label="Taller: mapa del proceso">
-    <ReactFlow key={definicion?.name || creando} nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.08 }} minZoom={0.2} maxZoom={1.4}
+    {/* El nodo en creación cambia de estado sin cambiar de tamaño: remontar evita que quede sin medir (oculto). */}
+    <ReactFlow key={definicion?.name || `${creando}:${estadoCreacion || ''}`}nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.08 }} minZoom={0.2} maxZoom={1.4}
       nodesConnectable={false} onInit={(instance) => { flujo.current = instance; }} onNodeClick={(_, node) => onSeleccionar?.(node.id)} proOptions={{ hideAttribution: true }}>
       <Background /><Controls showInteractive={false} />
     </ReactFlow>

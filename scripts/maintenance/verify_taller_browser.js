@@ -9,7 +9,11 @@ async (page) => {
   const userId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   await page.goto('http://127.0.0.1:5173/');
   const {opcionesGuiadas,planGuiado,herramientaGuiada}=await page.evaluate(()=>import('/src/mocks/guiado.js'));
-  const ids={workflow:'33333333-3333-4333-8333-333333333333',approval:'44444444-4444-4444-8444-444444444444',run:'55555555-5555-4555-8555-555555555555'};
+  const ids={workflow:'33333333-3333-4333-8333-333333333333',approval:'44444444-4444-4444-8444-444444444444',run:'55555555-5555-4555-8555-555555555555',
+    cap:'66666666-6666-4666-8666-666666666666',c1:'77777777-7777-4777-8777-777777777777',c2:'88888888-8888-4888-8888-888888888888',
+    b1:'99999999-9999-4999-8999-999999999999',b2:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',version:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'};
+  const candidato=id=>({id,capability_id:ids.cap,manifest:{definition:herramientaGuiada,artifact_hash:(id===ids.c1?'1':'2').repeat(64)},provider:'gemini',model:'fixture'});
+  const build=(id,status,cases)=>({id,candidate_id:id===ids.b1?ids.c1:ids.c2,artifact_hash:'0'.repeat(64),status,created_at:'2026-11-17T00:00:00Z',updated_at:'2026-11-17T00:00:00Z',storage_backend:'supabase',implementation_enabled:false,report:cases?{passed:status==='passed',cases}:null});
   const checks=[],requests=[];let mode='compose',runReads=0,failRun=true;
   const envelope=data=>({success:true,message:'Fixture',data});
   const handler=async route=>{
@@ -36,6 +40,17 @@ async (page) => {
       const steps=runReads===1?null:runReads===2?[{id:a.id,label:a.label,status:'completed',output:{resultado:'Niño  azul'}},{id:b.id,label:b.label,status:'running'}]:[{id:a.id,label:a.label,status:'completed',output:{resultado:'Niño  azul'}},{id:b.id,label:b.label,status:'completed'}];
       data={id:ids.run,workflow_id:ids.workflow,status:runReads===1?'queued':runReads===2?'running':'completed',output:runReads>2?{resultado:'NIÑO  AZUL <img src=x onerror="window.__tallerXss=1">'}:null,report:steps?{steps}:null};
     }
+    else if(path==='/api/capabilities/definitions'&&method==='POST'){assert(body.acknowledge_similar===true,'Guardado sin reconocer similares');data={id:ids.cap,name:body.definition.name};}
+    else if(path===`/api/capabilities/${ids.cap}/candidates/check`)data={definition_hash:'f'.repeat(64),matches:{items:[],next_cursor:null}};
+    else if(path===`/api/capabilities/${ids.cap}/candidates`&&method==='POST'){assert(body.consent_to_provider&&body.definition_hash==='f'.repeat(64),'Generación sin consentimiento o hash');data=candidato(ids.c1);}
+    else if(path==='/api/builds'&&method==='POST'){
+      assert(body.cases.length===herramientaGuiada.examples.length&&body.cases[0].expected_output.resultado==='EJEMPLO','Casos no salen de los ejemplos');
+      data=build(body.candidate_id===ids.c1?ids.b1:ids.b2,'queued');
+    }
+    else if(path===`/api/builds/${ids.b1}`)data=build(ids.b1,'failed',[{index:0,executed:true,passed:false,reason:'output_mismatch',schema_valid:true,mismatched_fields:['resultado']}]);
+    else if(path===`/api/builds/${ids.b2}`)data=build(ids.b2,'passed',[{index:0,executed:true,passed:true,reason:'matched'}]);
+    else if(path===`/api/candidates/${ids.c1}/repair`){assert(body.consent_to_provider&&body.feedback.includes('resultado')&&body.feedback.includes('EJEMPLO'),'Corrección sin pistas');data=candidato(ids.c2);}
+    else if(path==='/api/versions'&&method==='POST'){assert(body.candidate_id===ids.c2&&body.build_id===ids.b2,'Activó una versión no probada');mode='compose';data={id:ids.version,status:'enabled'};}
     else if(path===`/api/capabilities/definitions/check`)data={definition:body,definition_hash:'d'.repeat(64),matches:{items:[],next_cursor:null}};
     else if(['/api/workflows','/api/runs','/api/capabilities'].includes(path))data={items:[],next_cursor:null};
     else throw new Error(`Petición inesperada: ${method} ${path}`);
@@ -117,6 +132,18 @@ async (page) => {
     assert(!requests.some(r=>r.path==='/api/planner/propose'&&r.body?.objective?.includes('convertir un texto de prueba')),'Propuso plan sin herramientas');
     checks.push('sin herramientas: definición nueva y nodo creándose');
     await page.screenshot({path:'output/playwright/taller-creando-desktop.png'});
+
+    // 4. Fábrica automática: escribe, prueba, corrige con pistas, vuelve a probar y activa.
+    await page.getByRole('button',{name:'Crear y probar'}).click();
+    await page.getByText(/La IA lo está corrigiendo/).waitFor({timeout:15000});
+    await page.getByText('Superó 1 de 1 ejemplos.').waitFor({timeout:15000});
+    assert(await nodos().filter({hasText:'Espera tu aprobación'}).count()===1,'El nodo no pide aprobación');
+    assert(!requests.some(r=>r.path==='/api/versions'),'Se activó sin confirmar');
+    checks.push('fábrica: falla, se corrige sola y espera aprobación');
+    await page.screenshot({path:'output/playwright/taller-fabrica-desktop.png'});
+    await page.getByRole('button',{name:'Activar y continuar'}).click();
+    await page.getByRole('heading',{name:'Limpiar y convertir texto'}).waitFor({timeout:15000});
+    checks.push('tras activar vuelve a armar el plan con la herramienta');
     return {passed:true,checks};
   }finally{
     await page.unroute('**/api/**',handler);

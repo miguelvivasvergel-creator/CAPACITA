@@ -144,6 +144,19 @@ class BuildTests(unittest.TestCase):
                 self.assertEqual(status, "failed")
                 self.assertNotIn("private-secret", json.dumps(report))
 
+    def test_failures_report_safe_repair_hints(self):
+        self.enqueue()
+        job = self.storage.claim()
+        traceback = 'Traceback:\n  File "main.py"\nKeyError: private-secret'
+        _, report = execute_build(job, lambda _: {"cleanup_verified": True, "termination": "exited",
+                                                  "exit_code": 1, "output": traceback})
+        self.assertEqual(report["cases"][0]["error_type"], "KeyError")
+        _, report = execute_build(job, lambda _: {"cleanup_verified": True, "termination": "exited",
+                                                  "exit_code": 0, "output": '{"resultado":"private-secret"}'})
+        self.assertEqual(report["cases"][0]["mismatched_fields"], ["resultado"])
+        self.assertTrue(report["cases"][0]["schema_valid"])
+        self.assertNotIn("private-secret", json.dumps(report))
+
     def test_worker_revalidates_persisted_hash_and_sanitizes_exceptions(self):
         created = self.enqueue()
         with self.storage.connection() as db:

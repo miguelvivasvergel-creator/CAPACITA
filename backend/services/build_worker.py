@@ -4,6 +4,7 @@ Uso desde raíz: .venv/Scripts/python.exe backend/services/build_worker.py --onc
 Desde Linux: PYTHONPATH=backend python -m services.build_worker --once
 """
 import argparse
+import builtins
 from contextlib import contextmanager
 import json
 import os
@@ -21,6 +22,20 @@ from jsonschema import Draft202012Validator
 from repositories.builds import BuildRepository, DEFAULT_PATH
 from schemas.builds import LaboratoryCase
 from services.build_validation import accepts_input, validate_cases, validate_manifest
+
+
+# Pistas para reparar sin guardar salida del invitado: solo nombres de excepciones
+# estándar y nombres de campos esperados definidos por la persona.
+STANDARD_ERRORS = frozenset(name for name, value in vars(builtins).items()
+                            if isinstance(value, type) and issubclass(value, BaseException))
+
+
+def error_type(output):
+    for line in reversed((output or "").splitlines()[-20:]):
+        name = line.split(":", 1)[0].strip()
+        if name in STANDARD_ERRORS:
+            return name
+    return None
 
 
 def runner_command():
@@ -93,6 +108,7 @@ def execute_build(job, runner=invoke_runner):
                          "parameters": case.parameters})
         reason = result["termination"]
         passed = False
+        hints = {}
         if (reason == "exited" and result.get("exit_code") == 0
                 and result.get("cleanup_verified") and not result.get("oom_killed")):
             try:
@@ -102,10 +118,16 @@ def execute_build(job, runner=invoke_runner):
                 # is_valid considera bool distinto de integer. Comparación JSON canónica
                 # evita que True == 1 en Python convierta una salida incorrecta en éxito.
                 canonical = lambda value: json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False)
-                passed = (isinstance(actual, dict)
-                          and Draft202012Validator(manifest.definition.output_schema).is_valid(actual)
-                          and canonical(actual) == canonical(case.expected_output))
+                schema_valid = (isinstance(actual, dict)
+                                and Draft202012Validator(manifest.definition.output_schema).is_valid(actual))
+                passed = schema_valid and canonical(actual) == canonical(case.expected_output)
                 reason = "matched" if passed else "output_mismatch"
+                if not passed:
+                    received = actual if isinstance(actual, dict) else {}
+                    hints = {"schema_valid": schema_valid, "mismatched_fields": sorted(
+                        key for key in case.expected_output or {}
+                        if key not in received or canonical(received[key]) != canonical(case.expected_output[key])
+                    )[:20]}
             except (KeyError, ValueError, TypeError, RecursionError):
                 reason = "invalid_json_output"
         if not result.get("cleanup_verified"):
@@ -114,8 +136,10 @@ def execute_build(job, runner=invoke_runner):
             reason = "memory_limit"
         elif reason == "exited":
             reason = "candidate_error"
+            if error_type(result.get("output")):
+                hints = {"error_type": error_type(result.get("output"))}
         report["cases"].append({"index": index, "executed": True, "passed": passed,
-                                "reason": reason, **{key: result[key] for key in (
+                                "reason": reason, **hints, **{key: result[key] for key in (
                                     "exit_code", "elapsed_seconds", "output_bytes", "cleanup_verified"
                                 ) if key in result}})
         report["environment"] = {key: result[key] for key in (

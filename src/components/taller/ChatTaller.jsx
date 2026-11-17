@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
 import { interpretarObjetivo } from '../../services/objetivos';
-import PrepararHerramientaGuiada from '../capabilities/PrepararHerramientaGuiada';
+import FabricaHerramienta from './FabricaHerramienta';
 import ResultadoDatos from '../common/ResultadoDatos';
 import LienzoTaller from './LienzoTaller';
 import { ESTADOS_NODO } from './estadosNodo';
@@ -31,6 +31,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   const [pendientes, setPendientes] = useState([]);
   const [plan, setPlan] = useState(null);
   const [creando, setCreando] = useState('');
+  const [estadoCreacion, setEstadoCreacion] = useState('');
   const [run, setRun] = useState(null);
   const [runId, setRunId] = useState(null);
   const [seleccionado, setSeleccionado] = useState(null);
@@ -67,7 +68,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   const nodoElegido = plan?.nodes.find((node) => node.id === seleccionado);
 
   function nuevoTaller() {
-    setPlan(null); setCreando(''); setRun(null); setRunId(null); setSeleccionado(null); setPendientes([]);
+    setPlan(null); setCreando(''); setEstadoCreacion(''); setRun(null); setRunId(null); setSeleccionado(null); setPendientes([]);
   }
 
   function mostrarDefinicion(value, objetivoDefinido) {
@@ -76,7 +77,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
     if (interpretation?.decision === 'clarify') {
       setPendientes(interpretation.questions); agregar({ de: 'capacita', tipo: 'preguntas', preguntas: interpretation.questions });
     } else if (value.definition) {
-      setCreando(value.definition.name); setPlan(null);
+      setCreando(value.definition.name); setEstadoCreacion(''); setPlan(null);
       agregar({ de: 'capacita', tipo: 'crear', definicion: value.definition });
     } else {
       agregar({ de: 'capacita', tipo: 'bloqueado' });
@@ -159,7 +160,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   function herramientaLista() {
     agregar({ de: 'capacita', tipo: 'texto', texto: '¡La herramienta nueva quedó probada y lista! Vuelvo a armar tu solución con ella…' });
     const estado = { ...conversacion, ruta: 'buscar', metaDefinir: null };
-    setCreando(''); continuar(estado);
+    setCreando(''); setEstadoCreacion(''); continuar(estado);
   }
 
   function renderMensaje(mensaje) {
@@ -189,7 +190,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
           <button type="button" disabled={ocupado} onClick={() => crearFaltante(item)} className="mt-2 min-h-11 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Créala</button>
         </li>)}</ul>
       </div>;
-      case 'crear': return <div className="w-full"><PrepararHerramientaGuiada key={JSON.stringify(mensaje.definicion)} definition={mensaje.definicion} onRetomar={herramientaLista} /></div>;
+      case 'crear': return <FabricaHerramienta definition={mensaje.definicion} onEstado={setEstadoCreacion} onLista={herramientaLista} />;
       case 'plan': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} ocupadoExterno={Boolean(run && activo(run.status))}
         onEjecucion={(id) => { setRun(null); setRunId(id); setSeleccionado(null); setVistaMovil('taller'); agregar({ de: 'capacita', tipo: 'resultado', runId: id }); }} /></div>;
       case 'resultado': {
@@ -238,9 +239,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
     <aside className="taller-lienzo" aria-label="Taller">
       <div className="flex items-center justify-between gap-2">
         <p className="font-bold text-slate-900">🧩 Taller</p>
-        {(plan || creando) && <p className="text-xs text-slate-500">{creando ? 'Creando herramienta' : run ? ESTADO_RUN[run.status] || run.status : 'Plan listo · toca un paso para ver detalles'}</p>}
+        {(plan || creando) && <p className="text-xs text-slate-500">{creando ? (ESTADOS_NODO[estadoCreacion] || ESTADOS_NODO.creando).texto : run ? ESTADO_RUN[run.status] || run.status : 'Plan listo · toca un paso para ver detalles'}</p>}
       </div>
-      <div className="min-h-0 flex-1"><LienzoTaller definicion={plan} creando={creando} estados={estados} seleccionado={seleccionado} onSeleccionar={setSeleccionado} /></div>
+      <div className="min-h-0 flex-1"><LienzoTaller definicion={plan} creando={creando} estadoCreacion={estadoCreacion} estados={estados} seleccionado={seleccionado} onSeleccionar={setSeleccionado} /></div>
       {nodoElegido && <div className="taller-detalle">
         <div className="flex items-start justify-between gap-2">
           <p className="break-words font-semibold">{nodoElegido.label}</p>

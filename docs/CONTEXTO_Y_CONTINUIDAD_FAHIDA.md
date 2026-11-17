@@ -30,8 +30,27 @@ Avance registrado:
    AsistenteGuiado y verify_guided_browser.js retirados (reemplazados por el chat).
    No es prueba con sesión, Gemini ni worker reales.
 
-Siguiente: prueba real con sesión de Fahida (API + worker + Gemini),
-luego fase 2 (archivos privados) y fase 3 (caja de herramientas del sandbox).
+6. Paso 1 del plan del jueves — fábrica automática en el chat (implementada):
+   `taller/FabricaHerramienta.jsx` + `taller/fabrica.js` reemplazan a
+   PrepararHerramientaGuiada dentro del chat (sigue en TrabajoCapacidad).
+   Un botón "Crear y probar": guarda definición → Gemini genera → prueba en
+   sandbox con los ejemplos de la definición → si falla por el código, Gemini
+   corrige (máx. 2) → la persona confirma "Activar y continuar" → re-planifica.
+   Espera 31 s y reintenta si el limitador de Gemini responde 429. El nodo del
+   taller muestra escribiendo/probando/corrigiendo/espera aprobación.
+   Backend: el informe de prueba añade pistas seguras por caso (`error_type` solo
+   con nombres de excepciones estándar; `mismatched_fields` y `schema_valid`),
+   nunca la salida del candidato. CANDIDATE_REPAIR_LIMIT por defecto 2 → 4/hora.
+   Validación: unittest 167/169 (los 2 del planner con 503 de Supabase, ajenos);
+   test nuevo de pistas; sandbox real gVisor devolvió `KeyError` y limpieza
+   verificada; navegador con fixtures 9/9 (incluye fallo → corrección → aprobación
+   → activar → plan). Corregido: nodo en creación quedaba oculto (React Flow sin
+   medir) al cambiar de estado. Pendiente: recorrido con sesión, Gemini y worker reales.
+
+Siguiente (plan hasta el jueves 19/11): paso 2 caja de herramientas del sandbox
+(Pillow, pypdf, reportlab, python-docx, openpyxl; ojo: SQL de habilitar versión
+exige `report.profile = 'gvisor-python-stdlib-v1'`), paso 3 archivos de entrada y
+salida + perfil pesado, paso 4 demo real, compartir desde el chat y menú.
 Las pantallas Guiado antiguas (AsistenteGuiado, PlanGuiado) quedan sin uso desde
 Inicio y se retirarán tras validar el chat. No afirmar versión final completa.
 
