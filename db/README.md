@@ -39,3 +39,7 @@ aplicar y activar PUBLICATIONS_ENABLED. No repetir migraciones anteriores.
 y 09. Activar versiones acepta pruebas del perfil `gvisor-python-toolbox-v1` (imagen de
 `scripts/sandbox/Dockerfile.toolbox`) además de `gvisor-python-stdlib-v1`, y guarda el
 perfil real de cada versión. Reiniciar API y trabajador solo después de aplicarlo.
+`11_toolbox_version_executor.sql`: PENDIENTE (17/11/2026). Supabase tenía la regla
+`version_executor` (experimento managed-tools, no versionado aquí) que exigía stdlib a
+las versiones de la fábrica; el SQL 11 la amplía al perfil toolbox y retira
+`versions_profile_known`, que quedó instalada por un intento del SQL 10.
