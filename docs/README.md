@@ -2,7 +2,7 @@
 
 Leer al iniciar, en orden:
 
-1. [Versión final soñada: producto objetivo y hoja de ruta](VISION_FINAL.md).
+1. [Versión final soñada: producto objetivo y hoja de ruta](VISION_FINAL.md) y [plan del miércoles y jueves](PLAN_MIERCOLES_JUEVES.md).
 2. [Continuidad global](CONTEXTO_Y_CONTINUIDAD.md) y [continuidad de Fahida](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
 3. [Visión maestra: arquitectura, seguridad y presupuesto](VISION_MAESTRA.md).
 4. [Estado y validación](estado.md).
