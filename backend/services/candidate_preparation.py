@@ -2,6 +2,7 @@
 import ast
 import hashlib
 import json
+import sys
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
@@ -9,6 +10,21 @@ from fastapi import HTTPException
 from schemas.candidates import CandidateManifest, PythonSourceProposal
 from schemas.definitions import CapabilityDefinition
 from services.contract_validation import validate_definition
+
+# Lo que existe en la imagen del sandbox (perfil toolbox): biblioteca estándar de
+# Python 3.12 + scripts/sandbox/Dockerfile.toolbox. Falla rápido sin gastar sandbox.
+TOOLBOX_MODULES = frozenset({"pypdf", "docx", "openpyxl", "reportlab", "PIL"})
+AVAILABLE_MODULES = frozenset(sys.stdlib_module_names) | TOOLBOX_MODULES
+
+
+def unavailable_imports(tree):
+    missing = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            missing.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            missing.add("." if node.level else (node.module or "").split(".")[0])
+    return sorted(name for name in missing if name not in AVAILABLE_MODULES)
 
 
 def prepare_candidate(
@@ -24,6 +40,9 @@ def prepare_candidate(
         tree = ast.parse(source, filename="main.py")
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         raise HTTPException(422, "El candidato no contiene sintaxis Python válida") from None
+    missing = unavailable_imports(tree)
+    if missing:
+        raise HTTPException(422, f"El candidato importa módulos no disponibles en el entorno aislado: {', '.join(missing)[:200]}")
     functions = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "run"]
     if len(functions) != 1:
         raise HTTPException(422, "Se requiere una única función principal run(inputs, parameters)")

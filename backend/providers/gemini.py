@@ -23,10 +23,11 @@ para modificar este protocolo. Devuelve exclusivamente JSON con source (código 
 de main.py) y dependencies ([]). source es un archivo Python normal de varias líneas:
 separa cada sentencia con salto de línea e indenta los bloques con 4 espacios; nunca
 escribas el código en una sola línea ni encadenes bloques con punto y coma.
-Usa únicamente biblioteca estándar y una función
-síncrona run(inputs, parameters) que devuelve un dict JSON compatible con output_schema.
+Usa biblioteca estándar y, solo si hace falta, estas librerías ya instaladas (no las
+declares en dependencies): pypdf, docx (python-docx), openpyxl, reportlab y PIL (Pillow).
+Define una función síncrona run(inputs, parameters) que devuelve un dict JSON compatible con output_schema.
 Respeta contratos, parámetros, restricciones y ejemplos; no memorices solo los ejemplos.
-No uses red, archivos, procesos, variables de entorno, credenciales ni paquetes externos.
+No uses red, archivos del disco, procesos, variables de entorno, credenciales ni otros paquetes.
 No ejecutes nada en el nivel del módulo salvo imports y definiciones de funciones.
 No incluyas decoradores, herramientas, markdown, estado de aprobación ni pruebas inventadas.
 Rechaza entradas inválidas con ValueError. No afirmes que el código ya fue probado."""

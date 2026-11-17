@@ -32,3 +32,10 @@ por Fahida a Supabase, RPC verificada y flag activo el 16/11/2026. No repetir.
 Requiere 06, 07_shared_execution y 08 ya existentes.
 No publica capacidades automáticamente. Ver docs/BLOQUE_6_INTEGRACION.md antes de
 aplicar y activar PUBLICATIONS_ENABLED. No repetir migraciones anteriores.
+
+# Caja de herramientas del sandbox
+
+`10_toolbox_profile.sql`: PENDIENTE de aplicar (preparado 17/11/2026). Requiere 07, 08
+y 09. Activar versiones acepta pruebas del perfil `gvisor-python-toolbox-v1` (imagen de
+`scripts/sandbox/Dockerfile.toolbox`) además de `gvisor-python-stdlib-v1`, y guarda el
+perfil real de cada versión. Reiniciar API y trabajador solo después de aplicarlo.

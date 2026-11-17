@@ -1,0 +1,14 @@
+# Imagen "caja de herramientas" del sandbox (perfil gvisor-python-toolbox-v1).
+# Base fijada por digest + librerías con versión exacta. Se construye una vez en la
+# infraestructura (con red); los candidatos se ejecutan luego sin red, en solo lectura.
+FROM python@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
+# Bytecode precompilado: el invitado corre con -B en solo lectura y no puede escribir .pyc.
+RUN pip install --no-cache-dir --disable-pip-version-check \
+        pypdf==5.1.0 \
+        python-docx==1.1.2 \
+        openpyxl==3.1.5 \
+        reportlab==4.2.5 \
+        pillow==11.0.0 \
+        lxml==6.1.3 chardet==7.7.0 et-xmlfile==2.0.0 typing-extensions==4.16.0 \
+    && python -m compileall -q /usr/local/lib/python3.12 \
+    && python -I -B -c "import pypdf, docx, openpyxl, reportlab, PIL; print('toolbox ok')"

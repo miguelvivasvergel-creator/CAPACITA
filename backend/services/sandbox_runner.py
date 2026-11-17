@@ -13,13 +13,25 @@ import tempfile
 import time
 from uuid import uuid4
 
-IMAGE = "python@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b"
+# Perfil → imagen inmutable. Lista cerrada: la petición solo elige entre estas.
+IMAGES = {
+    "gvisor-python-stdlib-v1": "python@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b",
+    # scripts/sandbox/Dockerfile.toolbox: pypdf, python-docx, openpyxl, reportlab, Pillow.
+    "gvisor-python-toolbox-v1": "sha256:b114eaf63095892781835ee9ee6eedd20d5d3bc6f47e80a380c944c4d7e4bf65",
+}
+DEFAULT_PROFILE = "gvisor-python-stdlib-v1"
 DOCKER = ["/usr/bin/docker", "--host", "unix:///run/capacita-docker.sock"]
 ENV = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"}
 LABEL = "capacita.laboratory=block2"
-LIMITS = {"timeout_seconds": 12, "output_bytes": 65536, "memory_bytes": 268435456,
-          "cpus": 0.5, "guest_processes": 8, "host_tasks": 64,
-          "temporary_bytes": 16777216, "network": "none", "uid": 65534}
+PROFILE_LIMITS = {
+    "gvisor-python-stdlib-v1": {"timeout_seconds": 12, "output_bytes": 65536, "memory_bytes": 268435456,
+                                "cpus": 0.5, "guest_processes": 8, "host_tasks": 64,
+                                "temporary_bytes": 16777216, "network": "none", "uid": 65534},
+    # Documentos e imágenes: importar lxml/reportlab/Pillow bajo gVisor necesita más margen.
+    "gvisor-python-toolbox-v1": {"timeout_seconds": 30, "output_bytes": 65536, "memory_bytes": 536870912,
+                                 "cpus": 1.0, "guest_processes": 8, "host_tasks": 64,
+                                 "temporary_bytes": 16777216, "network": "none", "uid": 65534},
+}
 HARNESS = '''import json, sys
 request = json.loads(sys.stdin.buffer.read(196609))
 namespace = {"__name__": "main"}
@@ -53,6 +65,8 @@ def recover_orphans():
 
 
 def run(request):
+    image = IMAGES[request.get("profile", DEFAULT_PROFILE)]
+    limits = PROFILE_LIMITS[request.get("profile", DEFAULT_PROFILE)]
     name = "capacita-lab-" + str(uuid4())
     output = bytearray()
     process = None
@@ -65,25 +79,27 @@ def run(request):
         docker("create", "--name", name, "--label", LABEL, "--interactive",
                "--pull=never", "--runtime=runsc", "--network=none", "--read-only",
                "--cap-drop=ALL", "--security-opt=no-new-privileges", "--user=65534:65534",
-               "--memory=256m", "--memory-swap=256m", "--cpus=0.5", "--pids-limit=64",
+               f"--memory={limits['memory_bytes']}", f"--memory-swap={limits['memory_bytes']}",
+               f"--cpus={limits['cpus']}", "--pids-limit=64",
                "--ulimit=nproc=8:8", "--ulimit=nofile=64:64", "--ulimit=fsize=1048576:1048576",
                "--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=16m", "--log-driver=none",
-               IMAGE, "python", "-I", "-B", "-c", HARNESS)
+               image, "python", "-I", "-B", "-c", HARNESS)
         info = json.loads(docker("inspect", name).stdout)[0]
         host = info["HostConfig"]
         if (host["Runtime"] != "runsc" or host["NetworkMode"] != "none"
                 or not host["ReadonlyRootfs"] or info["Mounts"]
                 or info["Config"]["User"] != "65534:65534"
-                or host["Memory"] != LIMITS["memory_bytes"]
-                or host["MemorySwap"] != LIMITS["memory_bytes"]
-                or host["NanoCpus"] != 500000000 or host["PidsLimit"] != 64):
+                or host["Memory"] != limits["memory_bytes"]
+                or host["MemorySwap"] != limits["memory_bytes"]
+                or host["NanoCpus"] != int(limits["cpus"] * 1e9) or host["PidsLimit"] != 64):
             raise RuntimeError("unexpected_profile")
         with tempfile.TemporaryFile() as incoming:
-            incoming.write(json.dumps(request, ensure_ascii=False, allow_nan=False).encode())
+            guest = {key: request[key] for key in ("source", "inputs", "parameters")}
+            incoming.write(json.dumps(guest, ensure_ascii=False, allow_nan=False).encode())
             incoming.seek(0)
             process = subprocess.Popen(DOCKER + ["start", "--attach", "--interactive", name],
                                        stdin=incoming, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=ENV)
-            deadline = time.monotonic() + LIMITS["timeout_seconds"]
+            deadline = time.monotonic() + limits["timeout_seconds"]
             reason = "exited"
             with selectors.DefaultSelector() as selector:
                 selector.register(process.stdout, selectors.EVENT_READ)
@@ -96,7 +112,7 @@ def run(request):
                         if not chunk:
                             selector.unregister(key.fileobj)
                             continue
-                        remaining = LIMITS["output_bytes"] - len(output)
+                        remaining = limits["output_bytes"] - len(output)
                         output.extend(chunk[:remaining])
                         if len(chunk) > remaining:
                             reason = "output_limit"
@@ -134,7 +150,7 @@ def run(request):
                 result["cleanup_verified"] = True
             except Exception:
                 result = {"termination": "cleanup_error", "cleanup_verified": False}
-    return result | {"runtime": "runsc", "image": IMAGE, "limits": LIMITS}
+    return result | {"runtime": "runsc", "image": image, "limits": limits}
 
 
 def main():
@@ -156,7 +172,7 @@ def main():
             if len(raw) > 196608:
                 raise ValueError("payload_size")
             request = json.loads(raw)
-            if set(request) != {"source", "inputs", "parameters"}:
+            if set(request) - {"profile"} != {"source", "inputs", "parameters"} or request.get("profile", DEFAULT_PROFILE) not in IMAGES:
                 raise ValueError("payload_fields")
             if not isinstance(request["source"], str) or len(request["source"].encode()) > 65536:
                 raise ValueError("source_size")

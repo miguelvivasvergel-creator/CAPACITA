@@ -65,3 +65,12 @@ class CandidatePreparationTests(unittest.TestCase):
     def test_external_dependencies_cannot_be_requested_in_initial_runtime(self):
         with self.assertRaises(ValidationError):
             PythonSourceProposal(source="pass", dependencies=["unknown-package"])
+
+
+class ToolboxImportTests(unittest.TestCase):
+    def test_only_stdlib_and_toolbox_imports_are_accepted(self):
+        import ast
+        from services.candidate_preparation import unavailable_imports
+        allowed = "import json, io\nfrom pypdf import PdfReader\nimport docx\nfrom PIL import Image\nimport openpyxl\nfrom reportlab.pdfgen import canvas"
+        self.assertEqual(unavailable_imports(ast.parse(allowed)), [])
+        self.assertEqual(unavailable_imports(ast.parse("import requests\nfrom numpy import array\nfrom . import x")), [".", "numpy", "requests"])

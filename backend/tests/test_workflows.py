@@ -11,7 +11,7 @@ from api.workflows import router
 from api.workflows import get_workflow_repository
 from api.capabilities import get_repository
 from repositories.workflows import WorkflowRepository
-from services.execution_engine import execute_job
+from services.execution_engine import IMAGES, PROFILE_LIMITS, execute_job
 from services.workflow_validation import compatible, compile_workflow
 from tests.test_builds import manifest
 from tests.test_shared_execution import result
@@ -52,14 +52,15 @@ class WorkflowTests(unittest.TestCase):
             text = payload["inputs"]["texto"].strip()
             if payload["parameters"].get("mayusculas"):
                 text = text.upper()
-            return result(json.dumps({"resultado": text}))
+            # Versiones antiguas (stdlib) se ejecutan con la imagen de su propio perfil.
+            return result(json.dumps({"resultado": text})) | {"image": IMAGES[payload["profile"]], "limits": PROFILE_LIMITS[payload["profile"]]}
         status, report, output = execute_job(job, runner, lambda state: progress.append(deepcopy(state)))
         self.assertEqual((status, output), ("completed", {"final": "ÁRBOL AZUL"}))
         self.assertEqual(requests[1]["inputs"], {"texto": "Árbol azul"})
         self.assertEqual(requests[1]["parameters"], {"mayusculas": True})
         self.assertEqual([step["status"] for step in report["steps"]], ["completed", "completed"])
         self.assertEqual(progress[0]["steps"][0]["status"], "running")
-        self.assertEqual(set(requests[0]), {"source", "inputs", "parameters"})
+        self.assertEqual(set(requests[0]), {"source", "inputs", "parameters", "profile"})
 
     def test_cycles_duplicate_nodes_missing_steps_fields_and_bindings_rejected(self):
         for mutate in (
@@ -116,7 +117,8 @@ class WorkflowTests(unittest.TestCase):
         calls = []
         def runner(payload):
             calls.append(payload)
-            return result('{"resultado":"ejemplo"}') if len(calls) == 1 else result(exit_code=1)
+            image = {"image": IMAGES[payload["profile"]], "limits": PROFILE_LIMITS[payload["profile"]]}
+            return (result('{"resultado":"ejemplo"}') if len(calls) == 1 else result(exit_code=1)) | image
         status, report, output = execute_job(job, runner)
         self.assertEqual(status, "failed")
         self.assertIsNone(output)

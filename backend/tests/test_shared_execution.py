@@ -41,7 +41,9 @@ class EngineTests(unittest.TestCase):
         status, report, output = execute_job(job(), runner)
         self.assertEqual((status, output), ("completed", {"resultado": "nuevo"}))
         self.assertEqual(requests[0]["inputs"], {"texto": "  nuevo  "})
-        self.assertEqual(set(requests[0]), {"source", "inputs", "parameters"})
+        # El runner recibe el perfil para elegir imagen; el invitado solo código y datos.
+        self.assertEqual(set(requests[0]), {"source", "inputs", "parameters", "profile"})
+        self.assertEqual(requests[0]["profile"], PROFILE)
         self.assertNotIn("nuevo", json.dumps(report))
 
     def test_invalid_inputs_and_tampering_never_reach_runner(self):
@@ -215,3 +217,25 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(RuntimeError):
             await serve(Session(),once=True,runner=lambda *a,**k:{"recovery_verified":False})
         self.assertEqual(calls,["lease"])
+
+
+class ProfileImageTests(unittest.TestCase):
+    def test_engine_and_linux_runner_pin_the_same_images(self):
+        import ast
+        from pathlib import Path
+        from services.execution_engine import IMAGES
+        tree = ast.parse((Path(__file__).resolve().parents[1] / "services" / "sandbox_runner.py").read_text(encoding="utf-8"))
+        runner_images = next(ast.literal_eval(node.value) for node in tree.body
+                             if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "IMAGES")
+        self.assertEqual(runner_images, IMAGES)
+        from services.execution_engine import PROFILE_LIMITS
+        runner_limits = next(ast.literal_eval(node.value) for node in tree.body
+                             if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "PROFILE_LIMITS")
+        self.assertEqual(runner_limits, PROFILE_LIMITS)
+        self.assertTrue(all("@sha256:" in image or image.startswith("sha256:") for image in IMAGES.values()))
+
+    def test_unknown_run_profile_never_reaches_runner(self):
+        unknown = job()
+        unknown["payload"]["profile"] = "gvisor-python-anything"
+        with self.assertRaises(ValueError):
+            execute_job(unknown, lambda _: self.fail("no debe ejecutar"))
