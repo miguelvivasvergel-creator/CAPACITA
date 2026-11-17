@@ -3,9 +3,12 @@
 -- gvisor-python-stdlib-v1. Las nuevas guardan el perfil con que superaron su prueba,
 -- y el trabajador las ejecuta con la imagen de ese mismo perfil.
 BEGIN;
+-- NOT VALID: rige para versiones nuevas o modificadas; no reescribe ni revisa filas
+-- antiguas (en Supabase existen versiones de prueba con otro perfil, que el trabajador
+-- ya rechaza por no estar en su lista cerrada).
 ALTER TABLE capacita_execution.versions
  ADD CONSTRAINT versions_profile_known
- CHECK (profile IN ('gvisor-python-stdlib-v1','gvisor-python-toolbox-v1'));
+ CHECK (profile IN ('gvisor-python-stdlib-v1','gvisor-python-toolbox-v1')) NOT VALID;
 
 CREATE OR REPLACE FUNCTION public.execution_enable(p_candidate_id uuid,p_build_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
@@ -37,7 +40,8 @@ END $$;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
 
--- Comprobación (solo lectura): debe devolver una fila con perfiles_conocidos = true.
-SELECT bool_and(profile IN ('gvisor-python-stdlib-v1','gvisor-python-toolbox-v1')) AS perfiles_conocidos,
-       count(*) AS versiones
-FROM capacita_execution.versions;
+-- Comprobación (solo lectura): perfiles existentes y si la función nueva quedó instalada.
+SELECT profile, status, count(*) AS versiones,
+       (SELECT prosrc LIKE '%gvisor-python-toolbox-v1%' FROM pg_proc
+         WHERE oid='public.execution_enable(uuid,uuid)'::regprocedure) AS activar_acepta_toolbox
+FROM capacita_execution.versions GROUP BY profile, status ORDER BY profile, status;
