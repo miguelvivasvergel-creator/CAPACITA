@@ -89,15 +89,19 @@ async (page) => {
     assert(await nodos().count()===planGuiado.nodes.length+2,'El taller no dibuja datos, pasos y resultado');
     checks.push('plan compuesto aparece en chat y taller tras consentimiento');
     await page.screenshot({path:'output/playwright/taller-plan-desktop.png'});
-    await page.getByRole('button',{name:'Usar esta solución'}).click();
-    const campo=page.locator('.taller-mensajes form').locator('input,textarea').first();
-    await campo.waitFor();await campo.fill('  Niño  azul  ');
+    // El dato único se pide en el chat y se escribe como mensaje, sin recortar espacios.
+    await page.getByText('Escríbelo abajo',{exact:false}).waitFor();
+    assert(!requests.some(r=>r.path==='/api/workflows'&&r.method==='POST'),'Guardó antes de recibir los datos');
+    await entrada().fill('  Niño  azul  ');await entrada().press('Enter');
+    await page.getByText('Listo para ejecutar').waitFor();
+    checks.push('el chat pide el dato y lo recibe como mensaje');
     await page.getByRole('button',{name:'Aprobar y ejecutar'}).click();
     await page.getByText('Respuesta perdida de prueba').waitFor();
     await page.getByRole('button',{name:'Aprobar y ejecutar'}).click();
     const runPosts=requests.filter(r=>r.path===`/api/workflows/${ids.workflow}/runs`);
     assert(runPosts.length===2&&runPosts[0].key&&runPosts[0].key===runPosts[1].key,'El reintento no conserva la clave de idempotencia');
     assert(requests.filter(r=>r.path.endsWith('/approvals')).length===1,'Se duplicó la aprobación');
+    assert(requests.filter(r=>r.path==='/api/workflows'&&r.method==='POST').length===1,'Se guardó la solución dos veces');
     checks.push('fallo de red visible y reintento con la misma clave');
     await page.locator('.react-flow__node',{hasText:'Trabajando'}).first().waitFor({timeout:15000});
     checks.push('nodo en curso se ilumina durante la ejecución');

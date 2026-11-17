@@ -105,6 +105,8 @@ Solo usa version_id presentes en versions. No inventes capacidades, IDs, permiso
 reuse: un paso; compose: dos o más. Usa el formato WorkflowDefinition del esquema.
 Conecta puertos concretos mediante bindings {source: '$input' o id de paso, field: campo}.
 No inventes datos reales: declara entradas externas en input_schema y sus required.
+input_schema es un objeto con properties, required y additionalProperties false; usa
+tipos simples, nombres claros y una description breve en español para cada campo.
 Fija parameters según parameter_schema; values solo para constantes explícitas del objetivo.
 Comprueba tipos, campos obligatorios y orden acíclico. Outputs referencia campos obligatorios.
 clarify si faltan reglas esenciales: hasta tres preguntas. create si faltan capacidades:

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
 import { interpretarObjetivo } from '../../services/objetivos';
+import { guardarWorkflow } from '../../services/workflows';
+import { campoUnico, esquemaDatos } from '../../utils/formularioDatos';
 import FabricaHerramienta from './FabricaHerramienta';
 import ResultadoDatos from '../common/ResultadoDatos';
 import LienzoTaller from './LienzoTaller';
@@ -36,7 +38,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   const [runId, setRunId] = useState(null);
   const [seleccionado, setSeleccionado] = useState(null);
   const [vistaMovil, setVistaMovil] = useState('chat');
+  const [pidiendo, setPidiendo] = useState(null); // dato único que el chat está pidiendo para el plan
   const siguienteId = useRef(0), peticion = useRef(null), fin = useRef(null), entrada = useRef(null);
+  const solucion = useRef({ definicion: null, guardada: null, incierta: false });
 
   const agregar = useCallback((mensaje) => setMensajes((old) => [...old, { id: ++siguienteId.current, ...mensaje }]), []);
   useEffect(() => () => peticion.current?.abort(), []);
@@ -68,7 +72,38 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   const nodoElegido = plan?.nodes.find((node) => node.id === seleccionado);
 
   function nuevoTaller() {
-    setPlan(null); setCreando(''); setEstadoCreacion(''); setRun(null); setRunId(null); setSeleccionado(null); setPendientes([]);
+    setPlan(null); setCreando(''); setEstadoCreacion(''); setRun(null); setRunId(null); setSeleccionado(null); setPendientes([]); setPidiendo(null);
+  }
+
+  // Se guarda una sola vez por plan, aunque se ejecute varias veces con datos distintos.
+  async function obtenerGuardada() {
+    const actual = solucion.current;
+    if (actual.definicion !== plan) solucion.current = { definicion: plan, guardada: null, incierta: false };
+    if (solucion.current.guardada) return solucion.current.guardada;
+    if (solucion.current.incierta) throw new Error('No pudimos confirmar si la solución se guardó. Revísala en Soluciones antes de crear otra copia.');
+    try {
+      solucion.current.guardada = await guardarWorkflow(plan);
+      return solucion.current.guardada;
+    } catch (cause) {
+      if (!cause.status || cause.status >= 500) solucion.current.incierta = true;
+      throw cause;
+    }
+  }
+
+  function alEjecutar(id) {
+    setRun(null); setRunId(id); setSeleccionado(null); setVistaMovil('taller');
+    agregar({ de: 'capacita', tipo: 'resultado', runId: id });
+  }
+
+  function recibirDato(valor) {
+    const numero = pidiendo.tipo !== 'string';
+    const dato = numero ? Number(valor.trim().replace(',', '.')) : valor;
+    agregar({ de: 'tu', tipo: 'texto', texto: valor }); setTexto('');
+    if (numero && (!Number.isFinite(dato) || (pidiendo.tipo === 'integer' && !Number.isInteger(dato)))) {
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Necesito un número${pidiendo.tipo === 'integer' ? ' entero' : ''} para ${pidiendo.etiqueta.toLowerCase()}. Escríbelo de nuevo.` });
+      return;
+    }
+    agregar({ de: 'capacita', tipo: 'confirmar', definicion: plan, datos: { [pidiendo.nombre]: dato } });
   }
 
   function mostrarDefinicion(value, objetivoDefinido) {
@@ -114,8 +149,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
       if (proposal.decision === 'clarify') {
         setPendientes(proposal.questions); agregar({ de: 'capacita', tipo: 'preguntas', preguntas: proposal.questions });
       } else if (proposal.definition) {
-        setPlan(proposal.definition); setCreando('');
+        const campo = campoUnico(esquemaDatos(proposal.definition.input_schema));
+        setPlan(proposal.definition); setCreando(''); setPidiendo(campo);
         agregar({ de: 'capacita', tipo: 'plan', definicion: proposal.definition });
+        if (campo) agregar({ de: 'capacita', tipo: 'texto', texto: `Para ejecutarla necesito: ${campo.etiqueta}. Escríbelo abajo 👇` });
       } else if (proposal.decision === 'create') {
         agregar({ de: 'capacita', tipo: 'faltan', faltan: proposal.missing });
       } else {
@@ -138,6 +175,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
     event?.preventDefault();
     const valor = texto.trim();
     if (ocupado || !valor) return;
+    // Un dato se entrega tal cual lo escribió la persona (sin recortar espacios).
+    if (pidiendo && plan && !pendientes.length) { recibirDato(texto); return; }
     if (!pendientes.length && valor.length < 10) { agregar({ de: 'capacita', tipo: 'texto', texto: 'Cuéntame un poco más: qué datos tienes y qué resultado buscas.' }); return; }
     agregar({ de: 'tu', tipo: 'texto', texto: valor }); setTexto('');
     if (pendientes.length && conversacion) {
@@ -191,8 +230,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
         </li>)}</ul>
       </div>;
       case 'crear': return <FabricaHerramienta definition={mensaje.definicion} onEstado={setEstadoCreacion} onLista={herramientaLista} />;
-      case 'plan': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} ocupadoExterno={Boolean(run && activo(run.status))}
-        onEjecucion={(id) => { setRun(null); setRunId(id); setSeleccionado(null); setVistaMovil('taller'); agregar({ de: 'capacita', tipo: 'resultado', runId: id }); }} /></div>;
+      case 'plan': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status))} onEjecucion={alEjecutar} /></div>;
+      case 'confirmar': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} datos={mensaje.datos} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status)) || mensaje.definicion !== plan} onEjecucion={alEjecutar} /></div>;
       case 'resultado': {
         const actual = run && run.id === mensaje.runId ? run : null;
         if (!actual && runId !== mensaje.runId) return <p className="text-sm text-slate-500">Ejecución anterior · <button type="button" className="text-blue-700 underline" onClick={() => onCambiarSeccion?.(`historial/${mensaje.runId}`)}>ver en Resultados</button></p>;
@@ -203,7 +242,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
           {actual?.report?.error && <p role="alert" className="mt-2 break-words text-sm text-red-700">{actual.report.error}. Los pasos que terminaron se conservan; revisa tus datos e inténtalo de nuevo.</p>}
           {actual && !activo(actual.status) && <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={() => onCambiarSeccion?.(`historial/${actual.id}`)}>Ver en Resultados</button>
-            <button type="button" className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={() => entrada.current?.focus()}>Pedir otra cosa</button>
+            <button type="button" className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={() => { setPidiendo(null); entrada.current?.focus(); }}>Pedir otra cosa</button>
+            {pidiendo && plan && <p className="basis-full text-xs text-slate-500">O escribe abajo otro dato para ejecutarla de nuevo.</p>}
           </div>}
         </div>;
       }
@@ -228,11 +268,15 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
         {ocupado && <p role="status" className="taller-escribiendo"><span className="taller-puntos" aria-hidden="true"><i /><i /><i /></span>{fase}</p>}
         <div ref={fin} />
       </div>
+      {pidiendo && plan && <div className="flex items-center justify-between gap-2 px-1 pb-1 text-xs text-slate-600">
+        <span className="break-words">✍️ Esperando: {pidiendo.etiqueta}</span>
+        <button type="button" className="shrink-0 rounded-lg px-2 py-1 font-semibold text-blue-700 hover:bg-blue-50" onClick={() => { setPidiendo(null); entrada.current?.focus(); }}>Pedir otra cosa</button>
+      </div>}
       <form onSubmit={enviar} className="taller-compositor">
         <label htmlFor="taller-entrada" className="sr-only">Escribe tu necesidad</label>
         <textarea id="taller-entrada" ref={entrada} rows={2} maxLength={2000} value={texto} disabled={ocupado} onChange={(event) => setTexto(event.target.value)}
           onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) enviar(event); }}
-          placeholder={pendientes.length ? 'Responde a mis preguntas…' : 'Ej.: tengo una lista de productos y quiero saber cuáles están agotados…'} />
+          placeholder={pendientes.length ? 'Responde a mis preguntas…' : pidiendo && plan ? `Escribe aquí: ${pidiendo.etiqueta}` : 'Ej.: tengo una lista de productos y quiero saber cuáles están agotados…'} />
         <button type="submit" disabled={ocupado || !texto.trim()} aria-label="Enviar">➤</button>
       </form>
     </div>
