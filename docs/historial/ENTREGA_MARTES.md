@@ -17,7 +17,7 @@ Estas instrucciones no acreditan que el ensayo ya haya pasado en ese equipo.
    acordada. El usuario no requiere PR para el ensayo ni cambios en `main`.
    No usar reset/clean ni sobrescribir su rama o `.env`.
 2. Usar la raíz de su copia de CAPACITA; no copiar rutas `C:/Users/USER/...` de
-   Miguel. Revisar [README](../README.md) y sus guías [B3](BLOQUE_3_EJECUCION.md),
+   Miguel. Revisar [README](../../README.md) y sus guías [B3](BLOQUE_3_EJECUCION.md),
    [B4](BLOQUE_4_WORKFLOWS.md) y [B5](BLOQUE_5_RESULTADOS.md).
 3. Verificar dependencias instaladas, sin reinstalar si ya coinciden con los
    lockfiles. Si faltan, desde la raíz: `npm ci` y

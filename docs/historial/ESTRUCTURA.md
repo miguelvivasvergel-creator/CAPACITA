@@ -109,6 +109,6 @@ OpenAPI. La prueba autenticada del formulario nuevo sigue pendiente.
 - `.vscode/settings.json` contiene solo ajustes compartidos del proyecto: evita analizar los scripts PostgreSQL con MSSQL/T-SQL. Las demás preferencias personales de VS Code siguen ignoradas; no guardar conexiones ni credenciales ahí.
 - Antes de mover un archivo, revisar referencias, actualizar imports/enlaces y verificar lint/build o las pruebas afectadas.
 
-El índice de documentación está en [docs/README.md](README.md). La propiedad
+El índice de documentación está en [docs/README.md](../README.md). La propiedad
 de archivos y los contratos siguen rigiéndose por el plan A/B, con estos
 movimientos documentados.

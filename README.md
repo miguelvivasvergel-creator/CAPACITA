@@ -12,24 +12,24 @@ significa que todos los módulos estén implementados.
 - [Continuidad de la sesión](docs/CONTEXTO_Y_CONTINUIDAD.md): punto actual y siguiente paso.
 - [Visión maestra](docs/VISION_MAESTRA.md): acuerdos de producto y arquitectura.
 - [Estado verificado](docs/estado.md): implementado, pendiente y bloqueos.
-- [Reparto Miguel/Fahida](docs/PLAN_DOS_PERSONAS_MARTES.md): Miguel (A), objetivos/catálogo/generación; Fahida (B), pruebas/workflows/ejecución.
-- [Entrega del martes en el PC de Fahida](docs/ENTREGA_MARTES.md): integración, arranque y ensayo pendientes en ese equipo, con evidencia y límites actuales.
-- [Modo guiado y desarrollador](docs/MODOS_USO_A.md): experiencia por cuenta, recorrido sin JSON manual y alcance de validación.
-- [Estructura y organización](docs/ESTRUCTURA.md): dónde va cada archivo y movimientos realizados.
+- [Reparto Miguel/Fahida](docs/historial/PLAN_DOS_PERSONAS_MARTES.md): Miguel (A), objetivos/catálogo/generación; Fahida (B), pruebas/workflows/ejecución.
+- [Entrega del martes en el PC de Fahida](docs/historial/ENTREGA_MARTES.md): integración, arranque y ensayo pendientes en ese equipo, con evidencia y límites actuales.
+- [Modo guiado y desarrollador](docs/historial/MODOS_USO_A.md): experiencia por cuenta, recorrido sin JSON manual y alcance de validación.
+- [Estructura y organización](docs/historial/ESTRUCTURA.md): dónde va cada archivo y movimientos realizados.
 - [Reglas del repositorio](AGENTS.md).
 
 ## Instalación y ejecución local
 
 El bloque 3 agrega almacenamiento compartido de pruebas, versiones privadas y
 ejecuciones. Requiere preparar SQL 07 y una cuenta de trabajador antes de usar
-esas rutas; no se aplica automáticamente. Ver [guía B3](docs/BLOQUE_3_EJECUCION.md).
+esas rutas; no se aplica automáticamente. Ver [guía B3](docs/historial/BLOQUE_3_EJECUCION.md).
 Los reportes SQLite anteriores se conservan y pueden consultarse en modo B2.
 
 Workflows B4 está integrado y se aceptó en el equipo de Miguel un proceso real de
 dos capacidades distintas, con aprobación y transferencia de datos. Historial B5
 conserva resultados al recargar y reiniciar API; privacidad aceptada con dos cuentas.
-Ver [guía B4](docs/BLOQUE_4_WORKFLOWS.md), [guía B5](docs/BLOQUE_5_RESULTADOS.md) y
-[evidencia de entrega](docs/ENTREGA_MARTES.md). Esto no certifica el ensayo en el
+Ver [guía B4](docs/historial/BLOQUE_4_WORKFLOWS.md), [guía B5](docs/historial/BLOQUE_5_RESULTADOS.md) y
+[evidencia de entrega](docs/historial/ENTREGA_MARTES.md). Esto no certifica el ensayo en el
 PC de Fahida ni publicación ejecutable entre cuentas. No repetir SQL 07/08.
 
 Requisitos: Node.js compatible con el Vite instalado (consulta `package.json`),
@@ -54,7 +54,6 @@ Crear `.env` a partir de `.env.example` **solo si no existe** y configurar:
 - `VITE_SUPABASE_URL`: URL del proyecto de Supabase.
 - `VITE_SUPABASE_ANON_KEY`: clave pública publishable/anon del proyecto.
 - `VITE_API_URL`: `http://127.0.0.1:8000/api`.
-- `VITE_DOTNET_API_URL`: URL de la API .NET si se usan sus pantallas existentes.
 
 Después, preparar el backend con los mismos valores:
 
@@ -128,18 +127,17 @@ políticas RLS remotas ni sustituyen el recorrido real con dos usuarios.
 | Interfaz | `src/` | React, Vite y Tailwind. Catálogo conectado a FastAPI. |
 | API principal | `backend/` | FastAPI: Auth verificada y repositorio PostgREST del catálogo. |
 | Persistencia y Auth | Supabase | Catálogo inspeccionado; lectura/clonación y permisos mínimos confirmados por el usuario. Otros módulos pendientes. |
-| API .NET existente | `backend-dotnet/` | Conservada e inactiva en búsqueda/perfil actuales. Requiere SDK .NET 10 si se trabaja en ella. |
 | SQL de referencia | `db/` | Scripts numerados; su existencia no prueba que estén aplicados. |
 | Ejecución y workflows | Frente B | B3/B4 privados integrados: versiones, runs persistentes, laboratorio y constructor. Requieren worker autorizado; publicación entre cuentas pendiente. |
 
-Consulta [el contrato de identidad y catálogo](docs/modulo-a-identidad-catalogo.md)
+Consulta [el contrato de identidad y catálogo](docs/historial/modulo-a-identidad-catalogo.md)
 antes de conectar nuevas pantallas. Mocks y placeholders siguen presentes en
 otros módulos; no se consideran funcionalidades verificadas.
 
 En **Capacidades → Crear**, el componente de definición permite declarar entradas,
 salidas, parámetros y ejemplos, comprobarlos, buscar coincidencias y guardar un
 borrador privado. La comprobación no ejecuta código ni genera una implementación.
-El [contrato de integración A/B](docs/CONTRATO_INTEGRACION.md) documenta las nuevas
+El [contrato de integración A/B](docs/historial/CONTRATO_INTEGRACION.md) documenta las nuevas
 rutas y el paquete guardado. Este bloque usa los permisos SQL 04/05 existentes;
 no requiere tablas nuevas. Instalar las dependencias actualizadas del backend
 antes de reiniciarlo, incluida `jsonschema`.
@@ -196,4 +194,4 @@ Para el modo por significado local se requiere Python 3.12 o posterior. Desde ra
 Reiniciar API. Descarga inicial de unos 136 MB, CPU, sin enviar consultas/catálogo
 a terceros. Hasta 200 capacidades autorizadas con truncado explícito; no índice
 pgvector global. Sin SQL nuevo; modelos/caché fuera de Git.
-Ver [contrato, pruebas y límites](docs/BUSQUEDA_A.md).
+Ver [contrato, pruebas y límites](docs/historial/BUSQUEDA_A.md).

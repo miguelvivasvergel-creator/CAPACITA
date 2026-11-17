@@ -41,7 +41,7 @@ certifica la integración Auth/PostgREST ni las cuentas del proyecto real.
 
 ## Preparación compartida — sin repetir SQL anteriores
 
-1. A/B revisan [SQL 07](../db/07_shared_execution.sql) en el mismo proyecto donde
+1. A/B revisan [SQL 07](../../db/07_shared_execution.sql) en el mismo proyecto donde
    ya está SQL 06. No ejecutar 01/02 ni volver a ejecutar 06.
 2. Aplicar 07 una sola vez desde el SQL Editor autorizado. Crea un esquema
    privado y funciones RPC. Si ya existe, se detiene; no borra tablas anteriores.

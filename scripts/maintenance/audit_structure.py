@@ -13,37 +13,12 @@ IMPORTS = re.compile(r"(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['\"]([^'\"]+)['\"]")
 ASSETS = re.compile(r"(?:url\(\s*|(?:src|href)\s*=\s*)['\"]?([^\s'\"\)<>]+)")
 EXTENSIONS = (".js", ".jsx", ".css", ".json")
 EXPECTED_INACTIVE = {
-    'src/components/layout/BuscadorGlobal.jsx': 'buscador desplegable anterior conservado; navegación actual abre la página Buscar',
     "src/mocks/guiado.js": "fixtures de experiencia guiada; nunca fallback ni evidencia de ejecución real",
     "src/mocks/trabajo.js": "fixture visual de integración A/B3 y reparación; nunca fallback",
-    "src/pages/Ejecutar.jsx": "pantalla heredada B conservada; App usa integración A con B3/B4",
-    "src/services/ejecucion.js": "cliente heredado con fallback; fuera del recorrido activo",
-    "src/mocks/runs.js": "fixture del cliente heredado, fuera del recorrido activo",
-    "src/components/runs/EntradaEjecucion.jsx": "componente heredado B conservado, fuera del recorrido activo",
-    "src/components/runs/EstadoBadge.jsx": "componente heredado B conservado, fuera del recorrido activo",
-    "src/components/runs/PasosEjecucion.jsx": "componente heredado B conservado, fuera del recorrido activo",
-    "src/components/runs/PermisosModal.jsx": "componente heredado B conservado, fuera del recorrido activo",
-    "src/components/runs/ResultadoEjecucion.jsx": "componente heredado B conservado, fuera del recorrido activo",
-    "src/mocks/planner.js": "fixture visual planner A; nunca fallback de IA",
-    "src/mocks/dashboard.js": "fixture visual A4; métricas reales sin fallback",
     "src/mocks/busqueda.js": "fixture de pruebas interceptadas; no fallback de búsqueda",
-    "src/services/dotnet.js": "cliente histórico conservado; búsqueda y perfil usan FastAPI",
     "src/mocks/perfil-real.js": "fixture de contrato para pruebas interceptadas, sin fallback",
-    "src/mocks/profile.js": "fixture histórica; el perfil real no usa fallback",
-    "src/components/profile/PerfilActividad.jsx": "visualización conservada hasta contrato de historial B",
     "src/mocks/inicio.js": "fixtures visuales de Inicio para pruebas interceptadas, sin fallback",
-    "src/mocks/home.js": "dashboard histórico; Inicio usa catálogo autorizado",
-    "src/mocks/users.js": "personas de ejemplo históricas, fuera de Inicio real",
-    "src/components/common/PlanProposal.jsx": "propuesta histórica; no usar como planner real ni contrato B",
-    "src/mocks/historial.js": "fixture visual B5; nunca fallback de red",
-    "src/mocks/workflows.js": "fixture de diseño B4; nunca fallback de red",
-    "src/mocks/versiones.js": "fixture visual B3, sin fallback de versiones o ejecuciones",
-    "src/mocks/laboratorio.js": "casos visuales del laboratorio B, sin fallback de red",
-    "src/mocks/candidatos.js": "fixture visual de candidatos sin fallback en el flujo real",
     "src/components/common/FileUpload.jsx": "componente conservado para integración de archivos de B",
-    "src/pages/Capacidades/CrearCapacidad.jsx": "laboratorio de B, pendiente; no editar por esta limpieza",
-    "src/mocks/catalog/capabilities.js": "fixture antigua sin fallback en catálogo real",
-    "src/mocks/catalog/community.js": "fixture antigua sin fallback en comunidad real",
 }
 
 

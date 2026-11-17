@@ -53,7 +53,7 @@ y aprobación nueva de workflow. Capturas ignoradas; fixture sin Supabase/sesió
 Aceptación remota de solo lectura con cuenta worker: lista paginada/detalle
 coinciden, completado e interrumpido con parciales, ejecución ajena 404 y ausente.
 Reporte ignorado `output/laboratory/block5-history-remote.json`: passed=true.
-Guía: [BLOQUE_5_RESULTADOS.md](BLOQUE_5_RESULTADOS.md).
+Guía: [BLOQUE_5_RESULTADOS.md](historial/BLOQUE_5_RESULTADOS.md).
 
 Cierre técnico B5 completado. Fahida autoriza commit detallado y push a su rama
 el 16/11/2026. Siguiente: integrar con Miguel y aceptación conjunta B6; el recorrido
@@ -119,7 +119,7 @@ y abre Workflows → Nuevo workflow → seleccionar versión propia y añadir pa
 Pendiente recorrido en su sesión real y privacidad de workflow conocido entre
 dos cuentas (SQL temporal la comprueba; fixture remota es privada de worker).
 Sin commit B4 todavía; no confundir el commit B3 local 873131a con un push nuevo.
-Guía: [BLOQUE_4_WORKFLOWS.md](BLOQUE_4_WORKFLOWS.md). Sin push/merge ni B5 iniciado.
+Guía: [BLOQUE_4_WORKFLOWS.md](historial/BLOQUE_4_WORKFLOWS.md). Sin push/merge ni B5 iniciado.
 
 **Aceptación B3 privada completada** con evidencia combinada de usuaria y pruebas
 automáticas reales. Fahida confirma API reiniciada y prueba nueva real con
@@ -160,7 +160,7 @@ sandbox recuperado». Worker activo en sesión de herramientas, no abrir otra co
 Siguiente: reiniciar API con código B3 y recorrido manual de candidato propio.
 Aún no hay aceptación remota
 ni despliegue. Guía y contrato exactos:
-[BLOQUE_3_EJECUCION.md](BLOQUE_3_EJECUCION.md).
+[BLOQUE_3_EJECUCION.md](historial/BLOQUE_3_EJECUCION.md).
 
 Actualización 15/11/2026: Fahida confirma terminada la aceptación manual B2.
 Confirmó reportes conservados tras reiniciar; acceso ajeno autenticado 404 y
@@ -186,7 +186,7 @@ menciones de aceptación manual pendiente conservadas más abajo como historial.
 
 Instrucción vigente posterior al commit 3e2d561: Fahida probará manualmente el
 bloque 2 primero. Solicitó guía sin saltos para Windows/Ubuntu; se amplió
-[LABORATORIO_BLOQUE_2.md](LABORATORIO_BLOQUE_2.md) con 18 secciones paso a paso.
+[LABORATORIO_BLOQUE_2.md](historial/LABORATORIO_BLOQUE_2.md) con 18 secciones paso a paso.
 **No iniciar el bloque 3 sin una nueva instrucción**: la pregunta sobre avanzar
 en paralelo no era autorización y el usuario pidió detenerlo. No se aplicaron
 cambios de código B3. La aceptación manual B2 sigue pendiente, no confirmada.
@@ -194,7 +194,7 @@ cambios de código B3. La aceptación manual B2 sigue pendiente, no confirmada.
 Bloque 2 implementado localmente el 14/11/2026: API privada de builds, cola/reportes
 SQLite durables, trabajador separado, harness dentro de gVisor y panel de candidato.
 75 pruebas backend pasan; batería real de candidatos de fixture comprobada, con
-límites y limpieza. Ver el cierre al final y la [guía reproducible](LABORATORIO_BLOQUE_2.md).
+límites y limpieza. Ver el cierre al final y la [guía reproducible](historial/LABORATORIO_BLOQUE_2.md).
 Pendiente aceptación con candidato Supabase propio y segunda sesión real, revisión
 A del almacenamiento local y recuperación tras apagado abrupto. No hay versiones
 habilitadas, publicación ni motor persistente del bloque 3. Las secciones iniciales
@@ -210,7 +210,7 @@ conservan el diagnóstico histórico, superado por los cierres posteriores.
 - Propiedad B: laboratorio, sandbox, archivos, builds, workflows, motor,
   resultados e historial. Reutilizar Auth, catálogo, IA y contratos de Miguel.
 - Configuración compartida, navegación, dependencias y migraciones: coordinar
-  con Miguel conforme al [reparto](PLAN_DOS_PERSONAS_MARTES.md).
+  con Miguel conforme al [reparto](historial/PLAN_DOS_PERSONAS_MARTES.md).
 - Un commit puede entregar un avance verificable con bloqueo: no significa
   que todos los criterios del bloque estén cumplidos.
 
@@ -577,7 +577,7 @@ reproducible entregadas; aceptación con sesión/candidato remoto aún pendiente
 ### Cierre y siguiente paso
 
 Guía completa de arranque, API, pruebas manuales y límites:
-[LABORATORIO_BLOQUE_2.md](LABORATORIO_BLOQUE_2.md). Commit local identificable por
+[LABORATORIO_BLOQUE_2.md](historial/LABORATORIO_BLOQUE_2.md). Commit local identificable por
 `feat(laboratorio): probar candidatos aislados y persistir reportes privados`.
 
 Antes de dar la aceptación integrada por cerrada: iniciar API/Vite/trabajador,

@@ -4,7 +4,7 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
-Traspaso a Fahida: [resumen operativo](PARA_FAHIDA_MARTES.md) con commits de
+Traspaso a Fahida: [resumen operativo](historial/PARA_FAHIDA_MARTES.md) con commits de
 Miguel, pruebas, pendientes por dueño, B6 sin certificar y aceptación conjunta
 para el martes. Disponible en rama miguel; lectura de Fahida no confirmada.
 
@@ -113,8 +113,8 @@ Inicio 8, Planner 5 y Trabajo/B3 4, lint/build correctos. Backend sin cambios,
 Pendientes reales: build 8a2c1355 queued, segunda versión sin habilitar, ejecución
 del plan de dos capacidades y publicación/reutilización entre cuentas con B.
 PR preparado pero no creado; revisión cruzada y modalidad de entrega pendientes.
-Detalle reproducible en [ENTREGA_MARTES.md](ENTREGA_MARTES.md), inventario actualizado
-en [CIERRE_MIGUEL.md](CIERRE_MIGUEL.md). Consultar Git para entrega del avance nuevo.
+Detalle reproducible en [ENTREGA_MARTES.md](historial/ENTREGA_MARTES.md), inventario actualizado
+en [CIERRE_MIGUEL.md](historial/CIERRE_MIGUEL.md). Consultar Git para entrega del avance nuevo.
 
 ## Hitos anteriores (conservar como historial)
 
@@ -198,7 +198,7 @@ progreso y parciales, copiar/descargar JSON, nuevos datos con confirmación e
 idempotencia; workflow necesita nueva aprobación. 96 tests backend, lint/build,
 Chrome de fixtures desktop/móvil y lecturas remotas privadas pasan. Sin nueva
 migración ni merge con Miguel. Pendientes: aceptación de uso con Fahida y B6
-integrado. Ver [guía B5](BLOQUE_5_RESULTADOS.md). No declarar planner/publicación
+integrado. Ver [guía B5](historial/BLOQUE_5_RESULTADOS.md). No declarar planner/publicación
 ni conectores completados por este avance.
 
 Cierre tecnico del bloque 4 de workflows privados, 15/11/2026.
@@ -267,7 +267,7 @@ pasan, lint/build pasan; migraciones y controles comprobados en PostgreSQL tempo
 no en el proyecto real. Tras detener Fahida el worker B2, pasó el recorrido de
 fixture real en gVisor: prueba, habilitación y ejecución con datos nuevos, salida
 persistida/privada y limpieza comprobada. Activación remota/cuenta worker y
-aceptación con dos sesiones pendientes. [Guía B3](BLOQUE_3_EJECUCION.md).
+aceptación con dos sesiones pendientes. [Guía B3](historial/BLOQUE_3_EJECUCION.md).
 Esta autorización sustituye las notas anteriores de B3 detenido.
 
 15/11/2026: aceptación manual B2 confirmada por Fahida al completar el checklist:
@@ -299,7 +299,7 @@ realmente en gVisor, sin credenciales ni ejecución en FastAPI/host. 75 pruebas
 backend pasan; lint/build y auditoría de imports correctos. La batería real cubre
 transformación, rechazo previo, aislamiento, temporales, procesos, timeout, OOM,
 salida excesiva, errores y contratos/salidas incorrectas, con limpieza verificada.
-Guía y límites en [LABORATORIO_BLOQUE_2.md](LABORATORIO_BLOQUE_2.md).
+Guía y límites en [LABORATORIO_BLOQUE_2.md](historial/LABORATORIO_BLOQUE_2.md).
 
 Guía manual ampliada a petición de Fahida: 18 secciones con Windows/Ubuntu,
 terminales, comandos, resultados esperados y pruebas paso a paso. El recorrido
@@ -312,14 +312,14 @@ Ubuntu usa /run/capacita-docker.sock mediante override de su servicio. No se
 modificó Docker Desktop ni Supabase. Pendientes: aceptación con candidato remoto
 propio y dos sesiones reales, revisión A de persistencia/evidencia local y caída
 abrupta. No hay habilitación/publicación ni motor de runs del bloque 3.
-Guía de consumo A: [ENTREGA_A_B_CANDIDATOS.md](ENTREGA_A_B_CANDIDATOS.md).
+Guía de consumo A: [ENTREGA_A_B_CANDIDATOS.md](historial/ENTREGA_A_B_CANDIDATOS.md).
 Cada bloque deja pruebas, pendientes y commit local. Sin gastos ni publicación.
 
 Propiedad: laboratorio, pruebas aisladas, archivos, workflows, builds, motor, resultados e historial. CrearCapacidad.jsx y FileUpload.jsx se conservan para integración; no se implementaron aquí.
 
 Hay código heredado de runs/perfiles/adaptadores y datos en memoria; no demuestra motor persistente ni aislamiento real. Reportes anteriores de Franklin, Luis Miguel y Fahida conservados en [ESTADO_2026-11-14.md](historial/ESTADO_2026-11-14.md), sin tratarlos como aceptación actual ni reasignarlos.
 
-Consumo de definición A en [CONTRATO_INTEGRACION.md](CONTRATO_INTEGRACION.md), pendiente revisión conjunta. Sandbox y laboratorio local probados; integración remota, habilitación y motor de ejecución pendientes según el [plan A/B](PLAN_DOS_PERSONAS_MARTES.md).
+Consumo de definición A en [CONTRATO_INTEGRACION.md](historial/CONTRATO_INTEGRACION.md), pendiente revisión conjunta. Sandbox y laboratorio local probados; integración remota, habilitación y motor de ejecución pendientes según el [plan A/B](historial/PLAN_DOS_PERSONAS_MARTES.md).
 
 ## Verificación y límites
 

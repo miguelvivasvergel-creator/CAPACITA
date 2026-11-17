@@ -63,7 +63,7 @@ B6. Solo la integración que requiera soporte nuevo de motor depende de B.
 ## 4. Qué falta contrastar con toda la versión acordada
 
 Además del recorrido principal, el [reparto](PLAN_DOS_PERSONAS_MARTES.md) y la
-[visión](VISION_MAESTRA.md) incluyen capacidad compuesta reutilizable con
+[visión](../VISION_MAESTRA.md) incluyen capacidad compuesta reutilizable con
 dependencias/versiones, configuración de agente guardado, archivos privados,
 procedencia, búsqueda y métricas reales. No hay en este cierre evidencia suficiente
 para marcarlos todos completos. Revisar con ambos dueños qué está implementado,

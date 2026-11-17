@@ -132,7 +132,7 @@ no del cuerpo de la petición de workflow.
 
 ## Activación — referencia para otro entorno
 
-1. Revisar [08_private_workflows.sql](../db/08_private_workflows.sql) con Miguel.
+1. Revisar [08_private_workflows.sql](../../db/08_private_workflows.sql) con Miguel.
    Aplicar una sola vez en el mismo Supabase donde 07 ya está aplicado. No borrar
    ni importar SQLite. Conserva cuenta worker y versiones B3 existentes.
 2. En backend/.env del host worker, agregar `WORKFLOW_PROTOCOL=2` (sin tocar claves).

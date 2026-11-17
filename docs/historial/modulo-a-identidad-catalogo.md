@@ -1,6 +1,6 @@
 # Miguel (A): identidad y catálogo
 
-Actualizado: 14/11/2026. Guía vigente; [reporte anterior](historial/MODULO_A_2026-11-14.md) conservado como historial.
+Actualizado: 14/11/2026. Guía vigente; [reporte anterior](MODULO_A_2026-11-14.md) conservado como historial.
 
 ## Responsabilidad e identidad
 
@@ -50,4 +50,4 @@ No aplicar 01_schema.sql o 02_runs.sql automáticamente sobre ese proyecto: son 
 - **Siguiente:** probar autenticado Capacidades → Crear → Cargar ejemplo → Comprobar → Guardar → recargar Mis capacidades → detalle.
 - Pendientes IA/semántica/candidato/versiones/publicación/perfil completo/motor. Motor heredado usa memoria/mock; un UUID de catálogo no acredita implementación ejecutable.
 
-Instalación en [README](../README.md), punto de reanudación en [continuidad](CONTEXTO_Y_CONTINUIDAD.md).
+Instalación en [README](../../README.md), punto de reanudación en [continuidad](../CONTEXTO_Y_CONTINUIDAD.md).

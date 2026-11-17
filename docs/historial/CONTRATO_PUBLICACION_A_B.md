@@ -2,7 +2,7 @@
 
 Actualización B6, 16/11/2026: Fahida autoriza la integración. Contrato operativo
 implementado localmente en la rama integracion/Fahida-bloque-6 y documentado en
-[BLOQUE_6_INTEGRACION.md](BLOQUE_6_INTEGRACION.md), con SQL09, API de publicaciones,
+[BLOQUE_6_INTEGRACION.md](../BLOQUE_6_INTEGRACION.md), con SQL09, API de publicaciones,
 UI y consumo en planner/workflows. Probado en PostgreSQL temporal/gVisor y APIs.
 No aplicado/aceptado aún en Supabase real. Las notas de propuesta siguientes
 describen el traspaso original; no equivalen a aceptación remota ni cierre B6.

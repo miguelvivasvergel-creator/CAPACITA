@@ -16,7 +16,7 @@ Actualizado: 16/11/2026, America/Bogota. Estado actual; las sesiones anteriores 
 
 ## Punto exacto para retomar
 
-Traspaso para Fahida consolidado en [PARA_FAHIDA_MARTES.md](PARA_FAHIDA_MARTES.md):
+Traspaso para Fahida consolidado en [PARA_FAHIDA_MARTES.md](historial/PARA_FAHIDA_MARTES.md):
 commits A `3606a57` y `be49e6a`, evidencia real/simulada, B6 reportado en curso
 sin aceptación verificada, pendientes separados B/A y ensayo conjunto del 17.
 Publicación sigue pendiente en ambos frentes; no basta publicar la definición.
@@ -276,7 +276,7 @@ Reparación A explícita con límite configurable (2/h/proceso por defecto y cuo
 general), crea candidato nuevo draft sin heredar evidencia. Aceptación Gemini
 real 201: 5ef7a607, nuevo hash persistido, código/hash anteriores intactos. Segunda
 capacidad distinta preparada: mayúsculas, c7e2ed9f / candidato ba6d86d4, hash y
-casos independientes en [ENTREGA_MARTES.md](ENTREGA_MARTES.md). Ambos candidatos
+casos independientes en [ENTREGA_MARTES.md](historial/ENTREGA_MARTES.md). Ambos candidatos
 nuevos SIN ejecutar/probar/habilitar; no se aplicó SQL ni configuró worker.
 
 Filtros reales por categoría/autor/tipo y perfil propio con resumen, workflows y
@@ -296,7 +296,7 @@ transferencia entre dos capacidades y publicación/reutilización A/B. Modalidad
 local/enlace público aún no definida. Consultar Git para entrega de este bloque.
 
 Auditoría de cierre Miguel solicitada el 16/11/2026: inventario completo A1–A5
-en [CIERRE_MIGUEL.md](CIERRE_MIGUEL.md), con quince bloques pendientes, aceptación
+en [CIERRE_MIGUEL.md](historial/CIERRE_MIGUEL.md), con quince bloques pendientes, aceptación
 y dependencias B. Hallazgos centrales: publicación/versiones entre cuentas sin
 contrato operativo; Usar del catálogo pendiente; ruta Ejecutar heredada aún
 montada, con fallback a mocks y payload incompatible con runs actuales; enlace
@@ -321,7 +321,7 @@ Planner A corregido: review_hash por opción y version_hashes obligatorias en
 propuesta, selección única/exacta; contratos/metadatos cambiados devuelven 409
 antes de IA. Huellas no conceden acceso ni se envían a Gemini. Tras validar,
 disposición de nodos por dependencias separa pasos de $input y pasos paralelos;
-no toca el editor B ni datos guardados. Guía [PLANNER_A.md](PLANNER_A.md).
+no toca el editor B ni datos guardados. Guía [PLANNER_A.md](historial/PLANNER_A.md).
 145 pruebas backend completas, cinco grupos visuales planner y siete checks
 dashboard pasan; lint/build/imports/diff correctos y enlaces válidos en 24
 documentos. Revisados 30 archivos del bloque sin patrones de claves reconocibles;
@@ -384,7 +384,7 @@ Siete comprobaciones de paginación y seis grupos Playwright interceptados pasan
 lint, build, imports y diff --check correctos, bundle >500 kB conocido. Captura
 móvil inspeccionada sin desborde. Sin SQL, IA, datos remotos ni cambios al motor B.
 No se probó el resumen contra sesión real ni se certifica aquí ejecución B3/B4.
-Cambios locales sin commit/push. Guía: [dashboard/comunidad](DASHBOARD_COMUNIDAD_A.md).
+Cambios locales sin commit/push. Guía: [dashboard/comunidad](historial/DASHBOARD_COMUNIDAD_A.md).
 Siguiente: aceptación autenticada del resumen y planner A usando contrato B.
 
 Integraci?n local Miguel, 15/11/2026: usuario solicita traer la rama de Fahida.
@@ -534,7 +534,7 @@ run explícito; workflow se reabre con aprobación nueva. 96 tests, lint/build y
 Chrome con fixtures en escritorio/móvil pasan; lecturas remotas de historial y
 privacidad pasan sin modificar datos. Sin SQL nuevo ni integración de Miguel.
 Pendiente B6: aceptación conjunta, reconciliar App/Navbar y revisar planner,
-publicación/composición según alcance. Guía [B5](BLOQUE_5_RESULTADOS.md) y evidencia
+publicación/composición según alcance. Guía [B5](historial/BLOQUE_5_RESULTADOS.md) y evidencia
 en [continuidad B](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md). Esta nota supera pendientes B5
 anteriores; la nueva página aún no tiene recorrido real de Fahida confirmado.
 
@@ -568,7 +568,7 @@ Workflows, más privacidad de workflow conocido entre cuentas. No repetir SQL.
 B4 autorizado por Fahida: workflows privados implementados localmente, SQL 08
 preparado/no aplicado. 96 pruebas y dos pasos reales con gVisor/PostgreSQL temporal
 pasan; aceptación remota pendiente. Worker B3 compatible activo. Ver
-[guía B4](BLOQUE_4_WORKFLOWS.md) y continuidad B. No hay push ni merge nuevo.
+[guía B4](historial/BLOQUE_4_WORKFLOWS.md) y continuidad B. No hay push ni merge nuevo.
 
 **Cierre B3 privado**: usuaria confirmó recorrido real y F5/lectura propia/404 con
 otra cuenta. Agente completó aceptación contra Supabase real con fixture privada
@@ -594,7 +594,7 @@ y ejecución real de fixture en gVisor; SQL 07 preparado
 pero NO aplicado al proyecto remoto. B3 ya no está detenido: las notas anteriores
 de pausa quedan superadas por esta instrucción. Estado, límites y siguiente paso
 en [continuidad B](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md) y
-[guía B3](BLOQUE_3_EJECUCION.md). Siguiente: aplicar 07 y autorizar cuenta worker,
+[guía B3](historial/BLOQUE_3_EJECUCION.md). Siguiente: aplicar 07 y autorizar cuenta worker,
 después aceptación remota con dos cuentas. No declarar aceptación integrada todavía.
 
 Actualización B, 15/11/2026: Fahida confirma completado el checklist manual del
@@ -613,7 +613,7 @@ y laboratorio local implementados/probados. API de builds privada, trabajador
 separado, SQLite durable y panel de candidatos; revalida hashes/contratos y ejecuta
 fixtures reales dentro de gVisor. 75 pruebas backend pasan. Socket exclusivo del
 Engine Ubuntu evita interferencia de Desktop. Ver [continuidad propia de Fahida](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md)
-y [guía del laboratorio](LABORATORIO_BLOQUE_2.md). Falta aceptación con candidato
+y [guía del laboratorio](historial/LABORATORIO_BLOQUE_2.md). Falta aceptación con candidato
 Supabase propio/dos sesiones reales, revisión A de evidencia local y apagado abrupto.
 No hay habilitación/publicación ni motor persistente B3. Las notas históricas
 siguientes sobre ausencia de sandbox/laboratorio quedan superadas para el entorno
@@ -651,7 +651,7 @@ Checklist de definición estructurada confirmado por el usuario (conservar para 
 
 - Capacita es un asistente de trabajo extensible mediante capacidades creadas, combinadas, probadas y compartidas. No reducirlo a chat, documentos, marketing o catálogo estático.
 - Buscar primero dentro del catálogo autorizado. Una descripción no equivale a implementar o habilitar una capacidad.
-- **Miguel = Persona A**: identidad, catálogo, búsqueda, definición y generación. **Fahida = Persona B**: laboratorio, sandbox, workflows y ejecución. [Reparto](PLAN_DOS_PERSONAS_MARTES.md) y [contrato actual](CONTRATO_INTEGRACION.md), pendiente revisión conjunta de B.
+- **Miguel = Persona A**: identidad, catálogo, búsqueda, definición y generación. **Fahida = Persona B**: laboratorio, sandbox, workflows y ejecución. [Reparto](historial/PLAN_DOS_PERSONAS_MARTES.md) y [contrato actual](historial/CONTRATO_INTEGRACION.md), pendiente revisión conjunta de B.
 - El usuario autorizó implementar el frente Miguel, organizar archivos y subir el bloque local a `miguel` con commit de organización de carpetas. No autorizó gastos, facturación, despliegue o publicación de la aplicación.
 - Presupuesto estudiantil: software abierto, cuotas gratuitas y créditos confirmados. No asumir recursos ilimitados.
 - No ejecutar código generado dentro de FastAPI ni darle credenciales. API autoriza; B prepara ejecución aislada y evidencia.
@@ -687,7 +687,7 @@ Checklist de definición estructurada confirmado por el usuario (conservar para 
 - Retirados: WeatherForecast y solicitud HTTP de ejemplo .NET; hero.png/favicon.svg/icons.svg sin referencias; .gitkeep redundantes y temporales de navegador. Solo captura final local ignorada conservada.
 - Continuidad, estado y guía A anteriores archivados en docs/historial/. Guías actuales resumidas; visión/reparto mantienen sus rutas.
 - Auditor de imports de solo lectura: scripts/maintenance/audit_structure.py. Documenta archivos de B pendientes sin borrarlos automáticamente.
-- Inventario y reglas: [ESTRUCTURA.md](ESTRUCTURA.md). Limpieza validada: 32 pruebas HTTP, lint/build, auditoría de imports y enlaces Markdown correctos; sin módulos inactivos sin clasificar.
+- Inventario y reglas: [ESTRUCTURA.md](historial/ESTRUCTURA.md). Limpieza validada: 32 pruebas HTTP, lint/build, auditoría de imports y enlaces Markdown correctos; sin módulos inactivos sin clasificar.
 - Después de limpiar, usuario reportó diagnósticos `owner=mssql` en SQL 04/05 y en inspect_catalog_write.sql. Confirmada extensión MSSQL 1.47.0; analiza T-SQL, no PostgreSQL. Se añadió .vscode/settings.json con mssql.intelliSense.enableIntelliSense=false y enableErrorChecking=false solo para el workspace (claves/scope window verificados en manifiesto), y excepción precisa en .gitignore. No se alteró SQL ni Supabase; tampoco añade validador PostgreSQL. Pendiente recargar ventana para retirar diagnósticos anteriores. La prueba de definición sigue siendo el siguiente punto.
 
 ## Entorno, Git y validación

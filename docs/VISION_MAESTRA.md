@@ -145,7 +145,7 @@ Referencias de scopes discutidas, sujetas a verificación al implementar:
 Requisito de experiencia confirmado por el usuario el 16/11/2026: ofrecer un
 modo guiado para personas sin conocimientos técnicos y otro modo desarrollador.
 Es un requisito acordado. Su implementación y evidencia actual están separadas
-en [modos de uso A](MODOS_USO_A.md); no asumir completa toda la visión por existir esos modos.
+en [modos de uso A](historial/MODOS_USO_A.md); no asumir completa toda la visión por existir esos modos.
 En modo guiado, la persona describe su necesidad; la IA interpreta, pregunta si
 falta información, busca primero en el catálogo autorizado y propone reutilizar,
 configurar, combinar o crear capacidades faltantes. La persona revisa datos,

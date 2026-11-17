@@ -3,7 +3,7 @@
 Implementación local del 14/11/2026. Es un laboratorio de candidatos, no el motor
 de runs del bloque 3. No habilita versiones, publica capacidades ni modifica
 estados del catálogo. El seguimiento y la evidencia están en
-[continuidad de Fahida](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
+[continuidad de Fahida](../CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
 
 ## Guía manual detallada: empieza aquí
 
