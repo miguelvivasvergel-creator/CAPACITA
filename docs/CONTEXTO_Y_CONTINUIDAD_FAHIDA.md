@@ -74,6 +74,14 @@ Avance registrado:
    tabla se retiró porque hay 13 versiones desactivadas `managed-tools-v1`).
    Tests 171/173 (2 planner Supabase 503 ajenos).
 
+9. 17/11 — SQL 11 aplicado: Supabase tenía `version_executor` (experimento
+   managed-tools, columna managed_id, no versionado) que exigía stdlib; ampliada a
+   toolbox y retirada `versions_profile_known` (el segundo intento del SQL 10 sí la
+   instaló). Recorrido real: TitleCaseConverterAndCounter creada y probada en toolbox,
+   activada (201), plan, aprobación y ejecución completadas. Chat: si el planner
+   responde blocked, se intenta diseñar una herramienta (el diseñador bloquea si
+   hace falta algo externo). Mejora anotada: botón "Créalas todas".
+
 Siguiente (plan hasta el jueves 19/11): paso 3 archivos de entrada y salida
 (📎 en el chat, piezas conversoras leer/crear PDF-Word-Excel, descarga), paso 4
 demo real, compartir desde el chat y menú.
