@@ -23,7 +23,9 @@ class GeminiProviderTests(unittest.IsolatedAsyncioTestCase):
         self.definition = CapabilityDefinition(**definition())
 
     def provider(self, handler):
-        return GeminiProvider(self.configuration, httpx.MockTransport(handler))
+        async def no_wait(_):
+            return None
+        return GeminiProvider(self.configuration, httpx.MockTransport(handler), sleep=no_wait)
 
     async def test_interpretation_sends_only_objective_and_answers(self):
         request = ObjectiveRequest(objective="Quitar espacios exteriores y conservar interiores", consent_to_provider=True)
@@ -89,7 +91,8 @@ class GeminiProviderTests(unittest.IsolatedAsyncioTestCase):
                 await self.provider(handle).generate(self.definition)
             self.assertEqual(caught.exception.status_code, 503)
             self.assertNotIn("test-only-secret", caught.exception.detail)
-            self.assertEqual(len(calls), 1)
+            # Solo "servicio ocupado" se reintenta (2 pausas cortas); lo demás nunca.
+            self.assertEqual(len(calls), 3 if status == 500 else 1)
 
     async def test_malformed_blocked_truncated_and_oversized_responses_fail(self):
         for body in ({}, response(finish="MAX_TOKENS"), {"candidates": None}, response(source="")):
@@ -98,6 +101,21 @@ class GeminiProviderTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(caught.exception.status_code, 502)
         with self.assertRaises(HTTPException):
             await self.provider(lambda _: httpx.Response(200, content=b"x" * (MAX_RESPONSE_BYTES + 1))).generate(self.definition)
+
+    async def test_busy_service_retries_briefly_then_explains(self):
+        calls, pauses = [], []
+        async def sleep(seconds):
+            pauses.append(seconds)
+        def busy_then_ok(request):
+            calls.append(request)
+            return httpx.Response(503) if len(calls) < 3 else httpx.Response(200, json=response())
+        provider = GeminiProvider(self.configuration, httpx.MockTransport(busy_then_ok), sleep=sleep)
+        self.assertIn("def run", (await provider.generate(self.definition)).source)
+        self.assertEqual((len(calls), pauses), (3, [2, 5]))
+        always_busy = GeminiProvider(self.configuration, httpx.MockTransport(lambda _: httpx.Response(503)), sleep=sleep)
+        with self.assertRaises(HTTPException) as caught:
+            await always_busy.generate(self.definition)
+        self.assertIn("muy ocupado", caught.exception.detail)
 
     async def test_timeout_does_not_leak_request_or_retry(self):
         def handle(request):

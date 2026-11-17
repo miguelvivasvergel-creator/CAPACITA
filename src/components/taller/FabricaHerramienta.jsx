@@ -77,7 +77,14 @@ export default function FabricaHerramienta({ definition, onEstado, onLista }) {
       }
       const revision = await revisarGeneracion(capacidad.current.id, { signal });
       anotar('✍️', 'La IA está escribiendo el código…'); estado('escribiendo');
-      let candidato = await conTurno(() => generarCandidato(capacidad.current.id, { definition_hash: revision.definition_hash, acknowledge_similar: true, consent_to_provider: true }), signal);
+      const generar = () => conTurno(() => generarCandidato(capacidad.current.id, { definition_hash: revision.definition_hash, acknowledge_similar: true, consent_to_provider: true }), signal);
+      let candidato;
+      try { candidato = await generar(); } catch (cause) {
+        // 422/502: la IA entregó código inválido o bloqueado; se pide otra versión una sola vez.
+        if (![422, 502].includes(cause.status)) throw cause;
+        anotar('🔁', 'La IA entregó un código que no sirve. Le pido otra versión…');
+        candidato = await generar();
+      }
       for (let correcciones = 0; ; correcciones++) {
         const build = await probar(candidato, signal);
         const casos = build.report?.cases || [];
