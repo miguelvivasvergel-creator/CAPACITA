@@ -1,6 +1,6 @@
-import AsistenteGuiado from '../components/capabilities/AsistenteGuiado';
-import ResumenTrabajo from '../components/profile/ResumenTrabajo';
-import Icono from '../components/common/Icono';
-export default function InicioGuiado({usuario,onCambiarSeccion}) {
-  return <div className="inicio-guiado vista-contenedor"><header className="inicio-bienvenida"><span className="vista-etiqueta"><span className="inicio-punto"/>TU ESPACIO, TUS POSIBILIDADES</span><p className="inicio-saludo">Hola, {usuario?.name?.split(' ')[0]||'bienvenido'}</p><h1>De una necesidad<br/>a una <span>solución.</span></h1><p>Cuéntanos qué quieres lograr. Capacita conecta las herramientas y te acompaña hasta el resultado.</p></header><div className="inicio-recorrido" aria-label="Cómo funciona">{[['buscar','Encuentra','Buscamos entre tus herramientas.'],['soluciones','Conecta','Preparamos una solución contigo.'],['resultados','Resuelve','Revisas, ejecutas y reutilizas.']].map(([icono,title,detail],index)=><div key={title}><span className="recorrido-icono"><Icono nombre={icono}/></span><p><strong><span className="recorrido-numero">0{index+1}</span>{title}</strong><span>{detail}</span></p>{index<2&&<Icono nombre="flecha" className="recorrido-flecha h-4 w-4"/>}</div>)}</div><AsistenteGuiado key={`asistente:${usuario?.id}`} usuario={usuario} onCambiarSeccion={onCambiarSeccion}/><ResumenTrabajo key={`resumen:${usuario?.id}`} experiencia="guiado" onCambiarSeccion={onCambiarSeccion}/></div>;
+import ChatTaller from '../components/taller/ChatTaller';
+
+// Inicio de la versión final: una sola pantalla de chat + taller.
+export default function InicioGuiado({ usuario, onCambiarSeccion }) {
+  return <ChatTaller key={`taller:${usuario?.id}`} usuario={usuario} onCambiarSeccion={onCambiarSeccion} />;
 }

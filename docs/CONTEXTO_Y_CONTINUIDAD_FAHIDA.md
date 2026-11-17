@@ -1,5 +1,31 @@
 # Fahida — contexto y continuidad
 
+## Versión final soñada — 17/11/2026 (en curso, meta jueves 19/11)
+
+Fahida decide construir sola la [versión final](VISION_FINAL.md): chat + taller
+tipo n8n, fábrica "primero interno", comunidad. Rama `integracion/Fahida-bloque-6`.
+
+Avance registrado:
+
+1. `c8bd616` Documento VISION_FINAL.md con hoja de ruta de 8 fases. Push hecho.
+2. `b026a6a` Limpieza: 12 archivos frontend fuera de main.jsx, 12 mocks sin uso,
+   backend-dotnet/ y 20 docs a historial. Lint/build/enlaces OK; backend 166/168
+   (2 tests del planner reciben 503 de Supabase; backend no se tocó). Push hecho.
+3. backend/.env tenía GEMINI_TIMEOUT_SECONDS=180 (máximo admitido 60): la API no
+   cargaba la configuración. Corregido a 60 con autorización; claves intactas.
+4. Fase 1 chat + taller (implementada, sin probar todavía con sesión real):
+   `src/components/taller/` (ChatTaller, LienzoTaller, TarjetaPlan, estadosNodo)
+   y estilos `.taller-*` en workspace.css. Inicio del modo Guiado = ChatTaller.
+   Orquesta APIs existentes: /planner/options → /planner/propose; sin opciones o
+   faltante → /objectives/interpret + PrepararHerramientaGuiada (laboratorio real);
+   plan → guardar/aprobar/ejecutar workflow y seguimiento /runs/{id} que pinta los
+   nodos. Consentimiento Gemini una vez por conversación. Lint/build OK.
+
+Siguiente: verificación visual con fixtures, prueba real con sesión de Fahida,
+luego fase 2 (archivos privados) y fase 3 (caja de herramientas del sandbox).
+Las pantallas Guiado antiguas (AsistenteGuiado, PlanGuiado) quedan sin uso desde
+Inicio y se retirarán tras validar el chat. No afirmar versión final completa.
+
 ## B6 en curso — 16/11/2026
 
 Fahida autoriza integrar `origin/miguel` y avanzar B6. Nueva rama
