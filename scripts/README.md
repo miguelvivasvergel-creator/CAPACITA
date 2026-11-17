@@ -81,15 +81,17 @@ La auditoría comprueba imports locales del frontend y señala módulos fuera de
 ## Experiencia guiada de Miguel
 
 `node scripts/maintenance/verify_guided_data.mjs` comprueba preferencias aisladas,
-formularios tipados y orden de lectura. `maintenance/verify_guided_browser.js`
-se ejecuta con Playwright CLI en un navegador aislado abierto en Vite; intercepta
-identidad y todas las APIs de negocio. No requiere iniciar sesión, no usa Supabase
-ni Gemini y no crea datos reales. Fixtures en `src/mocks/guiado.js`.
+formularios tipados y orden de lectura. `maintenance/verify_taller_browser.js`
+verifica el chat + taller (Inicio del modo Guiado) con Playwright CLI en un
+navegador aislado abierto en Vite: plan compuesto, consentimiento, ejecución con
+nodos en vivo, reintento idempotente, salida escapada, móvil 390 y creación de una
+herramienta faltante. Intercepta identidad y todas las APIs de negocio; no usa
+Supabase ni Gemini y no crea datos reales. Fixtures en `src/mocks/guiado.js`.
 Ver alcance y evidencia real separada en [modos de uso](../docs/MODOS_USO_A.md).
 
 ```powershell
 npx.cmd --yes --package @playwright/cli playwright-cli -s=capacita-qa open http://127.0.0.1:5173
-npx.cmd --yes --package @playwright/cli playwright-cli -s=capacita-qa run-code --filename scripts/maintenance/verify_guided_browser.js
+npx.cmd --yes --package @playwright/cli playwright-cli -s=capacita-qa run-code --filename scripts/maintenance/verify_taller_browser.js
 ```
 
 ## Resultados e historial B5

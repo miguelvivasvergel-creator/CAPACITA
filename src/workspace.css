@@ -159,14 +159,14 @@
 .taller-compositor textarea:focus-visible { border-color:var(--color-brand-primary); box-shadow:0 0 0 3px #2563eb26; }
 .taller-compositor button { display:grid; width:46px; height:46px; flex-shrink:0; place-items:center; border-radius:14px; color:#fff; font-size:18px; background:var(--color-brand-primary); }
 .taller-compositor button:disabled { opacity:.45; }
-.taller-lienzo { display:flex; min-height:0; flex-direction:column; gap:12px; border:1px solid var(--color-brand-border); border-radius:24px; padding:16px; background:linear-gradient(180deg,#fff,#f6f9ff); box-shadow:var(--sombra-soft); }
-.taller-detalle { max-height:40%; overflow-y:auto; border:1px solid var(--color-brand-border); border-radius:16px; padding:12px 14px; background:#fff; }
-.taller-pestanas { display:flex; gap:6px; border-radius:14px; padding:4px; background:#eef3fc; }
+.taller-lienzo { display:flex; min-height:0; overflow:hidden; flex-direction:column; gap:12px; border:1px solid var(--color-brand-border); border-radius:24px; padding:16px; background:linear-gradient(180deg,#fff,#f6f9ff); box-shadow:var(--sombra-soft); }
+.taller-detalle { flex-shrink:0; max-height:40%; overflow-y:auto; border:1px solid var(--color-brand-border); border-radius:16px; padding:12px 14px; background:#fff; }
+.taller-pestanas { display:none; gap:6px; border-radius:14px; padding:4px; background:#eef3fc; }
 .taller-pestanas button { flex:1; min-height:40px; border-radius:10px; font-size:13px; font-weight:600; color:var(--color-brand-slate); }
 .taller-pestanas button[aria-selected="true"] { color:var(--color-brand-dark); background:#fff; box-shadow:var(--sombra-soft); }
 .taller-pulso { animation:taller-pulso 1.4s infinite ease-in-out; }
 @keyframes taller-pulso { 0%,100% { box-shadow:0 0 0 0 #2563eb33; } 50% { box-shadow:0 0 0 8px #2563eb00; } }
 @keyframes taller-punto { 0%,80%,100% { transform:scale(.6); opacity:.5; } 40% { transform:scale(1); opacity:1; } }
 @keyframes taller-aparecer { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
-@media (max-width:1023px) { .taller-pantalla { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); padding:16px; gap:12px; } }
+@media (max-width:1023px) { .taller-pantalla { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); height:calc(100dvh - 13rem); padding:16px; gap:12px; } .taller-pestanas { display:flex; } .taller-pantalla[data-vista="chat"] .taller-lienzo, .taller-pantalla[data-vista="taller"] .taller-chat { display:none; } }
 @media (prefers-reduced-motion:reduce) { .taller-mensaje,.taller-pulso,.taller-puntos i { animation:none; } }

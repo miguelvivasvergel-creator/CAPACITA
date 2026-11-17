@@ -10,7 +10,7 @@ recurren a ellos cuando falla la API.
 | inicio.js | Fixture de `scripts/maintenance/verify_home_browser.js`. |
 | perfil-real.js | Fixture de `scripts/maintenance/verify_profile_browser.js`. |
 | busqueda.js | Fixture de `scripts/maintenance/verify_search_browser.js`. |
-| guiado.js | Fixture de `scripts/maintenance/verify_guided_browser.js`. |
+| guiado.js | Fixture de `scripts/maintenance/verify_taller_browser.js`. |
 | trabajo.js | Fixture de `verify_trabajo_browser.js` y `verify_planner_resume_browser.js`. |
 
 Las fixtures de pruebas de pantalla se retiran junto con la pantalla que verifican.

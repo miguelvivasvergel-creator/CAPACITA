@@ -21,7 +21,16 @@ Avance registrado:
    plan → guardar/aprobar/ejecutar workflow y seguimiento /runs/{id} que pinta los
    nodos. Consentimiento Gemini una vez por conversación. Lint/build OK.
 
-Siguiente: verificación visual con fixtures, prueba real con sesión de Fahida,
+5. Verificación visual con fixtures: `scripts/maintenance/verify_taller_browser.js`
+   pasa 7 comprobaciones (plan + consentimiento, fallo de red y reintento con la
+   misma clave, nodo en curso iluminado, salida escapada y nodos en verde, detalle
+   del paso, móvil 390 sin desplazamiento, herramienta faltante creándose). Capturas
+   revisadas en output/playwright/taller-*.png (ignoradas). Corregidos tras revisar:
+   pestañas visibles en escritorio, detalle encima del lienzo, reencuadre en móvil.
+   AsistenteGuiado y verify_guided_browser.js retirados (reemplazados por el chat).
+   No es prueba con sesión, Gemini ni worker reales.
+
+Siguiente: prueba real con sesión de Fahida (API + worker + Gemini),
 luego fase 2 (archivos privados) y fase 3 (caja de herramientas del sandbox).
 Las pantallas Guiado antiguas (AsistenteGuiado, PlanGuiado) quedan sin uso desde
 Inicio y se retirarán tras validar el chat. No afirmar versión final completa.

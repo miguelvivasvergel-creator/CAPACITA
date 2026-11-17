@@ -13,7 +13,7 @@ IMPORTS = re.compile(r"(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['\"]([^'\"]+)['\"]")
 ASSETS = re.compile(r"(?:url\(\s*|(?:src|href)\s*=\s*)['\"]?([^\s'\"\)<>]+)")
 EXTENSIONS = (".js", ".jsx", ".css", ".json")
 EXPECTED_INACTIVE = {
-    "src/mocks/guiado.js": "fixtures de experiencia guiada; nunca fallback ni evidencia de ejecución real",
+    "src/mocks/guiado.js": "fixtures del chat + taller (verify_taller_browser.js); nunca fallback",
     "src/mocks/trabajo.js": "fixture visual de integración A/B3 y reparación; nunca fallback",
     "src/mocks/busqueda.js": "fixture de pruebas interceptadas; no fallback de búsqueda",
     "src/mocks/perfil-real.js": "fixture de contrato para pruebas interceptadas, sin fallback",

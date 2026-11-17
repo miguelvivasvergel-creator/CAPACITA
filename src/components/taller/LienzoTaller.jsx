@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Background, Controls, Handle, Position, ReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { pasosEnOrden } from '../../utils/formularioDatos';
@@ -22,6 +22,7 @@ const nodeTypes = { paso: Nodo };
  * con el estado real de cada paso, o una herramienta nueva mientras se crea.
  */
 export default function LienzoTaller({ definicion, creando, estados = {}, seleccionado, onSeleccionar }) {
+  const contenedor = useRef(null), flujo = useRef(null);
   const { nodes, edges } = useMemo(() => {
     if (creando) {
       return { nodes: [{ id: 'creando', type: 'paso', position: { x: 0, y: 0 }, data: { tipo: 'Herramienta nueva', label: creando, estado: 'creando' } }], edges: [] };
@@ -45,16 +46,27 @@ export default function LienzoTaller({ definicion, creando, estados = {}, selecc
     return { nodes: nodos, edges: [...conexiones.entries()].map(([id, edge]) => ({ id, ...edge, type: 'smoothstep', animated: activa(edge), style: { strokeWidth: 2 } })) };
   }, [definicion, creando, estados, seleccionado]);
 
+  const cantidad = nodes.length;
+  // Reencuadra al cambiar de tamaño (pestañas en móvil, panel de detalle) o al crecer el plan.
+  useEffect(() => {
+    const node = contenedor.current;
+    if (!node) return;
+    const ajustar = () => flujo.current?.fitView({ padding: 0.08 });
+    const observer = new ResizeObserver(() => requestAnimationFrame(ajustar));
+    observer.observe(node); ajustar();
+    return () => observer.disconnect();
+  }, [cantidad]);
+
   if (!nodes.length) {
-    return <div className="flex h-full min-h-72 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 p-6 text-center">
+    return <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 p-6 text-center">
       <p className="text-4xl" aria-hidden="true">🧩</p>
       <p className="font-semibold text-slate-800">Aquí verás tu proceso armándose</p>
       <p className="max-w-xs text-sm text-slate-600">Cuéntale a Capacita lo que necesitas. Las herramientas aparecerán conectadas y se iluminarán mientras trabajan.</p>
     </div>;
   }
-  return <div className="h-full min-h-72 rounded-2xl border border-slate-200 bg-slate-50" aria-label="Taller: mapa del proceso">
-    <ReactFlow key={definicion?.name || creando} nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView minZoom={0.2} maxZoom={1.4}
-      nodesConnectable={false} onNodeClick={(_, node) => onSeleccionar?.(node.id)} proOptions={{ hideAttribution: true }}>
+  return <div ref={contenedor} className="h-full min-h-[200px] rounded-2xl border border-slate-200 bg-slate-50" aria-label="Taller: mapa del proceso">
+    <ReactFlow key={definicion?.name || creando} nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.08 }} minZoom={0.2} maxZoom={1.4}
+      nodesConnectable={false} onInit={(instance) => { flujo.current = instance; }} onNodeClick={(_, node) => onSeleccionar?.(node.id)} proOptions={{ hideAttribution: true }}>
       <Background /><Controls showInteractive={false} />
     </ReactFlow>
   </div>;

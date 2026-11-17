@@ -211,11 +211,11 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   }
 
   const vacio = !mensajes.length;
-  return <section className="taller-pantalla" aria-label="Chat y taller de Capacita" data-task-busy={ocupado ? 'true' : undefined} data-trabajo-pendiente={conversacion ? 'true' : undefined}>
-    <div className="taller-pestanas lg:hidden" role="tablist" aria-label="Vista">
+  return <section className="taller-pantalla" data-vista={vistaMovil} aria-label="Chat y taller de Capacita" data-task-busy={ocupado ? 'true' : undefined} data-trabajo-pendiente={conversacion ? 'true' : undefined}>
+    <div className="taller-pestanas" role="tablist" aria-label="Vista">
       {[['chat', '💬 Chat'], ['taller', '🧩 Taller']].map(([valor, etiqueta]) => <button key={valor} type="button" role="tab" aria-selected={vistaMovil === valor} onClick={() => setVistaMovil(valor)}>{etiqueta}</button>)}
     </div>
-    <div className={`taller-chat ${vistaMovil === 'chat' ? '' : 'max-lg:hidden'}`}>
+    <div className="taller-chat">
       <div className="taller-mensajes" aria-live="polite">
         {vacio && <div className="taller-bienvenida">
           <p className="text-sm font-semibold text-blue-700">Hola, {usuario?.name?.split(' ')[0] || 'bienvenida'} 👋</p>
@@ -235,7 +235,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
         <button type="submit" disabled={ocupado || !texto.trim()} aria-label="Enviar">➤</button>
       </form>
     </div>
-    <aside className={`taller-lienzo ${vistaMovil === 'taller' ? '' : 'max-lg:hidden'}`} aria-label="Taller">
+    <aside className="taller-lienzo" aria-label="Taller">
       <div className="flex items-center justify-between gap-2">
         <p className="font-bold text-slate-900">🧩 Taller</p>
         {(plan || creando) && <p className="text-xs text-slate-500">{creando ? 'Creando herramienta' : run ? ESTADO_RUN[run.status] || run.status : 'Plan listo · toca un paso para ver detalles'}</p>}
