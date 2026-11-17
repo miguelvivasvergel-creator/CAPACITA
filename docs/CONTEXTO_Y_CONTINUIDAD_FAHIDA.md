@@ -47,6 +47,20 @@ Avance registrado:
    → activar → plan). Corregido: nodo en creación quedaba oculto (React Flow sin
    medir) al cambiar de estado. Pendiente: recorrido con sesión, Gemini y worker reales.
 
+7. 17/11 — Primer recorrido real completo con sesión de Fahida, Gemini y worker:
+   "Cuenta cuántas vocales…" → herramienta creada, probada en gVisor y activada →
+   plan → dato pedido en el chat → ejecución → {total 4, vocal "o", 2}. Arreglos
+   necesarios: `.env` local WORKFLOW_PROTOCOL 3→2 (el worker no arrancaba) y
+   GEMINI_MODEL=gemini-3.1-flash-lite (el modelo por defecto gemini-4-hydrogen da
+   503 por alta demanda; el código no lee GEMINI_TASK/CODE/CONVERSATION_MODEL).
+   `0adb4b5`: reintento corto solo ante 500/503 de Google, instrucción de código
+   multilínea (flash-lite escribía todo en una línea), la fábrica pide otra versión
+   una vez si el código es inválido. `9ce05f4`: el chat pide el dato único como
+   mensaje (sin recortar espacios) y "Aprobar y ejecutar" guarda una vez y ejecuta;
+   esquemas del planner sin additionalProperties se aceptan.
+   Idea de Fahida: entrada y salida en otros formatos (PDF, Word…) → conversores
+   como capacidades base en el paso 2/3 (propuesta, no implementada).
+
 Siguiente (plan hasta el jueves 19/11): paso 2 caja de herramientas del sandbox
 (Pillow, pypdf, reportlab, python-docx, openpyxl; ojo: SQL de habilitar versión
 exige `report.profile = 'gvisor-python-stdlib-v1'`), paso 3 archivos de entrada y
