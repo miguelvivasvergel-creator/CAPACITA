@@ -3,13 +3,9 @@
 -- gvisor-python-stdlib-v1. Las nuevas guardan el perfil con que superaron su prueba,
 -- y el trabajador las ejecuta con la imagen de ese mismo perfil.
 BEGIN;
--- NOT VALID: rige para versiones nuevas o modificadas; no reescribe ni revisa filas
--- antiguas (en Supabase existen versiones de prueba con otro perfil, que el trabajador
--- ya rechaza por no estar en su lista cerrada).
-ALTER TABLE capacita_execution.versions
- ADD CONSTRAINT versions_profile_known
- CHECK (profile IN ('gvisor-python-stdlib-v1','gvisor-python-toolbox-v1')) NOT VALID;
-
+-- Sin restricción nueva en la tabla: en Supabase existen versiones de prueba con otro
+-- perfil. Solo esta función inserta versiones y el trabajador rechaza perfiles fuera de
+-- su lista cerrada (execution_engine.IMAGES).
 CREATE OR REPLACE FUNCTION public.execution_enable(p_candidate_id uuid,p_build_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE b capacita_execution.jobs; v capacita_execution.versions; c public.capability_candidates;
