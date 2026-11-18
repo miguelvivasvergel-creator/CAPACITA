@@ -14,7 +14,7 @@ import sys
 import time
 from uuid import uuid4
 
-ROOT = Path(r"C:\Users\Fahida\Desktop\CAPACITA")
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from fastapi import HTTPException  # noqa: E402
