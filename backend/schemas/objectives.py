@@ -80,6 +80,52 @@ class ObjectiveInterpretation(BaseModel):
         return self
 
 
+class AdjustRequest(BaseModel):
+    """Ajuste conversado de las opciones de una herramienta ya creada («ponle 30 %»).
+
+    Solo viajan la frase, el contrato de opciones y sus valores actuales: nunca los
+    archivos ni las entradas de la persona.
+    """
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    request: str = Field(min_length=1, max_length=500)
+    tool_name: str = Field(min_length=1, max_length=80)
+    tool_description: str = Field(default="", max_length=500)
+    parameter_schema: dict
+    current: dict = Field(default_factory=dict)
+    consent_to_provider: bool = False
+
+    @model_validator(mode="after")
+    def bounded_contract(self):
+        from jsonschema import Draft202012Validator
+        from jsonschema.exceptions import SchemaError
+        if len(json.dumps(self.parameter_schema)) > 16000 or len(json.dumps(self.current)) > 16000:
+            raise ValueError("Opciones demasiado grandes")
+        schema = self.parameter_schema
+        if schema.get("type") != "object" or not isinstance(schema.get("properties"), dict) or not schema["properties"]:
+            raise ValueError("La herramienta no tiene opciones ajustables")
+        try:
+            Draft202012Validator.check_schema(schema)
+        except SchemaError:
+            raise ValueError("Contrato de opciones inválido") from None
+        if any(isinstance(spec, dict) and spec.get("contentEncoding") for spec in schema["properties"].values()):
+            raise ValueError("Las opciones no pueden ser archivos")
+        return self
+
+
+class AdjustProposal(BaseModel):
+    """Lo que devuelve la IA; los valores se validan después contra el contrato."""
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["adjust", "improve", "new"]
+    explanation: str = Field(min_length=1, max_length=300)
+    parameters_json: str = Field(default="{}", max_length=16000)
+
+
+class AdjustResponse(BaseModel):
+    decision: Literal["adjust", "improve", "new"]
+    explanation: str
+    parameters: dict | None = None
+
+
 class ObjectiveResponse(BaseModel):
     interpretation: ObjectiveInterpretation
     definition: CapabilityDefinition | None = None

@@ -1,15 +1,37 @@
 """Busca antes de interpretar; devuelve borradores para revisión sin guardado automático."""
 import asyncio
+import json
 import re
 
 from fastapi import HTTPException
+from jsonschema import Draft202012Validator
 
 from repositories.capabilities import CapabilityRepository
-from schemas.objectives import ObjectiveRequest, ObjectiveResponse, draft_to_definition
-from services.candidate_generation import limiter
+from schemas.objectives import AdjustRequest, AdjustResponse, ObjectiveRequest, ObjectiveResponse, draft_to_definition
+from services.candidate_generation import GenerationLimiter, limiter
 from services.contract_validation import validate_definition
 
 STOP_WORDS = set("quiero necesito favor ayuda hacer crear capacidad para desde sobre como cómo que qué con sin una uno unos unas los las del por mis sus esto esta este tengo tiene debe pueda puede recibir devuelve obtener datos texto please want need help create with from this that into the and for".split())
+
+
+# Librerías que ya trae la caja de herramientas del sandbox: no son recursos externos.
+# Gemini a veces las declara como recurso y eso bloqueaba herramientas que sí se pueden crear.
+LIBRERIA_INSTALADA = re.compile(
+    r"pillow|\bpil\b|pypdf|python-docx|openpyxl|reportlab"
+    r"|(librer[ií]a|biblioteca|paquete)s?\b.*\b(est[aá]ndar|im[aá]gen|color|pdf|word|excel|hoja|documento)",
+    re.IGNORECASE)
+EXTERNO = re.compile(
+    r"\bred\b|internet|\bapi\b|cuenta|servicio|credencial|token|clave|hardware|c[aá]mara|micr[oó]fono"
+    r"|nube|https?:|correo|e-?mail|base de datos|conector|ocr|tesseract|opencv|ffmpeg",
+    re.IGNORECASE)
+
+
+def quitar_librerias_instaladas(draft):
+    """Quita de recursos/permisos solo las librerías ya instaladas; lo externo se conserva."""
+    def externo(texto: str) -> bool:
+        return not LIBRERIA_INSTALADA.search(texto) or bool(EXTERNO.search(texto))
+    return draft.model_copy(update={campo: [t for t in getattr(draft, campo) if externo(t)]
+                                    for campo in ("resources", "required_permissions")})
 
 
 def search_terms(objective: str):
@@ -22,6 +44,29 @@ async def search_catalog(queries, repository: CapabilityRepository):
     pages = await asyncio.gather(*(repository.list(q=query, limit=6) for query in queries))
     rows = {row["id"]: row for page in pages for row in page["items"]}
     return list(rows.values()), any(page["next_cursor"] for page in pages)
+
+
+# Ajustes conversados («ponle 30 %»): turno propio para no gastar el de crear herramientas.
+adjust_limiter = GenerationLimiter(hourly_limit=60, min_gap=3)
+
+
+async def adjust_parameters(request: AdjustRequest, user_id, provider, limits=adjust_limiter) -> AdjustResponse:
+    if not request.consent_to_provider:
+        raise HTTPException(422, "Confirma que autorizas enviar tu ajuste a Gemini")
+    limits.start(user_id)
+    try:
+        proposal = await provider.adjust(request)
+    finally:
+        limits.finish(user_id)
+    parameters = None
+    if proposal.decision == "adjust":
+        try:
+            parameters = json.loads(proposal.parameters_json)
+        except ValueError:
+            parameters = None
+        if not isinstance(parameters, dict) or not Draft202012Validator(request.parameter_schema).is_valid(parameters):
+            raise HTTPException(502, "La IA propuso valores que no cumplen las opciones de la herramienta; no se cambió nada")
+    return AdjustResponse(decision=proposal.decision, explanation=proposal.explanation, parameters=parameters)
 
 
 async def interpret_objective(request: ObjectiveRequest, repository: CapabilityRepository, provider, limits=limiter):
@@ -37,6 +82,7 @@ async def interpret_objective(request: ObjectiveRequest, repository: CapabilityR
         limits.finish(repository.user_id)
     definition, definition_hash = None, None
     if interpreted.decision == "define":
+        interpreted = interpreted.model_copy(update={"draft": quitar_librerias_instaladas(interpreted.draft)})
         try:
             definition = draft_to_definition(interpreted.draft)
             definition_hash = validate_definition(definition)

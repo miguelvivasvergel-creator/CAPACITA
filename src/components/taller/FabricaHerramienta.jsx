@@ -3,8 +3,9 @@ import { api } from '../../api';
 import { comprobarDefinicion, guardarDefinicion } from '../../services/definiciones';
 import { generarCandidato, repararCandidato, revisarGeneracion } from '../../services/candidatos';
 import { crearPrueba } from '../../services/laboratorio';
-import { habilitarVersion } from '../../services/versiones';
+import { deshabilitarVersion, habilitarVersion } from '../../services/versiones';
 import { observacionPruebas, pruebaReparable, casosDesdeEjemplos } from './fabrica';
+import VistaPrevia from './VistaPrevia';
 
 const MAX_CORRECCIONES = 2;
 const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50';
@@ -21,14 +22,16 @@ function espera(ms, signal) {
  * prueba con los ejemplos de la definición y, si falla, la IA lo corrige (máximo 2 veces).
  * Solo se activa cuando la persona lo confirma; nada se publica.
  */
-export default function FabricaHerramienta({ definition, onEstado, onLista }) {
+export default function FabricaHerramienta({ definition, onEstado, onLista, archivo, registrarAjustador, onMejorar, automatica = false, onFallo }) {
   const [similares, setSimilares] = useState([]);
   const [fase, setFase] = useState('inicio'); // inicio | trabajando | lista | fallo | activa
   const [bitacora, setBitacora] = useState([]);
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState(null); // { candidato, build }
   const capacidad = useRef(null), control = useRef(null), avisar = useRef(onEstado), final = useRef(null);
-  useEffect(() => { avisar.current = onEstado; }, [onEstado]);
+  // El trabajo dura minutos: los avisos al chat usan siempre su versión más reciente.
+  const lista = useRef(onLista), fallo = useRef(onFallo), arrancada = useRef(false);
+  useEffect(() => { avisar.current = onEstado; lista.current = onLista; fallo.current = onFallo; }, [onEstado, onLista, onFallo]);
   // La tarjeta crece con cada paso: mantener visible lo último que ocurrió.
   useEffect(() => { if (bitacora.length) final.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [bitacora.length, fase, error]);
   const bloqueada = definition.resources?.length > 0 || definition.required_permissions?.length > 0;
@@ -39,6 +42,16 @@ export default function FabricaHerramienta({ definition, onEstado, onLista }) {
     return () => { vivo = false; control.current?.abort(); };
   }, [definition]);
 
+  // «Créalas todas»: arranca sola. El temporizador evita el doble arranque de StrictMode.
+  useEffect(() => {
+    if (!automatica) return undefined;
+    if (bloqueada) { fallo.current?.(); return undefined; }
+    const timer = setTimeout(() => { if (!arrancada.current) { arrancada.current = true; fabricar(); } }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fallar = () => { setFase('fallo'); estado('failed'); fallo.current?.(); };
   const anotar = (icono, texto, tono = 'activo') => setBitacora((old) => [...old.map((item) => item.tono === 'activo' ? { ...item, tono: 'ok' } : item), { icono, texto, tono }]);
   const estado = (valor) => avisar.current?.(valor);
 
@@ -90,7 +103,19 @@ export default function FabricaHerramienta({ definition, onEstado, onLista }) {
         const casos = build.report?.cases || [];
         if (build.status === 'passed') {
           anotar('✅', `Superó ${casos.length} de ${casos.length} ejemplos.`, 'ok');
-          setResultado({ candidato, build }); setFase('lista'); estado('aprobar');
+          setResultado({ candidato, build });
+          if (build.storage_backend !== 'supabase') { setFase('lista'); estado('aprobar'); return; }
+          // Se activa en privado «en prueba» para mostrar el resultado con el archivo real.
+          anotar('🔓', 'La activo en prueba (solo tú la ves) para mostrarte el resultado…');
+          const version = await habilitarVersion(candidato.id, build.id);
+          if (automatica) {
+            // Pieza intermedia: el resultado se verá al final, con la solución completa.
+            setResultado({ candidato, build, version }); setFase('activa'); estado('completed');
+            lista.current?.(version, false);
+            return;
+          }
+          anotar('👀', 'Lista para que la veas y la ajustes.', 'ok');
+          setResultado({ candidato, build, version }); setFase('vista'); estado('aprobar');
           return;
         }
         const fallidos = casos.filter((caso) => !caso.passed).length;
@@ -98,7 +123,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista }) {
           anotar('⚠️', pruebaReparable(build)
             ? `Después de ${MAX_CORRECCIONES} correcciones todavía falla ${fallidos} ejemplo${fallidos === 1 ? '' : 's'}.`
             : 'El entorno de pruebas no pudo completar la comprobación.', 'error');
-          setFase('fallo'); estado('failed');
+          fallar();
           return;
         }
         anotar('🔧', `Falló ${fallidos} ejemplo${fallidos === 1 ? '' : 's'}. La IA lo está corrigiendo (intento ${correcciones + 1} de ${MAX_CORRECCIONES})…`); estado('corrigiendo');
@@ -107,16 +132,20 @@ export default function FabricaHerramienta({ definition, onEstado, onLista }) {
       }
     } catch (cause) {
       if (signal.aborted) return;
-      setError(cause.message); setFase('fallo'); estado('failed');
+      setError(cause.message); fallar();
     }
   }
 
-  async function activar() {
+  async function guardar() {
+    setFase('activa'); estado('completed'); lista.current?.(resultado.version, true);
+  }
+
+  async function descartar() {
     setError('');
     try {
-      const version = await habilitarVersion(resultado.candidato.id, resultado.build.id);
-      setFase('activa'); estado('completed'); onLista?.(version);
-    } catch (cause) { setError(cause.message); }
+      await deshabilitarVersion(resultado.version.id);
+      setFase('descartada'); estado('skipped');
+    } catch (cause) { setError(`${cause.message} La herramienta sigue en tus herramientas privadas; puedes desactivarla desde ahí.`); }
   }
 
   const ejemplos = definition.examples || [];
@@ -139,16 +168,17 @@ export default function FabricaHerramienta({ definition, onEstado, onLista }) {
     </li>)}</ol>}
     {error && <p role="alert" className="mt-3 break-words rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {fase === 'lista' && <div className="mt-3 rounded-xl bg-emerald-50 p-3">
-      {resultado.build.storage_backend === 'supabase' ? <>
-        <p className="text-sm text-emerald-900">Está lista y probada. ¿La activo? Solo tú podrás usarla; luego puedes compartirla.</p>
-        <button type="button" className={`${BOTON} mt-2 bg-emerald-600 text-white`} onClick={activar}>Activar y continuar</button>
-      </> : <p className="text-sm text-emerald-900">Se probó en el laboratorio local; para activarla hace falta el trabajador compartido.</p>}
+      <p className="text-sm text-emerald-900">Se probó en el laboratorio local; para activarla hace falta el trabajador compartido.</p>
     </div>}
+    {['vista', 'activa', 'descartada'].includes(fase) && resultado?.version && <VistaPrevia version={resultado.version} definition={resultado.candidato.manifest.definition} archivo={archivo}
+      registrarAjustador={registrarAjustador} onEstado={estado} onGuardar={guardar} onDescartar={descartar}
+      onMejorar={(texto, explicacion) => onMejorar?.(texto, explicacion, resultado.candidato.manifest.definition)} />}
+    {fase === 'descartada' && <p className="mt-3 text-sm text-slate-600">🗑️ Descartada: la desactivé y no aparecerá en tus soluciones.</p>}
     {fase === 'fallo' && !bloqueada && <div className="mt-3 flex flex-wrap gap-2">
       <button type="button" className={`${BOTON} bg-amber-500 text-white`} onClick={fabricar}>Intentar de nuevo</button>
       <p className="basis-full text-xs text-slate-500">También puedes describir tu necesidad de otra forma en el chat.</p>
     </div>}
-    {fase === 'activa' && <p className="mt-3 text-sm font-semibold text-emerald-700">✅ Activada.</p>}
+    {fase === 'activa' && <p className="mt-3 text-sm font-semibold text-emerald-700">✅ Guardada en tus herramientas privadas.</p>}
     <div ref={final} />
   </div>;
 }

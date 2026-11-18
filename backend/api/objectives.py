@@ -7,8 +7,8 @@ from api.capabilities import Repository
 from api.candidates import get_provider
 from core.responses import APIResponse
 from providers.gemini import GeminiProvider
-from schemas.objectives import ObjectiveRequest, ObjectiveResponse
-from services.objective_service import interpret_objective
+from schemas.objectives import AdjustRequest, AdjustResponse, ObjectiveRequest, ObjectiveResponse
+from services.objective_service import adjust_parameters, interpret_objective
 
 router = APIRouter(prefix="/objectives", tags=["Definir desde un objetivo"])
 
@@ -16,3 +16,9 @@ router = APIRouter(prefix="/objectives", tags=["Definir desde un objetivo"])
 @router.post("/interpret", response_model=APIResponse[ObjectiveResponse])
 async def interpret(payload: ObjectiveRequest, repository: Repository, provider: Annotated[GeminiProvider, Depends(get_provider)]):
     return APIResponse(message="Interpretación para revisar; sin guardado ni ejecución", data=await interpret_objective(payload, repository, provider))
+
+
+@router.post("/adjust", response_model=APIResponse[AdjustResponse])
+async def adjust(payload: AdjustRequest, repository: Repository, provider: Annotated[GeminiProvider, Depends(get_provider)]):
+    """Traduce «ponle 30 %» a valores de las opciones; no ejecuta ni guarda nada."""
+    return APIResponse(message="Ajuste propuesto; sin guardado ni ejecución", data=await adjust_parameters(payload, repository.user_id, provider))

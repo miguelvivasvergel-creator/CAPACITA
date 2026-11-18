@@ -30,6 +30,28 @@ Si el tiempo no alcanza, se recorta desde abajo (8 nunca se recorta: es el segur
 Fuera de alcance esta semana: guardar flujo como herramienta compuesta, Instagram/correo
 reales, IA pesada (quitar fondo, OCR), publicar en internet, memoria.
 
+## Avance 17/11 (noche) — sin commit todavía
+
+- **Verificado por Fahida en navegador**: subir una foto en el chat ya no da `input_limit`
+  (SQL 12 corregido: `\1` en el reemplazo; la versión con `\g` habría dañado las funciones).
+- **Corregido, probado con pruebas**: la fábrica bloqueaba herramientas de imagen porque Gemini
+  declaraba Pillow como «recurso externo». Instrucción + limpieza en `objective_service.py`.
+- **Pedido de Fahida, implementado, falta probar en navegador**: antes de guardar, la
+  herramienta se activa «en prueba» (privada), se ejecuta con el archivo de la persona y se
+  ajusta con controles o escribiendo («ponle 30 %» → resultado → «mejor 40 %»). Números claros
+  se aplican sin IA; frases relativas van a `POST /objectives/adjust` (solo frase y opciones,
+  nunca archivos; límite propio 60/h). Si pide algo que las opciones no permiten, diseña una
+  versión mejorada. Botones «Me gusta, guardarla» / «Descartar» (desactiva la versión).
+  Archivos: `VistaPrevia.jsx`, `ajustes.js`, `FabricaHerramienta.jsx`, `ChatTaller.jsx`.
+- Validación: backend 40/40 (objetivos, Gemini, candidatos, reparación), `vite build` OK,
+  lógica de ajuste probada en Node. Aún sin recorrido real con trabajador y Gemini.
+- **Bloque 5 «Créalas todas», implementado, falta probar en navegador**: botón en la tarjeta
+  «Me falta una herramienta» cuando faltan 2 o más. Crea cada pieza en modo automático
+  (diseño → código → pruebas → activar, sin vista previa) y al terminar la última rearma la
+  solución con el archivo de la persona. Si una pieza falla o sale bloqueada, se detiene y
+  dice cuáles quedaron pendientes. Límite a vigilar: el turno local de Gemini es de 10
+  llamadas/hora y lo comparten diseño, código, correcciones y planner.
+
 ## Jueves 19 — mostrar y hacer llamativo
 
 - Pulido visual del chat y del taller (bienvenida, animaciones, ejemplos sugeridos de la demo).

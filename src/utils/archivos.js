@@ -84,7 +84,12 @@ export function descargar(base64, media, nombre = 'resultado') {
 export async function conMuestras(valor) {
   if (typeof valor === 'string' && valor.startsWith('MUESTRA:')) {
     const archivo = MUESTRAS[valor.slice(8).trim().toLowerCase()] || MUESTRAS.foto;
-    const respuesta = await fetch(`/muestras/${archivo}`);
+    let respuesta;
+    try {
+      respuesta = await fetch(`/muestras/${archivo}`);
+    } catch {
+      throw new Error('No pude conectar con la página para traer el archivo de muestra. ¿Se cerró "npm run dev"? Vuelve a iniciarlo y reintenta.');
+    }
     if (!respuesta.ok) throw new Error('No encontré los archivos de muestra para probar la herramienta.');
     return aBase64(await respuesta.arrayBuffer());
   }

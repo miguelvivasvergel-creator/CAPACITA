@@ -8,7 +8,8 @@ from fastapi.testclient import TestClient
 from api.candidates import get_provider
 from api.objectives import router
 from core.supabase import SupabaseGateway, get_supabase_gateway
-from schemas.objectives import ObjectiveInterpretation
+from schemas.objectives import AdjustProposal, ObjectiveInterpretation
+from services.objective_service import adjust_limiter
 from services.candidate_generation import limiter
 from tests.fixtures.objectives import objective_draft
 from tests.fixtures.supabase_catalog import SupabaseFixture, PRIVATE_ID, FAHIDA
@@ -18,6 +19,10 @@ class FakeInterpreter:
     def __init__(self, database):
         self.database, self.requests = database, []
         self.result = {"decision": "define", "explanation": "Propuesta editable para revisar", "questions": [], "draft": objective_draft()}
+
+    async def adjust(self, payload):
+        self.requests.append(payload)
+        return AdjustProposal(**self.ajuste)
 
     async def interpret(self, payload):
         assert any(request.url.path == "/rest/v1/capabilities" for request in self.database.requests), "Buscar catálogo antes de IA"
@@ -68,6 +73,48 @@ class ObjectiveAPITests(unittest.TestCase):
         self.assertFalse(result["implementation_verified"])
         self.assertEqual(len(self.database.rows), before)
         self.assertTrue(all(request.method == "GET" for request in self.database.requests))
+
+    def test_installed_libraries_are_not_external_resources(self):
+        self.provider.result["draft"] = objective_draft() | {
+            "resources": ["Librería Pillow para manipular imágenes", "Biblioteca de procesamiento de imágenes",
+                          "API externa de filtros de color"],
+            "required_permissions": ["Uso de PIL", "Acceso a internet"]}
+        response = self.interpret()
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()["data"]
+        self.assertEqual(result["definition"]["resources"], ["API externa de filtros de color"])
+        self.assertEqual(result["definition"]["required_permissions"], ["Acceso a internet"])
+        self.assertEqual(result["interpretation"]["draft"]["resources"], ["API externa de filtros de color"])
+
+    def adjust(self, **changes):
+        body = {"request": "ponle solo un 30 %", "tool_name": "Filtro sepia",
+                "parameter_schema": {"type": "object", "properties": {"intensidad": {"type": "number", "minimum": 0, "maximum": 100}},
+                                     "required": ["intensidad"], "additionalProperties": False},
+                "current": {"intensidad": 100}, "consent_to_provider": True}
+        return self.client.post("/api/objectives/adjust", headers=self.headers, json=body | changes)
+
+    def test_adjust_returns_values_valid_for_the_tool_options(self):
+        adjust_limiter.attempts.clear(); adjust_limiter.active.clear()
+        self.provider.ajuste = {"decision": "adjust", "explanation": "Bajé la intensidad al 30 %.", "parameters_json": '{"intensidad": 30}'}
+        response = self.adjust()
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["data"], {"decision": "adjust", "explanation": "Bajé la intensidad al 30 %.", "parameters": {"intensidad": 30}})
+        self.assertNotIn("consent_to_provider", self.provider.requests[-1].model_dump(exclude={"consent_to_provider"}))
+
+    def test_adjust_rejects_values_outside_the_contract_and_missing_consent(self):
+        adjust_limiter.attempts.clear(); adjust_limiter.active.clear()
+        self.provider.ajuste = {"decision": "adjust", "explanation": "Listo.", "parameters_json": '{"intensidad": 300}'}
+        self.assertEqual(self.adjust().status_code, 502)
+        self.assertEqual(self.adjust(consent_to_provider=False).status_code, 422)
+        archivo = {"type": "object", "properties": {"foto": {"type": "string", "contentEncoding": "base64"}}}
+        self.assertEqual(self.adjust(parameter_schema=archivo).status_code, 422)
+
+    def test_adjust_can_ask_to_improve_the_tool_without_values(self):
+        adjust_limiter.attempts.clear(); adjust_limiter.active.clear()
+        self.provider.ajuste = {"decision": "improve", "explanation": "Sus opciones no cambian el contraste."}
+        response = self.adjust(request="súbele el contraste")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertIsNone(response.json()["data"]["parameters"])
 
     def test_private_foreign_matches_are_filtered_and_catalog_is_not_sent_to_ai(self):
         self.database.rows[0]["owner_id"] = FAHIDA

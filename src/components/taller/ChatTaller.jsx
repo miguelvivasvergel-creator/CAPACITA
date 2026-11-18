@@ -44,6 +44,14 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   const [adjunto, setAdjunto] = useState(null); // archivo enviado antes de tener solución
   const [leyendo, setLeyendo] = useState(false);
   const siguienteId = useRef(0), peticion = useRef(null), fin = useRef(null), entrada = useRef(null), selector = useRef(null);
+  // Mientras una herramienta está «en prueba», lo que se escribe la ajusta («ponle 30 %»).
+  const ajustador = useRef(null);
+  // «Créalas todas»: herramientas que faltan por crear, una tras otra, en modo automático.
+  const cola = useRef([]), automatico = useRef(false);
+  const registrarAjustador = useCallback((fn, previo) => {
+    if (fn) ajustador.current = fn;
+    else if (ajustador.current === previo) ajustador.current = null;
+  }, []);
   const campoActual = plan && pidiendo ? pidiendo.campos[pidiendo.indice] : null;
   const solucion = useRef({ definicion: null, guardada: null, incierta: false });
 
@@ -77,6 +85,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
   const nodoElegido = plan?.nodes.find((node) => node.id === seleccionado);
 
   function nuevoTaller() {
+    ajustador.current = null;
     setPlan(null); setCreando(''); setEstadoCreacion(''); setRun(null); setRunId(null); setSeleccionado(null); setPendientes([]); setPidiendo(null);
   }
 
@@ -175,9 +184,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
       setPendientes(interpretation.questions); agregar({ de: 'capacita', tipo: 'preguntas', preguntas: interpretation.questions });
     } else if (value.definition) {
       setCreando(value.definition.name); setEstadoCreacion(''); setPlan(null);
-      agregar({ de: 'capacita', tipo: 'crear', definicion: value.definition });
+      agregar({ de: 'capacita', tipo: 'crear', definicion: value.definition, automatica: automatico.current });
     } else {
       agregar({ de: 'capacita', tipo: 'bloqueado' });
+      falloEnCola();
     }
     setConversacion((old) => ({ ...old, ruta: 'definir', metaDefinir: objetivoDefinido }));
   }
@@ -224,7 +234,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
         if (!controller.signal.aborted) mostrarDefinicion(value, objetivo);
       }
     } catch (cause) {
-      if (!controller.signal.aborted) agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Tu conversación sigue aquí; puedes volver a intentarlo.` });
+      if (!controller.signal.aborted) { agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Tu conversación sigue aquí; puedes volver a intentarlo.` }); falloEnCola(); }
     } finally {
       if (!controller.signal.aborted) { setOcupado(false); setFase(''); }
     }
@@ -242,18 +252,44 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
     if (ocupado || !valor) return;
     // Un dato se entrega tal cual lo escribió la persona (sin recortar espacios).
     if (pidiendo && plan && !pendientes.length) { recibirDato(texto); return; }
+    // Herramienta «en prueba»: la frase la ajusta; la tarjeta muestra el nuevo resultado.
+    if (ajustador.current && !pendientes.length) {
+      const ajustar = ajustador.current; setTexto('');
+      ajustar(valor).then((resultado) => { if (resultado === 'nuevo') nuevaNecesidad(valor); });
+      return;
+    }
     if (!pendientes.length && valor.length < 10) { agregar({ de: 'capacita', tipo: 'texto', texto: 'Cuéntame un poco más: qué datos tienes y qué resultado buscas.' }); return; }
     agregar({ de: 'tu', tipo: 'texto', texto: valor }); setTexto('');
     if (pendientes.length && conversacion) {
       const respuesta = { question: pendientes.join(' / '), answer: valor };
       continuar({ ...conversacion, aclaraciones: [...conversacion.aclaraciones, respuesta].slice(-6) });
     } else {
-      nuevoTaller();
-      // Solo se cuenta el tipo de archivo adjunto, nunca su contenido.
-      const tipoAdjunto = !adjunto ? '' : adjunto.type.startsWith('image/') ? 'una foto' : adjunto.name.toLowerCase().endsWith('.pdf') ? 'un PDF'
-        : adjunto.name.toLowerCase().endsWith('.docx') ? 'un documento Word' : adjunto.name.toLowerCase().endsWith('.xlsx') ? 'un Excel' : 'un archivo';
-      continuar({ objetivo: tipoAdjunto ? `${valor}\n(Adjunté ${tipoAdjunto} como entrada.)` : valor, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
+      nuevaNecesidad(valor, false);
     }
+  }
+
+  function nuevaNecesidad(valor, mostrar = true) {
+    if (mostrar) agregar({ de: 'tu', tipo: 'texto', texto: valor });
+    nuevoTaller();
+    // Solo se cuenta el tipo de archivo adjunto, nunca su contenido.
+    const tipoAdjunto = !adjunto ? '' : adjunto.type.startsWith('image/') ? 'una foto' : adjunto.name.toLowerCase().endsWith('.pdf') ? 'un PDF'
+      : adjunto.name.toLowerCase().endsWith('.docx') ? 'un documento Word' : adjunto.name.toLowerCase().endsWith('.xlsx') ? 'un Excel' : 'un archivo';
+    continuar({ objetivo: tipoAdjunto ? `${valor}\n(Adjunté ${tipoAdjunto} como entrada.)` : valor, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
+  }
+
+  function crearTodas(items) {
+    if (ocupado || automatico.current || !conversacion || !items.length) return;
+    automatico.current = true; cola.current = items.slice(1);
+    agregar({ de: 'capacita', tipo: 'texto', texto: `Voy a crear y probar las ${items.length} herramientas una por una. Al final armo tu solución con todas 💪` });
+    crearFaltante(items[0]);
+  }
+
+  // Una herramienta de la cola no salió: se detiene y se dice qué quedó pendiente.
+  function falloEnCola() {
+    if (!automatico.current) return;
+    const pendientesCola = cola.current;
+    automatico.current = false; cola.current = [];
+    agregar({ de: 'capacita', tipo: 'texto', texto: `Me detuve aquí: esta herramienta no salió.${pendientesCola.length ? ` Quedan pendientes: ${pendientesCola.join(' · ')}.` : ''} Puedes reintentarla con el botón de la tarjeta o describirme la necesidad de otra forma.` });
   }
 
   function crearFaltante(item) {
@@ -264,7 +300,34 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
     continuar({ ...conversacion, aclaraciones: [], ruta: 'definir', metaDefinir: meta });
   }
 
-  function herramientaLista() {
+  // La persona no quiere solo otros valores: pide que la herramienta haga algo más.
+  function mejorarHerramienta(pedido, explicacion, definicion) {
+    if (ocupado) return;
+    ajustador.current = null;
+    agregar({ de: 'tu', tipo: 'texto', texto: pedido });
+    agregar({ de: 'capacita', tipo: 'texto', texto: `${explicacion} Voy a diseñar una versión mejorada que también haga eso…` });
+    const opciones = Object.keys(definicion.parameter_schema?.properties || {}).join(', ') || 'ninguna';
+    const meta = `Versión mejorada de la herramienta «${definicion.name}»: ${definicion.description} Opciones actuales: ${opciones}. Además debe: ${pedido}. Conserva lo que ya hace y deja graduable lo nuevo.`.slice(0, 2000);
+    setCreando(definicion.name);
+    continuar({ ...(conversacion || { objetivo: meta }), aclaraciones: [], ruta: 'definir', metaDefinir: meta });
+  }
+
+  function herramientaLista(version, terminada) {
+    if (automatico.current) {
+      if (cola.current.length) {
+        const siguiente = cola.current.shift();
+        agregar({ de: 'capacita', tipo: 'texto', texto: `✅ Lista. Sigo con la siguiente (quedan ${cola.current.length + 1})…` });
+        crearFaltante(siguiente);
+        return;
+      }
+      automatico.current = false;
+    }
+    // Si la herramienta era toda la solución y ya le gustó el resultado, no hace falta rearmar nada.
+    if (terminada && !conversacion?.metaDefinir?.startsWith('Preparar únicamente')) {
+      setCreando(''); setEstadoCreacion('');
+      agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! 🎉 Descarga el resultado desde la tarjeta o cuéntame qué más necesitas.' });
+      return;
+    }
     agregar({ de: 'capacita', tipo: 'texto', texto: '¡La herramienta nueva quedó probada y lista! Vuelvo a armar tu solución con ella…' });
     const estado = { ...conversacion, ruta: 'buscar', metaDefinir: null };
     setCreando(''); setEstadoCreacion(''); continuar(estado);
@@ -302,8 +365,14 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
           <p className="break-words text-sm">{item}</p>
           <button type="button" disabled={ocupado} onClick={() => crearFaltante(item)} className="mt-2 min-h-11 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Créala</button>
         </li>)}</ul>
+        {mensaje.faltan.length > 1 && <div className="mt-3 border-t border-slate-200 pt-3">
+          <button type="button" disabled={ocupado} onClick={() => crearTodas(mensaje.faltan)} className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">⚡ Créalas todas ({mensaje.faltan.length})</button>
+          <p className="mt-1 text-xs text-slate-500">Las diseño, escribo y pruebo una tras otra sin preguntarte en cada una. Enviaré a Google Gemini la descripción y los ejemplos de cada una (nunca tus datos reales). Al final armo la solución con tu archivo.</p>
+        </div>}
       </div>;
-      case 'crear': return <FabricaHerramienta definition={mensaje.definicion} onEstado={setEstadoCreacion} onLista={herramientaLista} />;
+      case 'crear': return <FabricaHerramienta definition={mensaje.definicion} onEstado={setEstadoCreacion} onLista={herramientaLista}
+        archivo={adjunto} registrarAjustador={registrarAjustador} onMejorar={mejorarHerramienta}
+        automatica={Boolean(mensaje.automatica)} onFallo={falloEnCola} />;
       case 'plan': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status))} onEjecucion={alEjecutar} /></div>;
       case 'confirmar': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} datos={mensaje.datos} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status)) || mensaje.definicion !== plan} onEjecucion={alEjecutar} /></div>;
       case 'resultado': {

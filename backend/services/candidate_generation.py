@@ -20,17 +20,17 @@ class GenerationLimiter:
     No es cuota distribuida ni límite de facturación. Antes de múltiples workers,
     trasladar contadores a almacenamiento compartido con operaciones atómicas.
     """
-    def __init__(self, clock=monotonic, hourly_limit=10):
+    def __init__(self, clock=monotonic, hourly_limit=10, min_gap=30):
         self.clock, self.attempts, self.active = clock, {}, set()
-        self.hourly_limit = hourly_limit
+        self.hourly_limit, self.min_gap = hourly_limit, min_gap
 
     def start(self, user_id):
         now = self.clock()
         # Eliminar usuarios vencidos para no acumular memoria indefinidamente.
         self.attempts = {key: deque(t for t in values if now - t < 3600) for key, values in self.attempts.items() if values and now - values[-1] < 3600}
         times = self.attempts.setdefault(user_id, deque())
-        if user_id in self.active or len(times) >= self.hourly_limit or (times and now - times[-1] < 30):
-            raise HTTPException(429, f"Límite de generación: espera 30 segundos; máximo {self.hourly_limit} intentos por hora")
+        if user_id in self.active or len(times) >= self.hourly_limit or (times and now - times[-1] < self.min_gap):
+            raise HTTPException(429, f"Límite de generación: espera {self.min_gap} segundos; máximo {self.hourly_limit} intentos por hora")
         if len(self.attempts) > 10000:
             raise HTTPException(503, "Generación ocupada; inténtalo más tarde")
         times.append(now)

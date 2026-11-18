@@ -1,60 +1,66 @@
 -- 12. Archivos (fotos, PDF, Word, Excel) en entradas y salidas. Aplicar una sola vez.
 -- Sube solo los límites de tamaño de datos; no cambia permisos, reglas ni privacidad.
--- Para no pisar cambios que existan en Supabase y no estén en este repositorio, toma
--- la definición viva de cada función y reemplaza únicamente el número del límite.
--- Si un texto esperado no aparece, se cancela todo sin cambiar nada.
+-- Supabase tiene versiones de estas funciones distintas a las del repositorio (experimento
+-- managed-tools), así que se toma la definición VIVA de cada función y solo se cambia el
+-- número de cada comparación octet_length(...) > 65536 / 350000, escrita como esté.
 --   datos de una ejecución (entradas, salidas, casos de prueba): 64 KiB -> 4 MB
 --   foto completa del trabajo (versiones + plan + datos):          350 KB -> 8 MB
 --   payload guardado de un trabajo:                                400 KB -> 9 MB
--- Los reportes siguen en 64 KiB: el motor ya no guarda archivos dentro de ellos.
+-- Una función que no exista o no tenga esos límites se omite (aviso NOTICE); si ninguna
+-- cambia, se cancela todo sin cambiar nada. La consulta final muestra lo que quedó.
 BEGIN;
 DO $$
 DECLARE
-  def text; patched text; t jsonb; s jsonb;
-  targets constant jsonb := jsonb_build_array(
-    jsonb_build_object('fn','public.execution_enqueue(text,text,jsonb)', 'swap', jsonb_build_array(
-      jsonb_build_array('octet_length(p_request::text)>350000','octet_length(p_request::text)>8000000'),
-      jsonb_build_array('octet_length((p_request->''cases'')::text)>65536','octet_length((p_request->''cases'')::text)>4000000'),
-      jsonb_build_array('OR octet_length(p_request::text)>65536','OR octet_length(p_request::text)>4000000'))),
-    jsonb_build_object('fn','public.execution_finish(uuid,uuid,text,jsonb,jsonb)', 'swap', jsonb_build_array(
-      jsonb_build_array('octet_length(p_output::text)>65536','octet_length(p_output::text)>4000000'))),
-    jsonb_build_object('fn','public.execution_workflow_approve(uuid,integer,text,jsonb)', 'swap', jsonb_build_array(
-      jsonb_build_array('octet_length(p_inputs::text)>65536','octet_length(p_inputs::text)>4000000'),
-      jsonb_build_array('octet_length(p_inputs::text)>350000','octet_length(p_inputs::text)>8000000'))),
-    jsonb_build_object('fn','public.execution_public_enqueue(uuid,text,jsonb,jsonb)', 'swap', jsonb_build_array(
-      jsonb_build_array('octet_length(req::text)>65536','octet_length(req::text)>4000000'))));
+  fn text; proc regprocedure; def text; patched text; changed int := 0;
 BEGIN
-  FOR t IN SELECT value FROM jsonb_array_elements(targets) LOOP
-    def := pg_get_functiondef((t->>'fn')::regprocedure);
-    patched := def;
-    FOR s IN SELECT value FROM jsonb_array_elements(t->'swap') LOOP
-      IF position(s->>0 IN patched) = 0 THEN
-        RAISE EXCEPTION 'No encontré "%" en %; no se cambió nada', s->>0, t->>'fn';
-      END IF;
-      patched := replace(patched, s->>0, s->>1);
-    END LOOP;
+  FOREACH fn IN ARRAY ARRAY[
+    'public.execution_enqueue(text,text,jsonb)',
+    'public.execution_finish(uuid,uuid,text,jsonb,jsonb)',
+    'public.execution_workflow_approve(uuid,integer,text,jsonb)',
+    'public.execution_public_enqueue(uuid,text,jsonb,jsonb)'] LOOP
+    proc := to_regprocedure(fn);
+    IF proc IS NULL THEN
+      RAISE NOTICE 'No existe %; se omite', fn;
+      CONTINUE;
+    END IF;
+    def := pg_get_functiondef(proc);
+    -- Solo comparaciones de tamaño en una misma línea: octet_length(...) > número.
+    -- \1 conserva intacto el texto "octet_length(...) >" y solo cambia el número.
+    patched := regexp_replace(def, '(octet_length\([^\n]{1,120}?\)\s*>\s*)65536\M', '\14000000', 'g');
+    patched := regexp_replace(patched, '(octet_length\([^\n]{1,120}?\)\s*>\s*)350000\M', '\18000000', 'g');
+    IF patched = def THEN
+      RAISE NOTICE 'Sin límites 65536/350000 en %; se omite', fn;
+      CONTINUE;
+    END IF;
     EXECUTE patched;
+    changed := changed + 1;
   END LOOP;
+  IF changed = 0 THEN
+    RAISE EXCEPTION 'No encontré ningún límite de tamaño; no se cambió nada';
+  END IF;
 END $$;
 
--- Regla de tamaño del payload de cada trabajo (nombre automático en Supabase).
+-- Regla de tamaño del payload de cada trabajo (el nombre puede variar en Supabase).
 DO $$
-DECLARE c text;
+DECLARE c record;
 BEGIN
-  SELECT conname INTO c FROM pg_constraint
-   WHERE conrelid='capacita_execution.jobs'::regclass AND contype='c'
-     AND pg_get_constraintdef(oid) LIKE '%payload%400000%';
-  IF c IS NULL THEN RAISE EXCEPTION 'No encontré la regla de 400000 del payload; no se cambió nada'; END IF;
-  EXECUTE format('ALTER TABLE capacita_execution.jobs DROP CONSTRAINT %I', c);
+  FOR c IN SELECT conname FROM pg_constraint
+    WHERE conrelid='capacita_execution.jobs'::regclass AND contype='c'
+      AND pg_get_constraintdef(oid) ILIKE '%octet_length%payload%' LOOP
+    EXECUTE format('ALTER TABLE capacita_execution.jobs DROP CONSTRAINT %I', c.conname);
+  END LOOP;
 END $$;
 ALTER TABLE capacita_execution.jobs ADD CONSTRAINT jobs_payload_check
   CHECK (octet_length(payload::text) <= 9000000);
 COMMIT;
 NOTIFY pgrst, 'reload schema';
 
--- Comprobación (solo lectura): las cuatro filas deben decir true.
-SELECT 'enqueue' AS funcion, pg_get_functiondef('public.execution_enqueue(text,text,jsonb)'::regprocedure) LIKE '%>4000000%' AS archivos_ok
-UNION ALL SELECT 'finish', pg_get_functiondef('public.execution_finish(uuid,uuid,text,jsonb,jsonb)'::regprocedure) LIKE '%p_output::text)>4000000%'
-UNION ALL SELECT 'approve', pg_get_functiondef('public.execution_workflow_approve(uuid,integer,text,jsonb)'::regprocedure) LIKE '%p_inputs::text)>4000000%'
-UNION ALL SELECT 'payload', EXISTS(SELECT 1 FROM pg_constraint WHERE conname='jobs_payload_check'
-  AND pg_get_constraintdef(oid) LIKE '%9000000%');
+-- Comprobación (solo lectura): muestra cada límite de tamaño que quedó en las funciones.
+SELECT p.proname AS funcion, m[1] AS limite
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace,
+     LATERAL regexp_matches(pg_get_functiondef(p.oid), 'octet_length\([^\n]{1,120}?\)\s*>\s*\d+', 'g') AS m
+WHERE n.nspname = 'public' AND p.proname IN
+  ('execution_enqueue','execution_finish','execution_workflow_approve','execution_public_enqueue')
+UNION ALL
+SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+WHERE conrelid = 'capacita_execution.jobs'::regclass AND conname = 'jobs_payload_check';
