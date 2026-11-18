@@ -58,7 +58,7 @@ NOTIFY pgrst, 'reload schema';
 -- Comprobación (solo lectura): muestra cada límite de tamaño que quedó en las funciones.
 SELECT p.proname AS funcion, m[1] AS limite
 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace,
-     LATERAL regexp_matches(pg_get_functiondef(p.oid), 'octet_length\([^\n]{1,120}?\)\s*>\s*\d+', 'g') AS m
+     LATERAL regexp_matches(pg_get_functiondef(p.oid), 'octet_length\([^\n]{1,120}\)\s*>\s*[0-9]+', 'g') AS m
 WHERE n.nspname = 'public' AND p.proname IN
   ('execution_enqueue','execution_finish','execution_workflow_approve','execution_public_enqueue')
 UNION ALL

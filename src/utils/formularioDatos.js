@@ -19,15 +19,21 @@ export function nombreCampo(name, schema) { return schema.title || name.replaceA
 
 // Datos que el chat sabe pedir como mensajes, uno por uno: textos, números y archivos.
 // Devuelve los campos obligatorios en orden (archivos primero) o null si hace falta formulario.
+const NOMBRE_ARCHIVO = (media) => (media.startsWith('image/') ? 'Tu foto' : media === 'application/pdf' ? 'Tu PDF'
+  : media.includes('word') ? 'Tu documento Word' : media.includes('sheet') ? 'Tu Excel' : 'Tu archivo');
+
 export function camposChat(schema) {
   const propiedades = Object.entries(schema?.properties || {});
   if (schema?.type !== 'object' || !propiedades.length || propiedades.length > 6 || !admiteFormulario(schema)) return null;
   const simple = ([, spec]) => spec.contentEncoding === 'base64' || (['string', 'number', 'integer'].includes(spec.type) && !spec.enum && !spec.format);
   if (!propiedades.every(simple)) return null;
   const campos = propiedades.filter(([nombre]) => schema.required?.includes(nombre)).map(([nombre, spec]) => {
-    const descripcion = spec.description && spec.description.length <= 80 ? spec.description.replace(/\.$/, '') : '';
-    return { nombre, tipo: spec.type, archivo: spec.contentEncoding === 'base64' ? spec.contentMediaType || 'application/octet-stream' : null,
-      etiqueta: spec.title || descripcion || nombre.replaceAll('_', ' ') };
+    const archivo = spec.contentEncoding === 'base64' ? spec.contentMediaType || 'application/octet-stream' : null;
+    // «Imagen JPEG codificada en base64» no le dice nada a una persona: se nombra el archivo.
+    const tecnica = /base ?64|codificad|encoded|mime/i.test(spec.description || '');
+    const descripcion = spec.description && spec.description.length <= 80 && !(archivo && tecnica) ? spec.description.replace(/\.$/, '') : '';
+    return { nombre, tipo: spec.type, archivo,
+      etiqueta: spec.title || descripcion || (archivo ? NOMBRE_ARCHIVO(archivo) : nombre.replaceAll('_', ' ')) };
   });
   return campos.length ? [...campos.filter((c) => c.archivo), ...campos.filter((c) => !c.archivo)] : null;
 }

@@ -11,7 +11,8 @@ const etiquetaDe = (nombre) => nombre.replaceAll('_', ' ').replace(/^./, (letra)
 // Escala desde el contrato (minimum/maximum) o desde la descripción («de 0 a 100»).
 function escala(spec) {
   const desc = sinAcentos(spec.description || '');
-  const rango = desc.match(/(?:de|entre)\s+(-?\d+(?:[.,]\d+)?)\s+(?:a|y|hasta)\s+(-?\d+(?:[.,]\d+)?)/);
+  // «de 0 a 100», «entre 0 y 1», «de 0.0 (sin efecto) a 1.0 (máxima)».
+  const rango = desc.match(/(?:de|entre)\s+(-?\d+(?:[.,]\d+)?)(?:\s*\([^)]{0,40}\))?\s+(?:a|y|hasta)\s+(-?\d+(?:[.,]\d+)?)/);
   const leer = (valor) => (valor === undefined ? undefined : Number(String(valor).replace(',', '.')));
   return {
     min: spec.minimum ?? leer(rango?.[1]),
@@ -46,7 +47,8 @@ export function valoresIniciales(definition, opciones) {
 
 /** «Ponle 30 %», «intensidad 40»: un número claro para una opción clara. Si no, null. */
 export function ajusteDirecto(texto, opciones, parametros) {
-  if (RELATIVO.test(texto)) return null;
+  // «bájale al 50 %» fija un valor; «bájale un poco» es relativo y lo decide la IA.
+  if (RELATIVO.test(texto) && !/\b(?:al|a|en|hasta)\s+-?\d/i.test(texto)) return null;
   const numeros = [...texto.matchAll(NUMERO)];
   if (numeros.length !== 1) return null;
   const numericas = opciones.filter((opcion) => opcion.origen === 'parametro' && ['number', 'integer'].includes(opcion.tipo));

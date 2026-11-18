@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
-import { interpretarObjetivo } from '../../services/objetivos';
+import { ajustarOpciones, interpretarObjetivo } from '../../services/objetivos';
+import { ajusteDirecto, opcionesEditables } from './ajustes';
 import { guardarWorkflow } from '../../services/workflows';
 import { camposChat } from '../../utils/formularioDatos';
 import { infoTipo, leerArchivo, urlDatos } from '../../utils/archivos';
@@ -11,10 +12,13 @@ import LienzoTaller from './LienzoTaller';
 import { ESTADOS_NODO } from './estadosNodo';
 import TarjetaPlan from './TarjetaPlan';
 
+// Ejemplos de la demo: los que llevan archivo abren el 📎 al tocarlos.
 const SUGERENCIAS = [
-  'Quita los espacios de los extremos de un texto y conviértelo a mayúsculas',
-  'Cuenta cuántas palabras tiene un texto y dime las más repetidas',
-  'Detecta los productos agotados de una lista con sus existencias',
+  { icono: '🍽️', texto: 'Mejora la foto de mi plato y ponle encima el nombre de mi restaurante', archivo: true },
+  { icono: '🎨', texto: 'Ponle un filtro vintage cálido a mi foto', archivo: true },
+  { icono: '📄', texto: 'Agrégale a mi PDF una portada con un título', archivo: true },
+  { icono: '📊', texto: 'Convierte mi Excel de ventas en un informe PDF con los totales', archivo: true },
+  { icono: '✍️', texto: 'Cuenta cuántas palabras tiene un texto y dime las más repetidas', archivo: false },
 ];
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
 const activo = (status) => ['queued', 'running'].includes(status);
@@ -48,6 +52,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const ajustador = useRef(null);
   // «Créalas todas»: herramientas que faltan por crear, una tras otra, en modo automático.
   const cola = useRef([]), automatico = useRef(false);
+  // Para ajustar un resultado: contratos de las versiones del plan y el último archivo usado.
+  const opcionesPlan = useRef([]), ultimoArchivo = useRef(null);
   const registrarAjustador = useCallback((fn, previo) => {
     if (fn) ajustador.current = fn;
     else if (ajustador.current === previo) ajustador.current = null;
@@ -57,6 +63,23 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
 
   const agregar = useCallback((mensaje) => setMensajes((old) => [...old, { id: ++siguienteId.current, ...mensaje }]), []);
   useEffect(() => () => peticion.current?.abort(), []);
+
+  // Opciones (contratos) de las versiones de una solución abierta desde el menú, para poder
+  // ajustarla escribiendo. Sin Gemini: solo el catálogo autorizado de versiones.
+  async function cargarOpcionesDe(definicion) {
+    const faltan = new Set(definicion.nodes.map((nodo) => nodo.version_id));
+    const encontradas = [];
+    let cursor = null;
+    try {
+      for (let pagina = 0; pagina < 3 && faltan.size; pagina++) {
+        const page = await api(`/workflows/available-versions?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+        for (const item of page.items) if (faltan.delete(item.id)) encontradas.push(item);
+        cursor = page.next_cursor;
+        if (!cursor) break;
+      }
+    } catch { /* sin opciones: ajustarPlan lo explica si la persona intenta ajustar */ }
+    opcionesPlan.current = encontradas;
+  }
 
   // Desde Soluciones o Herramientas: abrir una solución guardada o dejar escrito un pedido.
   // Una sola vez (también en StrictMode); abrir una solución no usa Gemini ni la vuelve a guardar.
@@ -78,6 +101,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       agregar({ de: 'capacita', tipo: 'texto', texto: `Abrí tu solución «${guardada.definition.name}». Revisa sus pasos en el taller; te pido los datos para usarla 👇` });
       agregar({ de: 'capacita', tipo: 'plan', definicion: guardada.definition });
       empezarDatos(guardada.definition);
+      cargarOpcionesDe(guardada.definition);
     }).catch((cause) => agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Puedes describir tu necesidad aquí.` }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -116,11 +140,12 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   // Se guarda una sola vez por plan, aunque se ejecute varias veces con datos distintos.
   async function obtenerGuardada() {
     const actual = solucion.current;
-    if (actual.definicion !== plan) solucion.current = { definicion: plan, guardada: null, incierta: false };
+    if (actual.definicion !== plan) solucion.current = { definicion: plan, guardada: null, incierta: false, base: null };
     if (solucion.current.guardada) return solucion.current.guardada;
     if (solucion.current.incierta) throw new Error('No pudimos confirmar si la solución se guardó. Revísala en Soluciones antes de crear otra copia.');
     try {
-      solucion.current.guardada = await guardarWorkflow(plan);
+      // Una solución ajustada («ponle 50 %») actualiza la guardada en vez de duplicarla.
+      solucion.current.guardada = await guardarWorkflow(plan, solucion.current.base || undefined);
       return solucion.current.guardada;
     } catch (cause) {
       if (!cause.status || cause.status >= 500) solucion.current.incierta = true;
@@ -167,6 +192,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     setLeyendo(true);
     try {
       const base64 = await leerArchivo(archivo, campo.archivo);
+      ultimoArchivo.current = archivo;
       agregar({ de: 'tu', tipo: 'archivo', nombre: archivo.name, vista: campo.archivo.startsWith('image/') ? urlDatos(base64, campo.archivo) : null });
       pedirSiguiente({ ...estado, indice: estado.indice + 1, datos: { ...estado.datos, [campo.nombre]: base64 } });
     } catch (cause) {
@@ -231,6 +257,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       }
       setFase('Buscando en tus herramientas y en las de la comunidad…');
       const opciones = await buscarOpcionesPlan(completo, controller.signal);
+      opcionesPlan.current = opciones.items; // contratos de cada versión, para ajustar después
       if (controller.signal.aborted) return;
       if (!opciones.items.length) {
         setFase('No encontré herramientas para esto. Voy a diseñar una nueva…');
@@ -275,6 +302,13 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const valor = texto.trim();
     if (ocupado || !valor) return;
     // Un dato se entrega tal cual lo escribió la persona (sin recortar espacios).
+    // Con los datos ya entregados y una solución que recibe un archivo, lo escrito es un
+    // ajuste del resultado («bájale al 50 %»), no un dato nuevo.
+    if (pidiendo && plan && !pendientes.length && pidiendo.indice >= pidiendo.campos.length && pidiendo.campos[0]?.archivo) {
+      agregar({ de: 'tu', tipo: 'texto', texto: valor }); setTexto('');
+      ajustarPlan(valor);
+      return;
+    }
     if (pidiendo && plan && !pendientes.length) { recibirDato(texto); return; }
     // Herramienta «en prueba»: la frase la ajusta; la tarjeta muestra el nuevo resultado.
     if (ajustador.current && !pendientes.length) {
@@ -325,10 +359,55 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   }
 
   // La persona no quiere solo otros valores: pide que la herramienta haga algo más.
-  function mejorarHerramienta(pedido, explicacion, definicion) {
+  // Ajusta las opciones de los pasos de la solución y la vuelve a proponer con los mismos datos.
+  async function ajustarPlan(valor) {
+    const pasos = plan.nodes.map((nodo) => ({ nodo, opcion: opcionesPlan.current.find((item) => item.id === nodo.version_id) })).filter((item) => item.opcion);
+    if (!pasos.length) { agregar({ de: 'capacita', tipo: 'texto', texto: 'No tengo a mano las opciones de esta solución. Pídemela como necesidad nueva y te la ajusto.' }); return; }
+    const graduables = pasos.filter(({ opcion }) => Object.keys(opcion.parameter_schema?.properties || {}).length);
+    if (!graduables.length) { mejorarHerramienta(valor, 'Esta herramienta no tiene opciones para graduarla.', pasos[0].opcion, false); return; }
+    // Opciones de todos los pasos en un solo contrato: «paso__opcion».
+    const properties = {}, required = [], actuales = {}, origen = {};
+    for (const { nodo, opcion } of graduables) {
+      for (const [nombre, spec] of Object.entries(opcion.parameter_schema.properties)) {
+        const clave = `${nodo.id}__${nombre}`;
+        origen[clave] = [nodo.id, nombre];
+        properties[clave] = { ...spec, title: graduables.length > 1 ? `${spec.title || nombre} (${nodo.label})` : spec.title || nombre.replaceAll('_', ' ') };
+        if (opcion.parameter_schema.required?.includes(nombre)) required.push(clave);
+        if (nodo.parameters?.[nombre] !== undefined) actuales[clave] = nodo.parameters[nombre];
+      }
+    }
+    const schema = { type: 'object', properties, required, additionalProperties: false };
+    let nuevos, explicacion;
+    const directo = ajusteDirecto(valor, opcionesEditables({ parameter_schema: schema, input_schema: {} }), actuales);
+    if (directo) ({ parametros: nuevos, explicacion } = directo);
+    else {
+      setOcupado(true); setFase('Ajustando tu resultado…');
+      try {
+        const respuesta = await ajustarOpciones({ request: valor, tool_name: plan.name, tool_description: plan.description, parameter_schema: schema, current: actuales });
+        if (respuesta.decision === 'improve') { setOcupado(false); setFase(''); mejorarHerramienta(valor, respuesta.explanation, graduables[0].opcion, false); return; }
+        if (respuesta.decision === 'new') { setOcupado(false); setFase(''); nuevaNecesidad(valor, false); return; }
+        nuevos = respuesta.parameters; explicacion = respuesta.explanation;
+      } catch (cause) {
+        agregar({ de: 'capacita', tipo: 'error', texto: cause.status === 429 ? 'Vas muy rápido 🙂. Espera unos segundos y vuelve a escribirlo.' : cause.message });
+        return;
+      } finally { setOcupado(false); setFase(''); }
+    }
+    const nodes = plan.nodes.map((nodo) => {
+      const cambios = Object.entries(nuevos).filter(([clave]) => origen[clave]?.[0] === nodo.id).map(([clave, v]) => [origen[clave][1], v]);
+      return cambios.length ? { ...nodo, parameters: { ...nodo.parameters, ...Object.fromEntries(cambios) } } : nodo;
+    });
+    const ajustado = { ...plan, nodes };
+    const anterior = solucion.current;
+    solucion.current = { definicion: ajustado, guardada: null, incierta: false, base: anterior.guardada || anterior.base || null };
+    setPlan(ajustado); setPidiendo({ ...pidiendo, definicion: ajustado });
+    agregar({ de: 'capacita', tipo: 'texto', texto: `${explicacion} Uso la misma foto; confirma para ver cómo queda 👇` });
+    agregar({ de: 'capacita', tipo: 'confirmar', definicion: ajustado, datos: pidiendo.datos });
+  }
+
+  function mejorarHerramienta(pedido, explicacion, definicion, mostrarPedido = true) {
     if (ocupado) return;
     ajustador.current = null;
-    agregar({ de: 'tu', tipo: 'texto', texto: pedido });
+    if (mostrarPedido) agregar({ de: 'tu', tipo: 'texto', texto: pedido });
     agregar({ de: 'capacita', tipo: 'texto', texto: `${explicacion} Voy a diseñar una versión mejorada que también haga eso…` });
     const opciones = Object.keys(definicion.parameter_schema?.properties || {}).join(', ') || 'ninguna';
     const meta = `Versión mejorada de la herramienta «${definicion.name}»: ${definicion.description} Opciones actuales: ${opciones}. Además debe: ${pedido}. Conserva lo que ya hace y deja graduable lo nuevo.`.slice(0, 2000);
@@ -395,7 +474,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         </div>}
       </div>;
       case 'crear': return <FabricaHerramienta definition={mensaje.definicion} onEstado={setEstadoCreacion} onLista={herramientaLista}
-        archivo={adjunto} registrarAjustador={registrarAjustador} onMejorar={mejorarHerramienta}
+        archivo={adjunto || ultimoArchivo.current} registrarAjustador={registrarAjustador} onMejorar={mejorarHerramienta}
         automatica={Boolean(mensaje.automatica)} onFallo={falloEnCola} />;
       case 'plan': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status))} onEjecucion={alEjecutar} /></div>;
       case 'confirmar': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} datos={mensaje.datos} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status)) || mensaje.definicion !== plan} onEjecucion={alEjecutar} /></div>;
@@ -429,7 +508,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
           <p className="text-sm font-semibold text-blue-700">Hola, {usuario?.name?.split(' ')[0] || 'bienvenida'} 👋</p>
           <h1>¿Qué necesitas resolver hoy?</h1>
           <p>Cuéntamelo con tus palabras. Busco las herramientas que ya existen, creo las que falten y te muestro el proceso armándose a la derecha.</p>
-          <div className="mt-4 flex flex-col gap-2">{SUGERENCIAS.map((sugerencia) => <button key={sugerencia} type="button" className="taller-sugerencia" onClick={() => { setTexto(sugerencia); entrada.current?.focus(); }}>{sugerencia}</button>)}</div>
+          <div className="mt-4 flex flex-col gap-2">{SUGERENCIAS.map((sugerencia) => <button key={sugerencia.texto} type="button" className="taller-sugerencia" onClick={() => {
+            setTexto(sugerencia.texto);
+            if (sugerencia.archivo && !adjunto) selector.current?.click(); else entrada.current?.focus();
+          }}><span aria-hidden="true">{sugerencia.icono}</span> {sugerencia.texto}{sugerencia.archivo && <span className="ml-1 text-xs text-slate-500">· 📎 con tu archivo</span>}</button>)}</div>
         </div>}
         {mensajes.map((mensaje) => <div key={mensaje.id} className="taller-mensaje">{renderMensaje(mensaje)}</div>)}
         {ocupado && <p role="status" className="taller-escribiendo"><span className="taller-puntos" aria-hidden="true"><i /><i /><i /></span>{fase}</p>}

@@ -61,6 +61,27 @@ reales, IA pesada (quitar fondo, OCR), publicar en internet, memoria.
   acción principal «Usar en el chat» (`#inicio/usar/<texto>`, deja el pedido escrito) y la
   ficha técnica queda como «Ver detalles y preparación». `vite build` OK.
 
+- **SQL 13 aplicado por Fahida (17/11)**: en Supabase `execution_enqueue` delega las
+  herramientas Python a `execution_enqueue_python_v1`, que conservaba 64 KB (una foto en la
+  ejecución directa daba 22023). SQL 13 sube los límites viejos de todas las `execution_*`;
+  comprobación pegada por Fahida: ningún 65536/350000 restante. También quedaron en 4 MB los
+  reportes de progreso y las definiciones de workflow. La regla `parameters = {}` del
+  experimento managed-tools no se tocó (solo aplica a herramientas managed).
+- **Ajuste después de cualquier resultado, implementado, falta probar**: con la solución ya
+  ejecutada sobre un archivo, lo escrito ajusta las opciones de sus pasos (misma foto,
+  confirmación y guardado como actualización) o, si no tiene opciones, diseña una versión
+  mejorada. Etiquetas «Tu foto» en vez de descripciones base64; barra para escalas
+  «de 0.0 (…) a 1.0»; «al 50 %» se aplica sin IA.
+- Soluciones abiertas desde el menú también se pueden ajustar escribiendo: se cargan las
+  opciones de sus versiones con `GET /workflows/available-versions` (sin Gemini).
+- Sugerencias de bienvenida cambiadas por ejemplos de la demo con archivos (plato del
+  restaurante, filtro vintage, portada de PDF, Excel → informe PDF); al tocarlas se abre 📎.
+- **Plan B de Gemini** (comprobado 17/11 con una llamada mínima cada uno, 200 OK): el modelo
+  actual `gemini-3.1-flash-lite` responde; un 503 en `planner/propose` fue pasajero. Si se agota
+  la cuota diaria, cambiar `GEMINI_MODEL` en `backend/.env` a `gemini-3.5-flash-lite` o
+  `gemini-2.5-flash` (cada modelo tiene su propia cuota gratuita) y reiniciar el backend.
+  Aún no probados con las instrucciones largas de diseño/código: probarlos antes del jueves.
+
 ## Jueves 19 — mostrar y hacer llamativo
 
 - Pulido visual del chat y del taller (bienvenida, animaciones, ejemplos sugeridos de la demo).
