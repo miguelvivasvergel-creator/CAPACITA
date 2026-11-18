@@ -3,7 +3,7 @@
 Decisión de Fahida (17/11, 3:27 PM): **listo para mostrar lo más posible el miércoles 18/11 a las
 6:00 PM**. El "paso 3" del plan anterior (archivos) es el bloque 1 de esta tabla. Lo del
 jueves (pulido) se adelanta al miércoles por la tarde si hay tiempo. Visión: [VISION_FINAL.md](VISION_FINAL.md).
-Avance diario: [CONTEXTO_Y_CONTINUIDAD_FAHIDA.md](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md).
+Avance diario: [CONTEXTO_Y_CONTINUIDAD_FAHIDA.md](CONTEXTO_Y_CONTINUIDAD_FAHIDA.md). Guion del jueves: [GUION_DEMO.md](GUION_DEMO.md).
 
 ## Ya funciona (verificado con la cuenta real de Fahida, 17/11)
 
