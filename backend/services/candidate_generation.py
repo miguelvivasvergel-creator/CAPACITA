@@ -40,7 +40,9 @@ class GenerationLimiter:
         self.active.discard(user_id)
 
 
-limiter = GenerationLimiter()
+# 30/hora: «Créalas todas» encadena diseño, código y correcciones de varias herramientas.
+# Es un tope propio (el nivel gratuito de Gemini admite más); no activa facturación.
+limiter = GenerationLimiter(hourly_limit=30)
 
 
 async def owned_definition(capability_id: UUID, candidates: CandidateRepository):
