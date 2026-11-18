@@ -313,7 +313,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     // Herramienta «en prueba»: la frase la ajusta; la tarjeta muestra el nuevo resultado.
     if (ajustador.current && !pendientes.length) {
       const ajustar = ajustador.current; setTexto('');
-      ajustar(valor).then((resultado) => { if (resultado === 'nuevo') nuevaNecesidad(valor); });
+      // Si el intento anterior aún corre, el texto vuelve al cuadro para no perderlo.
+      ajustar(valor).then((resultado) => { if (resultado === 'nuevo') nuevaNecesidad(valor); else if (resultado === 'ocupado') setTexto((actual) => actual || valor); });
       return;
     }
     if (!pendientes.length && valor.length < 10) { agregar({ de: 'capacita', tipo: 'texto', texto: 'Cuéntame un poco más: qué datos tienes y qué resultado buscas.' }); return; }
@@ -427,7 +428,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     }
     // Si la herramienta era toda la solución y ya le gustó el resultado, no hace falta rearmar nada.
     if (terminada && !conversacion?.metaDefinir?.startsWith('Preparar únicamente')) {
-      setCreando(''); setEstadoCreacion('');
+      // El taller la sigue mostrando, ya en verde, hasta la siguiente necesidad.
+      setEstadoCreacion('completed');
       agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! 🎉 Descarga el resultado desde la tarjeta o cuéntame qué más necesitas.' });
       return;
     }

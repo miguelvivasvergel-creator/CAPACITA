@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Background, Controls, Handle, Position, ReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { pasosEnOrden } from '../../utils/formularioDatos';
@@ -23,7 +23,23 @@ const nodeTypes = { paso: Nodo };
  */
 export default function LienzoTaller({ definicion, creando, estadoCreacion, estados = {}, seleccionado, onSeleccionar }) {
   const contenedor = useRef(null), flujo = useRef(null);
-  const { nodes, edges } = useMemo(() => {
+  // React Flow oculta un nodo hasta medirlo. Cada cambio de estado crea nodos nuevos sin
+  // medidas y, si el tamaño no cambia, no se vuelven a medir: quedaban invisibles al ejecutar.
+  // Se conservan las últimas medidas recibidas y se devuelven en cada nodo.
+  const [medidas, setMedidas] = useState({});
+  const onNodesChange = useCallback((cambios) => {
+    setMedidas((old) => {
+      let next = old;
+      for (const { type, id, dimensions } of cambios) {
+        const previa = old[id];
+        if (type !== 'dimensions' || !dimensions || (previa?.width === dimensions.width && previa?.height === dimensions.height)) continue;
+        if (next === old) next = { ...old };
+        next[id] = { width: dimensions.width, height: dimensions.height };
+      }
+      return next;
+    });
+  }, []);
+  const { nodes: nodosBase, edges } = useMemo(() => {
     if (creando) {
       return { nodes: [{ id: 'creando', type: 'paso', position: { x: 0, y: 0 }, data: { tipo: 'Herramienta nueva', label: creando, estado: estadoCreacion || 'creando' } }], edges: [] };
     }
@@ -45,6 +61,7 @@ export default function LienzoTaller({ definicion, creando, estadoCreacion, esta
     const activa = (edge) => estados[edge.target] === 'running';
     return { nodes: nodos, edges: [...conexiones.entries()].map(([id, edge]) => ({ id, ...edge, type: 'smoothstep', animated: activa(edge), style: { strokeWidth: 2 } })) };
   }, [definicion, creando, estadoCreacion, estados, seleccionado]);
+  const nodes = useMemo(() => nodosBase.map((node) => (medidas[node.id] ? { ...node, measured: medidas[node.id] } : node)), [nodosBase, medidas]);
 
   const cantidad = nodes.length;
   // Reencuadra al cambiar de tamaño (pestañas en móvil, panel de detalle) o al crecer el plan.
@@ -67,7 +84,7 @@ export default function LienzoTaller({ definicion, creando, estadoCreacion, esta
   return <div ref={contenedor} className="h-full min-h-[200px] rounded-2xl border border-slate-200 bg-slate-50" aria-label="Taller: mapa del proceso">
     {/* El nodo en creación cambia de estado sin cambiar de tamaño: remontar evita que quede sin medir (oculto). */}
     <ReactFlow key={definicion?.name || `${creando}:${estadoCreacion || ''}`}nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.08 }} minZoom={0.2} maxZoom={1.4}
-      nodesConnectable={false} onInit={(instance) => { flujo.current = instance; }} onNodeClick={(_, node) => onSeleccionar?.(node.id)} proOptions={{ hideAttribution: true }}>
+      nodesConnectable={false} onNodesChange={onNodesChange} onInit={(instance) => { flujo.current = instance; }} onNodeClick={(_, node) => onSeleccionar?.(node.id)} proOptions={{ hideAttribution: true }}>
       <Background /><Controls showInteractive={false} />
     </ReactFlow>
   </div>;

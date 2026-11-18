@@ -12,6 +12,7 @@ from api.versions import Shared
 from core.config import settings
 from core.responses import APIResponse
 from schemas.executions import ExecutionResponse
+from services.contract_validation import DATA_BYTES
 
 router = APIRouter(prefix='/publications', tags=['Versiones publicadas'])
 
@@ -94,9 +95,9 @@ async def execute(id: UUID, payload: PublicRunRequest, repository: Repository, s
         if not Draft202012Validator(version['contracts'][field]).is_valid(value):
             raise HTTPException(422, 'Datos incompatibles con la versión publicada')
     try:
-        if len(json.dumps(payload.model_dump(), ensure_ascii=False, allow_nan=False).encode()) > 65000:
+        if len(json.dumps(payload.model_dump(), ensure_ascii=False, allow_nan=False).encode()) > DATA_BYTES:
             raise ValueError()
     except (ValueError, TypeError, RecursionError):
-        raise HTTPException(422, 'La ejecución requiere JSON finito de hasta 64 KiB') from None
+        raise HTTPException(422, 'La ejecución requiere JSON finito de hasta 4 MB') from None
     return APIResponse(data=await shared.rpc('public_enqueue', p_id=str(id), p_key=idempotency_key,
                                             p_inputs=payload.inputs, p_parameters=payload.parameters))
