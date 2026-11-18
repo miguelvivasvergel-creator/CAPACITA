@@ -10,7 +10,11 @@ export default function HerramientasGuiadas({onCambiarSeccion}){
   return <div className="vista-contenedor guiado-pagina space-y-5"><EncabezadoVista icono="herramientas" titulo="Mis herramientas" descripcion="Aquí están tus definiciones y preparaciones. La disponibilidad para usar cada una se comprueba al abrirla."/><button type="button" className="vista-boton-primario" onClick={()=>onCambiarSeccion?.('inicio')}>Describir una necesidad nueva</button>
     {busy&&<p role="status">Cargando herramientas…</p>}{error&&<div role="alert" className="text-sm text-red-700"><p>{error}</p><button type="button" className="min-h-11 underline" onClick={()=>{setError('');setBusy(true);setRevision(old=>old+1);}}>Volver a consultar</button></div>}
     {!busy&&!error&&!page.items.length&&<p className="guiado-vacio">Todavía no tienes herramientas propias. La IA puede ayudarte a definir la que necesites.</p>}
-    <ul className="guiado-lista">{page.items.map(row=><li key={row.id}><button type="button" className="guiado-item" onClick={()=>onCambiarSeccion?.(`ejecutar/capability/${row.id}`)}><span className="guiado-item-icono"><Icono nombre="herramientas"/></span><span className="guiado-item-copy"><strong>{row.name}</strong><span >{row.description}</span><span >Revisar preparación y disponibilidad</span></span><Icono nombre="flecha" className="guiado-item-flecha"/></button></li>)}</ul>
+    <ul className="guiado-lista">{page.items.map(row=><li key={row.id}>
+      {/* Acción principal: el mismo flujo del chat. La ficha técnica queda como detalle. */}
+      <button type="button" className="guiado-item" onClick={()=>onCambiarSeccion?.(`inicio/usar/${encodeURIComponent(`Quiero usar mi herramienta «${row.name}»: ${row.description}`.slice(0,1500))}`)}><span className="guiado-item-icono"><Icono nombre="herramientas"/></span><span className="guiado-item-copy"><strong>{row.name}</strong><span >{row.description}</span><span >Usar en el chat</span></span><Icono nombre="flecha" className="guiado-item-flecha"/></button>
+      <button type="button" className="ml-2 mt-1 min-h-11 text-sm text-slate-600 underline" onClick={()=>onCambiarSeccion?.(`ejecutar/capability/${row.id}`)}>Ver detalles y preparación</button>
+    </li>)}</ul>
     {page.next_cursor&&<button type="button" disabled={busy} className="vista-boton-primario" onClick={more}>Ver más herramientas</button>}
   </div>;
 }

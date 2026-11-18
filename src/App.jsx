@@ -271,7 +271,7 @@ export default function App() {
         }}
       >
         {seccion === 'inicio' && (
-          experiencia === 'guiado' ? <InicioGuiado key={`${usuarioActual.id}:guiado`} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion}/> : <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
+          experiencia === 'guiado' ? <InicioGuiado key={`${usuarioActual.id}:guiado:${parametros.join('/')}`} abrir={parametros} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion}/> : <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
         {seccion === 'capacidades' && (experiencia === 'guiado' ? <HerramientasGuiadas key={usuarioActual.id} onCambiarSeccion={handleCambiarSeccion}/> : <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />)}
         {seccion === 'workflows' && (experiencia === 'guiado' ? <SolucionesGuiadas key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} onCambiarSeccion={handleCambiarSeccion}/> : <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} _usuario={usuarioActual} />)}

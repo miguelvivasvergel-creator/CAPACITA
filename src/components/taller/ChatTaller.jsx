@@ -24,7 +24,7 @@ const activo = (status) => ['queued', 'running'].includes(status);
  * Orquesta las APIs existentes (planner, interpretación, laboratorio y workflows):
  * busca primero en el catálogo autorizado, propone, crea lo que falta y ejecuta.
  */
-export default function ChatTaller({ usuario, onCambiarSeccion }) {
+export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState('');
   const [consentimiento, setConsentimiento] = useState(false);
@@ -57,6 +57,30 @@ export default function ChatTaller({ usuario, onCambiarSeccion }) {
 
   const agregar = useCallback((mensaje) => setMensajes((old) => [...old, { id: ++siguienteId.current, ...mensaje }]), []);
   useEffect(() => () => peticion.current?.abort(), []);
+
+  // Desde Soluciones o Herramientas: abrir una solución guardada o dejar escrito un pedido.
+  // Una sola vez (también en StrictMode); abrir una solución no usa Gemini ni la vuelve a guardar.
+  const abierto = useRef(false);
+  useEffect(() => {
+    const [tipo, valor] = abrir;
+    if (abierto.current || !valor) return;
+    abierto.current = true;
+    if (tipo === 'usar') {
+      try { setTexto(decodeURIComponent(valor).slice(0, 2000)); } catch { /* texto inválido: se ignora */ }
+      entrada.current?.focus();
+      return;
+    }
+    if (tipo !== 'solucion') return;
+    api(`/workflows/${encodeURIComponent(valor)}`).then((guardada) => {
+      solucion.current = { definicion: guardada.definition, guardada, incierta: false };
+      setPlan(guardada.definition);
+      setConversacion({ objetivo: guardada.definition.name, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Abrí tu solución «${guardada.definition.name}». Revisa sus pasos en el taller; te pido los datos para usarla 👇` });
+      agregar({ de: 'capacita', tipo: 'plan', definicion: guardada.definition });
+      empezarDatos(guardada.definition);
+    }).catch((cause) => agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Puedes describir tu necesidad aquí.` }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { fin.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [mensajes, fase, run?.status]);
 
   // Seguimiento en vivo de la ejecución: alimenta los estados de los nodos del taller.

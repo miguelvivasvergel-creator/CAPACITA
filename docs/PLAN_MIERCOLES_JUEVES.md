@@ -49,8 +49,17 @@ reales, IA pesada (quitar fondo, OCR), publicar en internet, memoria.
   «Me falta una herramienta» cuando faltan 2 o más. Crea cada pieza en modo automático
   (diseño → código → pruebas → activar, sin vista previa) y al terminar la última rearma la
   solución con el archivo de la persona. Si una pieza falla o sale bloqueada, se detiene y
-  dice cuáles quedaron pendientes. Límite a vigilar: el turno local de Gemini es de 10
-  llamadas/hora y lo comparten diseño, código, correcciones y planner.
+  dice cuáles quedaron pendientes. Turno local de Gemini subido a 30 llamadas/hora (commit
+  `564ad58`); lo comparten diseño, código, correcciones y planner.
+- **Bloque 6 «Compartir con la comunidad», implementado, falta probar en navegador**: botón
+  🌎 en la tarjeta de la herramienta guardada. Usa la publicación B6 existente (licencia
+  MIT/Apache-2.0/CC0, consentimiento explícito, «Dejar de compartir»). Archivo:
+  `CompartirHerramienta.jsx`. `vite build` OK.
+- **Bloque 7 «Menú ordenado», implementado, falta probar en navegador**: en modo guiado,
+  Soluciones abre la solución guardada en el chat + taller (`#inicio/solucion/<id>`: carga el
+  workflow, no lo vuelve a guardar, no usa Gemini y pide los datos). Herramientas tiene como
+  acción principal «Usar en el chat» (`#inicio/usar/<texto>`, deja el pedido escrito) y la
+  ficha técnica queda como «Ver detalles y preparación». `vite build` OK.
 
 ## Jueves 19 — mostrar y hacer llamativo
 

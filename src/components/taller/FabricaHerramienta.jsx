@@ -6,6 +6,7 @@ import { crearPrueba } from '../../services/laboratorio';
 import { deshabilitarVersion, habilitarVersion } from '../../services/versiones';
 import { observacionPruebas, pruebaReparable, casosDesdeEjemplos } from './fabrica';
 import VistaPrevia from './VistaPrevia';
+import CompartirHerramienta from './CompartirHerramienta';
 
 const MAX_CORRECCIONES = 2;
 const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50';
@@ -179,6 +180,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
       <p className="basis-full text-xs text-slate-500">También puedes describir tu necesidad de otra forma en el chat.</p>
     </div>}
     {fase === 'activa' && <p className="mt-3 text-sm font-semibold text-emerald-700">✅ Guardada en tus herramientas privadas.</p>}
+    {fase === 'activa' && resultado?.version && <CompartirHerramienta version={resultado.version} />}
     <div ref={final} />
   </div>;
 }
