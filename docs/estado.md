@@ -4,7 +4,32 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
-### Fahida — 19/11/2026: fase 1, conectores (banco de APIs), sin commit todavía
+### Fahida — 19/11/2026: fase 2, IA en ejecución (sin commit todavía)
+
+Respaldo antes de la fase: commit `9480705`, etiqueta `respaldo/antes-fase-2`. Fahida aceptó
+enviar el contenido real a Gemini con un «Acepto» propio.
+- `backend/connectors/ia.py`: 6 conectores de IA (Google Gemini, clave del sistema que añade el
+  broker solo hacia `generativelanguage.googleapis.com`; el código del conector no la lee):
+  resumir, traducir, redactar (sin inventar precios ni contactos: los deja [entre corchetes]),
+  leer el texto de una foto, sacar datos de una foto (nunca adivina: vacío y `encontrado:false`)
+  y «pedirle algo a la IA sobre un texto». Entradas sin minLength/maxLength para poder recibir
+  la salida de otros pasos (el validador de conexiones exige límites iguales); largo validado en
+  código. Tope de 30 usos de IA por hora en el trabajador.
+- `credential` y `sends_content` solo entran al manifiesto si existen: los 6 conectores ya
+  aplicados conservan sus hashes (prueba con los hashes del SQL 15 aplicado).
+- «Acepto» obligatorio en el backend: `POST /workflows/{id}/approvals` responde 422 si un paso
+  envía contenido a una IA y falta `content_consent`. En el chat, casilla en la tarjeta del plan
+  (el botón no se activa sin ella), sello ✨ IA y ya no dice «tus datos no se envían a la IA».
+- Planner: sabe que hay conectores de IA. Sugerencia nueva: «Saca la fecha, el total y el
+  proveedor de la foto de mi factura».
+Verificado: 30 pruebas de conectores + aprobación con IA; suite 224/226 (las 2 de siempre); lint y
+build; Gemini real (`gemini-3.5-flash-lite`): resumir, traducir, clasificar comentarios y sacar
+datos de la foto de muestra (sin texto: 0 de 3, nada inventado).
+Fahida aplicó de nuevo `db/15` y confirmó en el navegador que funciona (19/11, «funciona»; sin
+detalle de qué conectores probó). Conectores de la fase 1 con minLength/maxLength: solo reciben datos de la persona, no de
+otros pasos; una versión 2 sin esos límites permitiría combinarlos.
+
+### Fahida — 19/11/2026: fase 1, conectores (banco de APIs)
 
 Implementado en código; **falta aplicar SQL** y probarlo en la app:
 - `backend/connectors/`: registro revisado (no lo escribe la IA) con 6 conectores gratuitos y sin clave:

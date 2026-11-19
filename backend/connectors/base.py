@@ -41,10 +41,15 @@ class Connector:
                  name: str, description: str, category: str, input_type: str, output_type: str,
                  input_schema: dict, parameter_schema: dict, output_schema: dict,
                  example_inputs: dict, example_parameters: dict, constraints: list[str],
-                 run: Callable[[Any, dict, dict], dict], max_requests: int = 3):
+                 run: Callable[[Any, dict, dict], dict], max_requests: int = 3,
+                 credential: str | None = None, sends_content: bool = False):
         self.key, self.version = key, version
         self.provider, self.provider_url, self.hosts = provider, provider_url, sorted(hosts)
         self.max_requests = max_requests
+        # credential: nombre de la clave del sistema que el broker añade (el código del conector
+        # nunca la lee). sends_content: envía el contenido de la persona (texto, fotos) a un
+        # tercero; exige un «Acepto» explícito al aprobar el proceso.
+        self.credential, self.sends_content = credential, sends_content
         self._run = run
         self.definition = {
             "name": name, "description": description, "category": category,
@@ -71,9 +76,15 @@ class Connector:
         return sha256(self.definition)
 
     def manifest(self) -> dict:
-        return {"format_version": 1, "kind": "connector", "connector_key": self.connector_key,
-                "provider": self.provider, "provider_url": self.provider_url, "hosts": self.hosts,
-                "definition_hash": self.definition_hash, "definition": self.definition}
+        manifest = {"format_version": 1, "kind": "connector", "connector_key": self.connector_key,
+                    "provider": self.provider, "provider_url": self.provider_url, "hosts": self.hosts,
+                    "definition_hash": self.definition_hash, "definition": self.definition}
+        # Solo si existen: los conectores ya publicados conservan exactamente su manifiesto y hash.
+        if self.credential:
+            manifest["credential"] = self.credential
+        if self.sends_content:
+            manifest["sends_content"] = True
+        return manifest
 
     @property
     def artifact_hash(self) -> str:

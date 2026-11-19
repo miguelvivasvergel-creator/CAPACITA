@@ -23,6 +23,7 @@ const SUGERENCIAS = [
   { icono: '📊', texto: 'Convierte mi Excel de ventas en un informe PDF con los totales', archivo: true },
   { icono: '🔍', texto: 'Compara dos versiones de mi documento Word y márcame todo lo que cambió', archivo: true },
   { icono: '🌦️', texto: '¿Va a llover esta semana en Bogotá? Dime qué días', archivo: false },
+  { icono: '🧾', texto: 'Saca la fecha, el total y el proveedor de la foto de mi factura', archivo: true },
   { icono: '✍️', texto: 'Cuenta cuántas palabras tiene un texto y dime las más repetidas', archivo: false },
 ];
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
@@ -59,8 +60,12 @@ function herramientasParecidas(items, objetivo) {
 
 // Pasos que consultan un servicio externo (sello 🌐): version_id → proveedor («Open-Meteo»).
 const SIN_CONECTORES = new Map();
-const proveedorDe = (item) => /^Conector externo \(([^)]+)\)/.exec(item.description || '')?.[1] || 'Servicio externo';
-const mapaConectores = (items) => new Map(items.filter((item) => item.profile === 'connector-v1').map((item) => [item.id, proveedorDe(item)]));
+// ia: el paso envía tu contenido a una IA externa (exige un «Acepto» propio al aprobar).
+const conectorDe = (item) => {
+  const [, tipo, proveedor] = /^Conector (externo|de IA) \(([^)]+)\)/.exec(item.description || '') || [];
+  return { proveedor: proveedor || 'Servicio externo', ia: tipo === 'de IA' };
+};
+const mapaConectores = (items) => new Map(items.filter((item) => item.profile === 'connector-v1').map((item) => [item.id, conectorDe(item)]));
 
 // Errores del trabajador en palabras. detail es un código fijo (nunca el valor que escribió la persona).
 const DATO = {
@@ -68,7 +73,14 @@ const DATO = {
   fecha_fin: 'la fecha final', rango_fechas: 'las fechas (hasta un año y no en el futuro)', dias: 'los días', pais: 'el país',
   anio_pais: 'el año o el país', pais_sin_datos: 'el país (no hay datos)', monto_moneda: 'el monto o las monedas',
   moneda_origen: 'la moneda de origen', moneda_destino: 'la moneda de destino', referencia: 'la referencia',
-  sin_datos: 'los datos (el servicio no tiene información para eso)',
+  sin_datos: 'los datos (el servicio no tiene información para eso)', texto: 'el texto (está vacío)',
+  texto_muy_largo: 'el texto (es muy largo: máximo 30.000 caracteres)', foto: 'la foto (debe ser JPG o PNG)',
+  campos: 'los datos a sacar (sepáralos con comas, máximo 20)', indicaciones: 'las indicaciones', instruccion: 'qué hacer',
+};
+// Respuestas de la IA que no dependen de un dato concreto.
+const DETALLES_IA = {
+  contenido_bloqueado: 'La IA no quiso procesar ese contenido (lo marcó como sensible). Prueba con otro texto o foto',
+  respuesta_muy_larga: 'La respuesta de la IA salía demasiado larga. Prueba con un texto más corto',
 };
 const ERRORES = {
   connector_provider_unavailable: 'El servicio externo no respondió. Intenta de nuevo en unos minutos',
@@ -79,9 +91,12 @@ const ERRORES = {
   connector_mismatch: 'Este conector no coincide con el revisado en Capacita; avisa al equipo',
   input_contract: 'Algún dato no tiene el formato esperado', output_contract: 'El resultado no tuvo el formato esperado',
   sandbox_unavailable: 'El entorno de ejecución no está disponible; revisa que el trabajador esté encendido',
+  connector_not_configured: 'Este paso necesita una clave de servicio que no está configurada en el trabajador',
+  connector_quota: 'Se alcanzó el tope de usos de IA por hora en Capacita. Intenta de nuevo más tarde',
 };
 function explicarError(report) {
   const paso = report?.steps?.find((step) => step.status === 'failed');
+  if (paso?.error === 'connector_input' && DETALLES_IA[paso.detail]) return DETALLES_IA[paso.detail];
   if (paso?.error === 'connector_input') return `Revisa ${DATO[paso.detail] || 'los datos'} en el paso «${paso.label}»`;
   const codigo = paso?.error || report?.error;
   return ERRORES[codigo] || (paso ? `Falló el paso «${paso.label}»` : codigo);
@@ -770,7 +785,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         {Object.keys(nodoElegido.parameters || {}).length > 0 && <div className="mt-2 text-sm"><p className="text-xs font-semibold text-slate-500">Opciones</p><ResultadoDatos value={nodoElegido.parameters} /></div>}
         {pasoElegido?.output != null && <div className="mt-2 text-sm"><p className="text-xs font-semibold text-slate-500">Lo que produjo</p><ResultadoDatos value={pasoElegido.output} /></div>}
         {pasoElegido?.error && <p className="mt-2 break-words text-sm text-red-700">{explicarError({ steps: [pasoElegido] })}.</p>}
-        {conectores.get(nodoElegido.version_id) && <p className="mt-2 text-xs text-sky-800">🌐 Consulta {conectores.get(nodoElegido.version_id)}: solo recibe los datos de este paso.</p>}
+        {conectores.get(nodoElegido.version_id) && <p className="mt-2 text-xs text-sky-800">{conectores.get(nodoElegido.version_id).ia ? '✨' : '🌐'} Usa {conectores.get(nodoElegido.version_id).proveedor}: solo recibe los datos de este paso.</p>}
       </div>}
     </aside>
   </section>;

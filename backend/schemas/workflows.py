@@ -46,6 +46,8 @@ class WorkflowApproval(BaseModel):
     revision: int = Field(ge=1)
     definition_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
     inputs: dict[str, Any]
+    # «Acepto» explícito: obligatorio si algún paso envía el contenido a un tercero (IA externa).
+    content_consent: bool = False
 
 
 class WorkflowRun(BaseModel):

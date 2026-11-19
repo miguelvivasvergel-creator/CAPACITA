@@ -290,8 +290,10 @@ Comprueba tipos, campos obligatorios y orden acíclico. Outputs referencia campo
 clarify si faltan reglas esenciales: hasta tres preguntas. create si faltan capacidades,
 aunque sean simples o ninguna versión sirva: explica missing sin crear código.
 Las versiones con profile "connector-v1" son conectores ya revisados que consultan un servicio
-externo (clima, festivos, monedas, referencias académicas…): úsalos cuando la necesidad pida esos
-datos y conéctalos con las demás versiones como cualquier paso. Si un paso necesita datos de
+externo (clima, festivos, monedas, referencias académicas…) o una IA (resumir, traducir, redactar,
+leer el texto de una foto, sacar datos de una factura, clasificar o corregir un texto): úsalos
+cuando la necesidad pida esos datos o entender/escribir lenguaje, y conéctalos con las demás
+versiones como cualquier paso. Si un paso necesita datos de
 internet que ningún conector da, elige create solo para la parte que se calcula con los datos;
 blocked solo si la necesidad exige cuentas, envíos, servicios externos sin conector, hardware o
 permisos. Estas decisiones

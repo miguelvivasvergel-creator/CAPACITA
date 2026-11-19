@@ -26,15 +26,22 @@ export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupad
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const pasos = pasosEnOrden(definition.nodes);
   const valores = datos || inputs;
+  // Servicios externos del plan: los de datos (🌐) solo reciben los datos de su paso; los de IA
+  // (✨) reciben tu contenido (texto o fotos) y exigen un «Acepto» propio, también en el backend.
+  const conectoresPlan = definition.nodes.map((node) => conectores.get(node.version_id)).filter(Boolean);
+  const nombres = (lista) => [...new Set(lista.map((item) => item.proveedor))];
+  const datosExternos = nombres(conectoresPlan.filter((item) => !item.ia));
+  const iaExterna = nombres(conectoresPlan.filter((item) => item.ia));
+  const [aceptaIA, setAceptaIA] = useState(false);
 
   const ejecutar = (event) => {
     event.preventDefault();
-    if (lock.current || (!datos && !formulario)) return;
+    if (lock.current || (!datos && !formulario) || (iaExterna.length && !aceptaIA)) return;
     lock.current = true; setBusy(true); setError('');
     (async () => {
       try {
         const guardada = await obtenerGuardada();
-        if (!approval.current) approval.current = await aprobarWorkflow(guardada, valores);
+        if (!approval.current) approval.current = await aprobarWorkflow(guardada, valores, iaExterna.length > 0 && aceptaIA);
         key.current ||= crypto.randomUUID();
         try {
           const run = await ejecutarWorkflow(guardada.id, approval.current.id, key.current);
@@ -46,12 +53,14 @@ export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupad
       finally { lock.current = false; if (alive.current) setBusy(false); }
     })();
   };
-  // Servicios externos que consulta este plan (sello 🌐): se dicen antes de aprobar.
-  const externos = [...new Set(definition.nodes.map((node) => conectores.get(node.version_id)).filter(Boolean))];
   const boton = <>
-    <p className="text-xs text-slate-500">🔒 Al confirmar autorizas estos pasos con estos datos. Tus datos no se envían a la IA.</p>
-    {externos.length > 0 && <p className="text-xs text-sky-800">🌐 Este proceso consulta {externos.join(', ')}: solo recibe{externos.length > 1 ? 'n' : ''} los datos de su{externos.length > 1 ? 's' : ''} paso{externos.length > 1 ? 's' : ''} (por ejemplo, la ciudad o la referencia), nunca tus archivos ni tu cuenta.</p>}
-    <button type="submit" disabled={busy || ocupadoExterno} className={`${BOTON} bg-emerald-600 text-white`}>
+    <p className="text-xs text-slate-500">🔒 Al confirmar autorizas estos pasos con estos datos.{iaExterna.length ? '' : ' Tus datos no se envían a la IA.'}</p>
+    {datosExternos.length > 0 && <p className="text-xs text-sky-800">🌐 Este proceso consulta {datosExternos.join(', ')}: solo recibe{datosExternos.length > 1 ? 'n' : ''} los datos de su{datosExternos.length > 1 ? 's' : ''} paso{datosExternos.length > 1 ? 's' : ''} (por ejemplo, la ciudad o la referencia), nunca tus archivos ni tu cuenta.</p>}
+    {iaExterna.length > 0 && <label className="flex items-start gap-2 rounded-xl bg-violet-50 p-3 text-xs text-violet-900">
+      <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={aceptaIA} disabled={busy} onChange={(event) => { setAceptaIA(event.target.checked); approval.current = null; key.current = null; }} />
+      <span>✨ Acepto que los pasos de IA envíen a {iaExterna.join(', ')} el contenido que reciben (tu texto o tu foto) para procesarlo. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles. La IA puede equivocarse; revisa el resultado.</span>
+    </label>}
+    <button type="submit" disabled={busy || ocupadoExterno || (iaExterna.length > 0 && !aceptaIA)} className={`${BOTON} bg-emerald-600 text-white`}>
       {busy ? 'Preparando…' : ejecutadas ? 'Ejecutar de nuevo' : 'Aprobar y ejecutar'}
     </button>
   </>;
@@ -82,7 +91,7 @@ export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupad
     </div>
     <ol className="space-y-2">{pasos.map((node, index) => <li key={node.id} className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm">
       <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-bold text-blue-800">{index + 1}</span>
-      <span className="break-words">{node.label}{conectores.get(node.version_id) && <span className="ml-2 inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800">🌐 {conectores.get(node.version_id)}</span>}</span>
+      <span className="break-words">{node.label}{conectores.get(node.version_id) && <span className={`ml-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${conectores.get(node.version_id).ia ? 'bg-violet-100 text-violet-800' : 'bg-sky-100 text-sky-800'}`}>{conectores.get(node.version_id).ia ? '✨ IA' : '🌐'} {conectores.get(node.version_id).proveedor}</span>}</span>
     </li>)}</ol>
     {campos ? null
       : formulario ? <form className="space-y-4 border-t pt-4" onSubmit={ejecutar}>

@@ -182,6 +182,18 @@ class WorkflowAPITests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/workflows',json={'definition':self.spec,'owner_id':'forged'}).status_code,422)
         self.assertEqual(self.client.post('/api/workflows',json={'definition':self.spec}).status_code,201)
 
+    def test_approval_with_ai_step_requires_explicit_content_consent(self):
+        from connectors import REGISTRY
+        resumir = REGISTRY["resumir_texto@1"]
+        self.row["definition"]["nodes"][1]["version_id"] = str(resumir.version_id)
+        body = {'revision': 1, 'definition_hash': 'a' * 64, 'inputs': {'texto': 'hola'}}
+        sin = self.client.post(f"/api/workflows/{self.row['id']}/approvals", json=body)
+        self.assertEqual(sin.status_code, 422)
+        self.assertIn("Google Gemini", sin.json()["detail"])
+        # Con el «Acepto» ya no es ese rechazo (sigue la validación normal de versiones).
+        con = self.client.post(f"/api/workflows/{self.row['id']}/approvals", json=body | {'content_consent': True})
+        self.assertNotIn("acepta ese envío", con.text)
+
     def test_approval_rejects_edited_revision_invalid_inputs_and_other_owner(self):
         identity=self.row['id']
         body={'revision':1,'definition_hash':'a'*64,'inputs':{'texto':'hola'}}

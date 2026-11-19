@@ -8,6 +8,7 @@ from api.capabilities import Repository
 from api.versions import Shared
 from core.responses import APIResponse
 from core.config import settings
+from connectors import sending_content
 from repositories.candidates import CandidateRepository
 from repositories.workflows import WorkflowRepository
 from schemas.executions import ExecutionResponse
@@ -96,7 +97,12 @@ async def approve(id: UUID, payload: WorkflowApproval, repository: Repository, s
     row = await storage.get(id)
     if row["revision"] != payload.revision or row["definition_hash"] != payload.definition_hash:
         raise HTTPException(409, "El proceso cambió; vuelve a revisarlo")
-    await check_workflow(WorkflowDefinition.model_validate(row["definition"]), repository, payload.inputs)
+    definition = WorkflowDefinition.model_validate(row["definition"])
+    externos = sending_content(node.version_id for node in definition.nodes)
+    if externos and not payload.content_consent:
+        proveedores = ", ".join(sorted({connector.provider for connector in externos}))
+        raise HTTPException(422, f"Este proceso envía tu contenido a {proveedores}: acepta ese envío para aprobarlo")
+    await check_workflow(definition, repository, payload.inputs)
     return APIResponse(data=await storage.rpc("workflow_approve", p_id=str(id), p_revision=payload.revision,
         p_hash=payload.definition_hash, p_inputs=payload.inputs))
 

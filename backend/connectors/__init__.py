@@ -5,10 +5,18 @@ from connectors.base import PROFILE, Connector, ConnectorInputError
 from connectors.calendario import FESTIVOS
 from connectors.clima import HISTORICO, PRONOSTICO
 from connectors.dinero import CAMBIO, TRM_COLOMBIA
+from connectors.ia import IA
 
-CONNECTORS: list[Connector] = [PRONOSTICO, HISTORICO, FESTIVOS, TRM_COLOMBIA, CAMBIO, REFERENCIA]
+CONNECTORS: list[Connector] = [PRONOSTICO, HISTORICO, FESTIVOS, TRM_COLOMBIA, CAMBIO, REFERENCIA, *IA]
 REGISTRY: dict[str, Connector] = {connector.connector_key: connector for connector in CONNECTORS}
-assert len(REGISTRY) == len(CONNECTORS), "connector_key repetido"
+BY_VERSION: dict[str, Connector] = {str(connector.version_id): connector for connector in CONNECTORS}
+assert len(REGISTRY) == len(CONNECTORS) == len(BY_VERSION), "connector_key repetido"
+
+
+def sending_content(version_ids):
+    """Conectores (de esas versiones) que envían el contenido de la persona a un tercero."""
+    return [BY_VERSION[str(identity)] for identity in version_ids
+            if str(identity) in BY_VERSION and BY_VERSION[str(identity)].sends_content]
 
 
 def from_manifest(manifest, artifact_hash=None):
@@ -23,4 +31,5 @@ def from_manifest(manifest, artifact_hash=None):
     return connector
 
 
-__all__ = ["CONNECTORS", "REGISTRY", "PROFILE", "Connector", "ConnectorInputError", "from_manifest"]
+__all__ = ["CONNECTORS", "REGISTRY", "BY_VERSION", "PROFILE", "Connector", "ConnectorInputError", "from_manifest",
+           "sending_content"]
