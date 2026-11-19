@@ -293,10 +293,14 @@ Las versiones con profile "connector-v1" son conectores ya revisados que consult
 externo (clima, festivos, monedas, referencias académicas…) o una IA (resumir, traducir, redactar,
 leer el texto de una foto, sacar datos de una factura, clasificar o corregir un texto): úsalos
 cuando la necesidad pida esos datos o entender/escribir lenguaje, y conéctalos con las demás
-versiones como cualquier paso. Si un paso necesita datos de
-internet que ningún conector da, elige create solo para la parte que se calcula con los datos;
-blocked solo si la necesidad exige cuentas, envíos, servicios externos sin conector, hardware o
-permisos. Estas decisiones
+versiones como cualquier paso. Los que dicen «Conector de acción» (por ejemplo «Enviarme por
+Telegram») envían el resultado al chat ya conectado de la propia persona: si pide enviarle,
+mandarle o avisarle algo por ese medio, úsalo como último paso conectando su mensaje (y su
+archivo si lo hay) a la salida del paso anterior. Esos envíos los aprueba la persona antes de
+ejecutar: nunca elijas blocked por un envío que un conector de acción resuelve. Si un paso
+necesita datos de internet que ningún conector da, elige create solo para la parte que se
+calcula con los datos; blocked solo si la necesidad exige cuentas, envíos o servicios externos
+para los que NO hay conector entre las versiones, hardware o permisos. Estas decisiones
 llevan definition=null. No declares ejecución, aprobación, publicación o éxito funcional.
 Devuelve JSON sin markdown; explicación en español. Un plan válido aún requiere revisión.
 Si la necesidad usa fotos, PDF, Word o Excel, cada archivo es un campo string con

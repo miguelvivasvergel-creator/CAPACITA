@@ -4,6 +4,36 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 20/11/2026: fase 3 Telegram — verificada de punta a punta
+
+Último commit estable: `0843fc5`. Bot @Capacita_web_bot; TELEGRAM_BOT_TOKEN (verificado con getMe)
+y TELEGRAM_BOT_USERNAME en `backend/.env`. Nunca imprimir ni subir el token.
+- `db/16_telegram.sql` (NO aplicado aún): tablas privadas telegram_links/telegram_codes y 6 RPC
+  (persona: link_start/status/unlink; trabajador con reserva: link_complete/unlink_chat/chat_for_job).
+  Sus nombres están en la lista permitida del gateway (`core/supabase.py`, EXECUTION_RPCS).
+- `api/telegram.py`: GET /telegram/status, POST /telegram/link (código + enlace t.me/…?start=…),
+  DELETE /telegram/link. Configuración → sección «Telegram» (`ConectarTelegram.jsx`): abre el bot,
+  consulta el estado cada 3 s y permite desconectar.
+- `connectors/telegram.py` (enviar_telegram@1, «Conector de acción»): mensaje (en trozos de 4.000)
+  y archivo opcional (foto como foto) al chat del DUEÑO, que sale del contexto del trabajo
+  (`telegram_chat_for_job`), nunca de una entrada. Texto plano. Token en la ruta (broker
+  TOKEN_EN_RUTA) y multipart (`post_form`). sends_content → «Acepto» obligatorio en el backend.
+- Trabajador: escucha al bot entre trabajos (cada 3 s; /start CÓDIGO, /salir, ayuda; solo chats
+  privados; ante fallo espera 60 s y sigue). Chat: sello 🔒, casilla «Acepto que se envíe a mi
+  Telegram», errores en palabras (telegram_no_vinculado…), sugerencia «Mándame por Telegram…».
+- `db/15` regenerado con 19 versiones (falta aplicarlo otra vez).
+Verificado: 6 pruebas nuevas de Telegram (token solo en la ruta, chat solo del contexto, sin chat
+no envía nada, archivo con leyenda, trozos, rechazos, bot solo en chats privados), suite 233/235
+(las 2 de siempre), lint y build; backend y trabajador reiniciados con este código.
+Fahida aplicó SQL 16 y 15, conectó su Telegram desde Configuración y pidió «Mándame por Telegram el
+pronóstico de lluvia de Bogotá de esta semana»: el planner armó Pronóstico (v2) → Enviar por
+Telegram y el mensaje llegó a su chat (20/11). Dos arreglos tras la primera prueba: (1) el prompt
+del planner bloqueaba «envíos» aunque hubiera conector de acción; (2) el atajo sin IA ofrecía solo
+el pronóstico: ahora no se ofrece si el pedido nombra algo que solo hace otra herramienta (por su
+nombre, p. ej. «Telegram»), y pasa al planner.
+Siguiente: fase 4 (caja interna: pandas, matplotlib, rembg, Tesseract) o fase 5 (asistentes
+recurrentes), y el asistente del restaurante (clima histórico + ventas + informe + Telegram).
+
 ### Fahida — 19/11/2026: conectores combinables (versión 2)
 
 - `Connector.componible(2)`: los 6 conectores de la fase 1 tienen versión 2 con la misma lógica y

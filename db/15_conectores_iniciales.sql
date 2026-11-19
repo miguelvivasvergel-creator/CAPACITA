@@ -146,6 +146,17 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
     input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
 
+  -- Capacidad enviar_telegram (datos de enviar_telegram@1) · Telegram
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('77fcc267-2bf4-50bd-a88d-7f0e7179fb46'::uuid, propietario, $txt$Enviarme por Telegram$txt$, $txt$Conector de acción (Telegram): te envía a TU chat de Telegram vinculado un mensaje y, si quieres, un archivo (el informe en PDF, una foto, un Excel). Sirve para recibir resultados o avisos en el celular.$txt$,
+    $txt$comunicacion$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"archivo":{"contentEncoding":"base64","description":"Archivo para enviar junto al mensaje (opcional)","title":"Archivo","type":"string"},"mensaje":{"description":"El texto que quieres recibir en Telegram","title":"Mensaje","type":"string"},"nombre_archivo":{"description":"Sin extensión (opcional)","title":"Nombre del archivo","type":"string"}},"required":["mensaje"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"enviado":{"title":"Enviado","type":"boolean"},"resumen":{"title":"Resumen","type":"string"}},"required":["enviado","resumen"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["api.telegram.org"],"key":"enviar_telegram@1","provider":"Telegram","provider_url":"https://core.telegram.org/bots","seal":"conectada"},"definition":{"constraints":["Solo envía a tu propio chat vinculado en Capacita → Configuración; nunca a otra persona.","Telegram recibe el mensaje y el archivo de este paso."],"definition_hash":"dd8e695fa7b9a2feef08a6e0509c218d3f42c0c251605681f5907f6e0817a2be","examples":[{"inputs":{"mensaje":"Tu informe de ventas está listo."},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
   -- Versión clima_pronostico@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
@@ -343,6 +354,17 @@ BEGIN
   INSERT INTO capacita_execution.publications(version_id, owner_id, license)
   SELECT '05230354-819c-5371-b942-e6a3abea18fd'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '05230354-819c-5371-b942-e6a3abea18fd'::uuid AND active);
+
+  -- Versión enviar_telegram@1
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('076b39c6-412b-560c-9442-8757ab0fb09b'::uuid, propietario, '77fcc267-2bf4-50bd-a88d-7f0e7179fb46'::uuid,
+    $json${"connector_key":"enviar_telegram@1","credential":"telegram","definition":{"category":"comunicacion","constraints":["Solo envía a tu propio chat vinculado en Capacita → Configuración; nunca a otra persona.","Telegram recibe el mensaje y el archivo de este paso."],"description":"Conector de acción (Telegram): te envía a TU chat de Telegram vinculado un mensaje y, si quieres, un archivo (el informe en PDF, una foto, un Excel). Sirve para recibir resultados o avisos en el celular.","examples":[{"inputs":{"mensaje":"Tu informe de ventas está listo."},"parameters":{}}],"input_schema":{"additionalProperties":false,"properties":{"archivo":{"contentEncoding":"base64","description":"Archivo para enviar junto al mensaje (opcional)","title":"Archivo","type":"string"},"mensaje":{"description":"El texto que quieres recibir en Telegram","title":"Mensaje","type":"string"},"nombre_archivo":{"description":"Sin extensión (opcional)","title":"Nombre del archivo","type":"string"}},"required":["mensaje"],"type":"object"},"input_type":"texto","name":"Enviarme por Telegram","output_schema":{"additionalProperties":false,"properties":{"enviado":{"title":"Enviado","type":"boolean"},"resumen":{"title":"Resumen","type":"string"}},"required":["enviado","resumen"],"type":"object"},"output_type":"texto","parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"dd8e695fa7b9a2feef08a6e0509c218d3f42c0c251605681f5907f6e0817a2be","format_version":1,"hosts":["api.telegram.org"],"kind":"connector","provider":"Telegram","provider_url":"https://core.telegram.org/bots","sends_content":true}$json$::jsonb,
+    'dfd96ca90e66ec2ca469e8b2abf1ddddac00633c24f6fae9a4451054e96f01f7', 'dd8e695fa7b9a2feef08a6e0509c218d3f42c0c251605681f5907f6e0817a2be', 'connector-v1', 'enviar_telegram@1')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT '076b39c6-412b-560c-9442-8757ab0fb09b'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '076b39c6-412b-560c-9442-8757ab0fb09b'::uuid AND active);
 END $$;
 COMMIT;
 NOTIFY pgrst, 'reload schema';

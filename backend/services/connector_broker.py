@@ -18,6 +18,7 @@ USER_AGENT = "Capacita/0.1 (conector)"
 TIMEOUT_SECONDS = 45  # Crossref tarda a veces más de 12 s; la IA con una foto, hasta ~40 s
 MAX_RESPONSE_BYTES = 1_048_576
 MAX_REQUEST_BYTES = 6_000_000  # una foto de ~2,8 MB en base64 más instrucciones
+TOKEN_EN_RUTA = "@ruta"  # modo de credencial: el token va en la ruta (Telegram), no en una cabecera
 
 
 class ConnectorFailure(Exception):
@@ -63,7 +64,14 @@ class SafeHttp:
             raise ConnectorFailure("invalid_request")
         return self._request("POST", url, content=contenido)
 
-    def _request(self, method, url, params=None, content=None):
+    def post_form(self, url, data, files=None):
+        """Formulario multipart (por ejemplo, un documento para Telegram). files: {campo: (nombre, bytes, tipo)}."""
+        tamano = sum(len(str(valor)) for valor in data.values()) + sum(len(f[1]) for f in (files or {}).values())
+        if tamano > MAX_REQUEST_BYTES:
+            raise ConnectorFailure("invalid_request")
+        return self._request("POST", url, data=data, files=files)
+
+    def _request(self, method, url, params=None, content=None, data=None, files=None):
         parts = urlsplit(url)
         if parts.scheme != "https" or parts.hostname not in self.hosts or parts.port not in (None, 443) \
                 or parts.username or parts.password or parts.fragment:
@@ -77,11 +85,18 @@ class SafeHttp:
         if content is not None:
             headers["Content-Type"] = "application/json"
         if self._auth and parts.hostname == self._auth[0]:
-            headers[self._auth[1]] = self._auth[2]
+            if self._auth[1] == TOKEN_EN_RUTA:
+                # Telegram lleva el token en la ruta: el conector escribe «/bot/…» y aquí se completa.
+                base = f"https://{parts.hostname}/bot/"
+                if not url.startswith(base):
+                    raise ConnectorFailure("invalid_request")
+                url = f"https://{parts.hostname}/bot{self._auth[2]}/" + url[len(base):]
+            else:
+                headers[self._auth[1]] = self._auth[2]
         try:
             with httpx.Client(transport=self.transport, timeout=TIMEOUT_SECONDS, follow_redirects=False,
                               headers=headers) as client:
-                with client.stream(method, url, params=params, content=content) as response:
+                with client.stream(method, url, params=params, content=content, data=data, files=files) as response:
                     if response.status_code in (401, 403):
                         raise ConnectorFailure("provider_rejected")
                     if response.status_code == 404:

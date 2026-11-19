@@ -24,6 +24,7 @@ const SUGERENCIAS = [
   { icono: '🔍', texto: 'Compara dos versiones de mi documento Word y márcame todo lo que cambió', archivo: true },
   { icono: '🌦️', texto: '¿Va a llover esta semana en Bogotá? Dime qué días', archivo: false },
   { icono: '🧾', texto: 'Saca la fecha, el total y el proveedor de la foto de mi factura', archivo: true },
+  { icono: '📲', texto: 'Mándame por Telegram el pronóstico de lluvia de Bogotá de esta semana', archivo: false },
   { icono: '✍️', texto: 'Cuenta cuántas palabras tiene un texto y dime las más repetidas', archivo: false },
 ];
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
@@ -48,22 +49,30 @@ function herramientasParecidas(items, objetivo) {
   const pedido = palabrasDe(objetivo.replace(/\n\(Adjunté [^)]*\)\s*$/, ''));
   if (!pedido.size) return [];
   const vistas = new Set();
-  return items.map((item) => {
-    const propias = palabrasDe(`${item.name} ${item.description || ''}`.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' '));
+  const texto = (item) => `${item.name} ${item.description || ''}`.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ');
+  const candidatas = items.map((item) => {
+    const propias = palabrasDe(texto(item));
     const comunes = [...pedido].filter((palabra) => propias.has(palabra)).length;
-    return { item, puntos: comunes / pedido.size, comunes };
+    return { item, propias, puntos: comunes / pedido.size, comunes };
   }).filter(({ item, comunes, puntos }) => comunes >= 2 && puntos >= 0.4 && solucionDeVersion(item))
     .sort((a, b) => b.puntos - a.puntos || String(b.item.created_at || '').localeCompare(String(a.item.created_at || '')))
-    .filter(({ item }) => !vistas.has(item.capability_id) && vistas.add(item.capability_id))
-    .slice(0, 3).map(({ item }) => item);
+    .filter(({ item }) => !vistas.has(item.capability_id) && vistas.add(item.capability_id));
+  if (!candidatas.length) return [];
+  // Si el pedido nombra algo que la mejor herramienta no hace pero el NOMBRE de otra sí («…por
+  // Telegram» → «Enviarme por Telegram»), hacen falta varias: mejor que la IA arme el proceso.
+  const sobrantes = [...pedido].filter((palabra) => !candidatas[0].propias.has(palabra));
+  const otrosNombres = items.filter((item) => item.capability_id !== candidatas[0].item.capability_id)
+    .map((item) => palabrasDe(String(item.name || '').replaceAll('_', ' ')));
+  if (sobrantes.some((palabra) => otrosNombres.some((nombre) => nombre.has(palabra)))) return [];
+  return candidatas.slice(0, 3).map(({ item }) => item);
 }
 
 // Pasos que consultan un servicio externo (sello 🌐): version_id → proveedor («Open-Meteo»).
 const SIN_CONECTORES = new Map();
 // ia: el paso envía tu contenido a una IA externa (exige un «Acepto» propio al aprobar).
 const conectorDe = (item) => {
-  const [, tipo, proveedor] = /^Conector (externo|de IA) \(([^)]+)\)/.exec(item.description || '') || [];
-  return { proveedor: proveedor || 'Servicio externo', ia: tipo === 'de IA' };
+  const [, tipo, proveedor] = /^Conector (externo|de IA|de acción) \(([^)]+)\)/.exec(item.description || '') || [];
+  return { proveedor: proveedor || 'Servicio externo', ia: tipo === 'de IA', accion: tipo === 'de acción' };
 };
 const mapaConectores = (items) => new Map(items.filter((item) => item.profile === 'connector-v1').map((item) => [item.id, conectorDe(item)]));
 
@@ -76,11 +85,14 @@ const DATO = {
   sin_datos: 'los datos (el servicio no tiene información para eso)', texto: 'el texto (está vacío)',
   texto_muy_largo: 'el texto (es muy largo: máximo 30.000 caracteres)', foto: 'la foto (debe ser JPG o PNG)',
   campos: 'los datos a sacar (sepáralos con comas, máximo 20)', indicaciones: 'las indicaciones', instruccion: 'qué hacer',
+  mensaje: 'el mensaje (está vacío)', mensaje_muy_largo: 'el mensaje (máximo 12.000 caracteres)',
+  archivo: 'el archivo (no se pudo leer o pesa más de 4,5 MB)',
 };
 // Respuestas de la IA que no dependen de un dato concreto.
 const DETALLES_IA = {
   contenido_bloqueado: 'La IA no quiso procesar ese contenido (lo marcó como sensible). Prueba con otro texto o foto',
   respuesta_muy_larga: 'La respuesta de la IA salía demasiado larga. Prueba con un texto más corto',
+  telegram_no_vinculado: 'Primero conecta tu Telegram en Configuración (sección «Telegram») y vuelve a ejecutarlo',
 };
 const ERRORES = {
   connector_provider_unavailable: 'El servicio externo no respondió. Intenta de nuevo en unos minutos',
@@ -785,7 +797,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         {Object.keys(nodoElegido.parameters || {}).length > 0 && <div className="mt-2 text-sm"><p className="text-xs font-semibold text-slate-500">Opciones</p><ResultadoDatos value={nodoElegido.parameters} /></div>}
         {pasoElegido?.output != null && <div className="mt-2 text-sm"><p className="text-xs font-semibold text-slate-500">Lo que produjo</p><ResultadoDatos value={pasoElegido.output} /></div>}
         {pasoElegido?.error && <p className="mt-2 break-words text-sm text-red-700">{explicarError({ steps: [pasoElegido] })}.</p>}
-        {conectores.get(nodoElegido.version_id) && <p className="mt-2 text-xs text-sky-800">{conectores.get(nodoElegido.version_id).ia ? '✨' : '🌐'} Usa {conectores.get(nodoElegido.version_id).proveedor}: solo recibe los datos de este paso.</p>}
+        {conectores.get(nodoElegido.version_id) && <p className="mt-2 text-xs text-sky-800">{conectores.get(nodoElegido.version_id).ia ? '✨' : conectores.get(nodoElegido.version_id).accion ? '🔒' : '🌐'} Usa {conectores.get(nodoElegido.version_id).proveedor}: solo recibe los datos de este paso.</p>}
       </div>}
     </aside>
   </section>;

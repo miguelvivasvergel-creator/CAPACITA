@@ -327,9 +327,11 @@ class AIConnectorTests(unittest.TestCase):
 
     def test_ai_connectors_are_marked_and_composable(self):
         from connectors import sending_content
-        ia = [c for c in CONNECTORS if c.sends_content]
+        ia = [c for c in CONNECTORS if c.credential == "gemini"]
         self.assertEqual({c.key for c in ia}, {"resumir_texto", "traducir_texto", "redactar_texto", "leer_texto_foto",
                                               "extraer_datos_foto", "tarea_texto"})
+        # Todo lo que envía contenido a un tercero exige «Acepto»: la IA y la acción de Telegram.
+        self.assertEqual({c.key for c in CONNECTORS if c.sends_content}, {c.key for c in ia} | {"enviar_telegram"})
         for connector in ia:
             self.assertEqual((connector.credential, connector.hosts), ("gemini", ["generativelanguage.googleapis.com"]))
             self.assertTrue(connector.definition["description"].startswith("Conector de IA (Google Gemini): "))
@@ -426,3 +428,101 @@ class ComposableVersionTests(unittest.TestCase):
         estado, reporte, _ = ejecutar("cambio_moneda@2", {"monto": -5, "moneda_origen": "USD", "moneda_destino": "COP"}, {})
         self.assertEqual(reporte["detail"], "monto_moneda")
         self.assertEqual(ejecutar("clima_pronostico@2", {"ciudad": "Bogotá"}, {"dias": 2, "pais": "CO"})[0], "completed")
+
+
+TOKEN_TG = {"telegram": ("api.telegram.org", "@ruta", "123456:TOKEN-DE-PRUEBA")}
+PDF = base64_pdf = __import__("base64").b64encode(b"%PDF-1.4 contenido de prueba").decode()
+
+
+def telegram(vistas, ok=True):
+    def handler(request):
+        vistas.append(request)
+        return httpx.Response(200, json={"ok": ok, "result": {}})
+    return httpx.MockTransport(handler)
+
+
+def ejecutar_tg(inputs, chat=555, vistas=None, ok=True):
+    connector = REGISTRY["enviar_telegram@1"]
+    job = trabajo(connector, inputs, {}) | {"context": {"telegram_chat_id": chat}}
+    return run_connector(job, transport=telegram(vistas if vistas is not None else [], ok), resolver=PUBLICA,
+                         credentials=TOKEN_TG)
+
+
+class TelegramTests(unittest.TestCase):
+    def test_token_goes_only_in_the_path_and_chat_comes_from_context(self):
+        vistas = []
+        estado, reporte, salida = ejecutar_tg({"mensaje": "Tu informe está listo"}, vistas=vistas)
+        self.assertEqual(estado, "completed", reporte)
+        self.assertEqual(vistas[0].url.path, "/bot123456:TOKEN-DE-PRUEBA/sendMessage")
+        self.assertEqual(json.loads(vistas[0].content)["chat_id"], 555)
+        self.assertNotIn("parse_mode", json.loads(vistas[0].content))
+        self.assertTrue(salida["enviado"])
+
+    def test_without_linked_chat_nothing_is_sent(self):
+        vistas = []
+        estado, reporte, _ = ejecutar_tg({"mensaje": "hola"}, chat=None, vistas=vistas)
+        self.assertEqual((estado, reporte["detail"], vistas), ("failed", "telegram_no_vinculado", []))
+        # Una entrada «chat_id» no existe en el contrato: no se puede apuntar a otra persona.
+        estado, reporte, _ = ejecutar_tg({"mensaje": "hola", "chat_id": 999})
+        self.assertEqual(reporte["error"], "input_contract")
+
+    def test_file_with_caption_and_long_text_in_chunks(self):
+        vistas = []
+        estado, _, salida = ejecutar_tg({"mensaje": "Informe", "archivo": PDF, "nombre_archivo": "ventas/../x"}, vistas=vistas)
+        self.assertEqual(estado, "completed")
+        self.assertEqual(len(vistas), 1)
+        self.assertTrue(vistas[0].url.path.endswith("/sendDocument"))
+        self.assertIn(b'filename="ventasx.pdf"', vistas[0].content)
+        self.assertIn(b"Informe", vistas[0].content)
+        vistas = []
+        ejecutar_tg({"mensaje": "a" * 9000}, vistas=vistas)
+        self.assertEqual([len(json.loads(v.content)["text"]) for v in vistas], [4000, 4000, 1000])
+
+    def test_rejections_and_wrong_paths(self):
+        estado, reporte, _ = ejecutar_tg({"mensaje": "hola"}, ok=False)
+        self.assertEqual(reporte["error"], "connector_provider_rejected")
+        http = SafeHttp(["api.telegram.org"], 1, transport=telegram([]), resolver=PUBLICA, auth=TOKEN_TG["telegram"])
+        with self.assertRaises(ConnectorFailure) as contexto:
+            http.get_json("https://api.telegram.org/otra/ruta")
+        self.assertEqual(contexto.exception.code, "invalid_request")
+
+
+class TelegramBotTests(unittest.IsolatedAsyncioTestCase):
+    def test_commands(self):
+        from services.telegram_bot import leer_comando
+        self.assertEqual(leer_comando({"text": "/start a1b2c3d4e5f6"}), ("vincular", "A1B2C3D4E5F6"))
+        self.assertEqual(leer_comando({"text": "/salir"}), ("salir", None))
+        self.assertEqual(leer_comando({"text": "hola"}), ("ayuda", None))
+
+    async def test_link_flow_only_private_chats(self):
+        import asyncio
+        from services.telegram_bot import TelegramBot, atender
+        enviados = []
+
+        def handler(request):
+            cuerpo = json.loads(request.content)
+            if request.url.path.endswith("/getUpdates"):
+                return httpx.Response(200, json={"ok": True, "result": [
+                    {"update_id": 7, "message": {"chat": {"id": 42, "type": "private"}, "text": "/start ABCDEF123456"}},
+                    {"update_id": 8, "message": {"chat": {"id": -9, "type": "group"}, "text": "/start ABCDEF123456"}}]})
+            enviados.append(cuerpo)
+            return httpx.Response(200, json={"ok": True, "result": {}})
+
+        llamadas = []
+
+        async def rpc(nombre, **datos):
+            llamadas.append((nombre, datos))
+            return {"linked": True, "username": "fahida"}
+
+        bot = TelegramBot("t", transport=httpx.MockTransport(handler))
+        await atender(bot, rpc, "sesion", asyncio.to_thread)
+        self.assertEqual(llamadas, [("telegram_link_complete", {"p_session": "sesion", "p_code": "ABCDEF123456", "p_chat_id": 42})])
+        self.assertEqual([m["chat_id"] for m in enviados], [42])
+        self.assertIn("@fahida", enviados[0]["text"])
+        self.assertEqual(bot.offset, 9)
+
+    def test_worker_detects_telegram_steps(self):
+        from services.shared_worker import needs_telegram
+        tg, otro = REGISTRY["enviar_telegram@1"], REGISTRY["festivos_pais@2"]
+        self.assertTrue(needs_telegram({"payload": {"versions": {"a": {"manifest": tg.manifest()}}}}))
+        self.assertFalse(needs_telegram({"payload": {"versions": {"a": {"manifest": otro.manifest()}}}}))

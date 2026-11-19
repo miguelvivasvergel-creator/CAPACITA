@@ -18,6 +18,9 @@ EXECUTION_RPCS = {
     "execution_workflow_get", "execution_workflow_list", "execution_workflow_save",
     "execution_workflow_archive", "execution_workflow_approve", "execution_workflow_enqueue",
     "execution_progress",
+    # Telegram (SQL 16): las tres primeras para la persona; las otras exigen al trabajador.
+    "telegram_link_start", "telegram_link_status", "telegram_unlink",
+    "telegram_link_complete", "telegram_unlink_chat", "telegram_chat_for_job",
 }
 
 

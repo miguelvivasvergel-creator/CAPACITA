@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator
 
 from connectors import PROFILE, ConnectorInputError, from_manifest
 from core.config import settings
-from services.connector_broker import ConnectorFailure, SafeHttp
+from services.connector_broker import TOKEN_EN_RUTA, ConnectorFailure, SafeHttp
 from services.contract_validation import DATA_BYTES
 
 
@@ -31,11 +31,14 @@ class HourlyBudget:
         return True
 
 
-AI_BUDGET = HourlyBudget(30)
-# Nombre de credencial → (host exacto, cabecera, cómo leer la clave). La clave vive en
+# Tope por hora en este trabajador, por proveedor con credencial (cuida las cuotas gratuitas).
+BUDGETS = {"gemini": HourlyBudget(30), "telegram": HourlyBudget(60)}
+AI_BUDGET = BUDGETS["gemini"]
+# Nombre de credencial → (host exacto, cabecera o modo, cómo leer la clave). La clave vive en
 # backend/.env; el broker la añade a la petición y el código del conector no la ve.
 CREDENTIALS = {
     "gemini": ("generativelanguage.googleapis.com", "x-goog-api-key", lambda: settings.GEMINI_API_KEY.get_secret_value()),
+    "telegram": ("api.telegram.org", TOKEN_EN_RUTA, lambda: settings.TELEGRAM_BOT_TOKEN.get_secret_value()),
 }
 
 
@@ -64,13 +67,13 @@ def run_connector(job, transport=None, resolver=None, credentials=None, budget=N
         auth = credential_for(connector.credential, credentials)
         if auth is None:
             return "failed", report | {"error": "connector_not_configured"}, None
-        if not (budget or AI_BUDGET).take():
+        if not (budget or BUDGETS.get(connector.credential, AI_BUDGET)).take():
             return "failed", report | {"error": "connector_quota"}, None
     http = SafeHttp(connector.hosts, connector.max_requests, transport=transport, auth=auth,
                     **({"resolver": resolver} if resolver else {}))
     started = time.monotonic()
     try:
-        output = connector.run(http, inputs, parameters)
+        output = connector.run(http, inputs, parameters, job.get("context"))
     except ConnectorInputError as error:
         # El código dice qué dato revisar (ciudad, fecha…); nunca el valor recibido.
         return "failed", report | {"error": "connector_input", "detail": str(error)[:40]}, None

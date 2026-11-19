@@ -1,6 +1,7 @@
 import EncabezadoVista from '../components/common/EncabezadoVista';
 import { useEffect, useId, useRef, useState } from 'react';
 import { supabase } from '../services/supabase';
+import ConectarTelegram from '../components/profile/ConectarTelegram';
 
 export default function Configuracion({ usuario, onCerrarSesion }) {
   const [correo, setCorreo] = useState(usuario?.email || '');
@@ -61,6 +62,8 @@ export default function Configuracion({ usuario, onCerrarSesion }) {
           {mensaje}
         </div>
       )}
+
+      <ConectarTelegram />
 
       {/* Cambiar correo */}
       <section className="mt-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">

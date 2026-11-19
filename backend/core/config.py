@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     RESEARCH_MODEL: str = Field(default="gemini-2.5-flash", pattern=r"^gemini-[a-z0-9.-]+$")
     RESEARCH_TIMEOUT_SECONDS: float = Field(default=30, ge=1, le=60)
     PUBLICATIONS_ENABLED: bool = False  # Activar solo despues de SQL 09 verificado.
+    # Telegram (fase 3, SQL 16): bot de @BotFather. Vacío = la vinculación y el envío no están
+    # disponibles. El token solo lo usan el broker y el trabajador; nunca el código generado.
+    TELEGRAM_BOT_TOKEN: SecretStr = SecretStr("")
+    TELEGRAM_BOT_USERNAME: str = Field(default="", pattern=r"^$|^[A-Za-z0-9_]{5,32}$")
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",

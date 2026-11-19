@@ -11,7 +11,7 @@ function Nodo({ data }) {
     {data.entrada && <Handle type="target" position={Position.Left} isConnectable={false} />}
     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{data.tipo}</p>
     <p className="mt-1 break-words font-semibold leading-snug text-slate-900">{data.label}</p>
-    {data.conector && <p className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${data.conector.ia ? 'bg-violet-100 text-violet-800' : 'bg-sky-100 text-sky-800'}`} title={data.conector.ia ? 'Usa una IA externa' : 'Consulta un servicio externo'}>{data.conector.ia ? '✨ IA' : '🌐'} {data.conector.proveedor}</p>}
+    {data.conector && <p className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${data.conector.ia ? 'bg-violet-100 text-violet-800' : data.conector.accion ? 'bg-amber-100 text-amber-900' : 'bg-sky-100 text-sky-800'}`} title={data.conector.ia ? 'Usa una IA externa' : data.conector.accion ? 'Hace una acción externa (con tu aprobación)' : 'Consulta un servicio externo'}>{data.conector.ia ? '✨ IA' : data.conector.accion ? '🔒' : '🌐'} {data.conector.proveedor}</p>}
     <p className="mt-2 text-xs text-slate-600"><span aria-hidden="true">{estado.icono}</span> {estado.texto}</p>
     {data.salida && <Handle type="source" position={Position.Right} isConnectable={false} />}
   </div>;

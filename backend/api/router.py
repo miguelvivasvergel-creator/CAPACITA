@@ -12,6 +12,7 @@ from api.versions import router as versions_router
 from api.workflows import router as workflows_router
 from api.planner import router as planner_router
 from api.publications import router as publications_router
+from api.telegram import router as telegram_router
 
 # Enrutador principal de la API
 api_router = APIRouter()
@@ -30,3 +31,4 @@ api_router.include_router(versions_router)
 api_router.include_router(workflows_router)
 api_router.include_router(planner_router)
 api_router.include_router(publications_router)
+api_router.include_router(telegram_router)

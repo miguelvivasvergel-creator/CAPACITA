@@ -24,6 +24,8 @@ from repositories.shared_execution import SharedExecutionRepository
 from repositories.builds import DEFAULT_PATH
 from services.build_worker import invoke_runner, worker_lock
 from services.execution_engine import ExecutionInfrastructureError, execute_job
+from services.telegram_bot import TelegramBot, atender
+from core.config import settings
 
 
 class WorkerSettings(BaseSettings):
@@ -66,8 +68,28 @@ class WorkerSession:
         catalog = SimpleNamespace(gateway=self.gateway, token=self.token)
         return await SharedExecutionRepository(catalog).rpc(name, **payload)
 
+    async def rpc_raw(self, name, **payload):
+        """Funciones sin el prefijo execution_ (Telegram, SQL 16)."""
+        await self.authenticate()
+        return await self.gateway.request("POST", f"/rest/v1/rpc/{name}", self.token, json=payload)
 
-async def serve(session, once=False, runner=invoke_runner, protocol=1):
+
+def needs_telegram(job):
+    payload = job.get("payload") or {}
+    manifests = [version.get("manifest") for version in (payload.get("versions") or {}).values()] + [payload.get("manifest")]
+    return any(isinstance(m, dict) and str(m.get("connector_key", "")).startswith("enviar_telegram@") for m in manifests)
+
+
+async def telegram_context(session, identity, job):
+    """Chat del dueño de ESTE trabajo (o None si no lo vinculó o falta el SQL 16)."""
+    try:
+        chat = (await session.rpc_raw("telegram_chat_for_job", p_session=identity, p_job=job["id"])).get("chat_id")
+    except Exception:
+        chat = None
+    return {"telegram_chat_id": chat if isinstance(chat, int) else None}
+
+
+async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None):
     identity = str(uuid4())
     await session.rpc("lease", p_session=identity, p_action="acquire")
     lost = threading.Event()
@@ -89,6 +111,7 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1):
 
     task = asyncio.create_task(heartbeat())
     clean_exit = False
+    bot_next = [0.0]
     try:
         # Limpieza local antes de recuperar estados de la reserva anterior.
         recovery = await asyncio.to_thread(guarded_runner, recover=True)
@@ -105,8 +128,17 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1):
                 if once:
                     clean_exit = True
                     return
+                if bot is not None and time.monotonic() >= bot_next[0]:
+                    # Telegram nunca detiene al trabajador: ante un fallo, espera un minuto.
+                    try:
+                        await atender(bot, session.rpc_raw, identity, asyncio.to_thread)
+                        bot_next[0] = time.monotonic() + 3
+                    except Exception:
+                        bot_next[0] = time.monotonic() + 60
                 await asyncio.sleep(1)
                 continue
+            if needs_telegram(job):
+                job["context"] = await telegram_context(session, identity, job)
             infrastructure_failure = False
             loop = asyncio.get_running_loop()
 
@@ -153,8 +185,10 @@ async def main(once=False):
     # Usa la validación de URL del gateway común; no sigue redirecciones.
     DEFAULT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with worker_lock(DEFAULT_PATH):
+        token = settings.TELEGRAM_BOT_TOKEN.get_secret_value()
+        bot = TelegramBot(token) if token else None
         async for gateway in get_supabase_gateway():
-            await serve(WorkerSession(gateway, credentials), once, protocol=credentials.WORKFLOW_PROTOCOL)
+            await serve(WorkerSession(gateway, credentials), once, protocol=credentials.WORKFLOW_PROTOCOL, bot=bot)
 
 
 if __name__ == "__main__":

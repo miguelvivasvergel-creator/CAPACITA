@@ -43,7 +43,7 @@ class Connector:
                  input_schema: dict, parameter_schema: dict, output_schema: dict,
                  example_inputs: dict, example_parameters: dict, constraints: list[str],
                  run: Callable[[Any, dict, dict], dict], max_requests: int = 3,
-                 credential: str | None = None, sends_content: bool = False):
+                 credential: str | None = None, sends_content: bool = False, needs: tuple = ()):
         self.key, self.version = key, version
         self.provider, self.provider_url, self.hosts = provider, provider_url, sorted(hosts)
         self.max_requests = max_requests
@@ -51,6 +51,9 @@ class Connector:
         # nunca la lee). sends_content: envía el contenido de la persona (texto, fotos) a un
         # tercero; exige un «Acepto» explícito al aprobar el proceso.
         self.credential, self.sends_content = credential, sends_content
+        # needs: datos del contexto del trabajo que pone el trabajador (por ejemplo, el chat de
+        # Telegram del dueño). No entra al manifiesto y nunca viene de la persona ni de otro paso.
+        self.needs = tuple(needs)
         self._run = run
         self.definition = {
             "name": name, "description": description, "category": category,
@@ -91,7 +94,9 @@ class Connector:
     def artifact_hash(self) -> str:
         return sha256(self.manifest())
 
-    def run(self, http, inputs: dict, parameters: dict) -> dict:
+    def run(self, http, inputs: dict, parameters: dict, context: dict | None = None) -> dict:
+        if self.needs:
+            return self._run(http, inputs, parameters, {clave: (context or {}).get(clave) for clave in self.needs})
         return self._run(http, inputs, parameters)
 
     def componible(self, version):

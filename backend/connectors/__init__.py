@@ -6,11 +6,13 @@ from connectors.calendario import FESTIVOS
 from connectors.clima import HISTORICO, PRONOSTICO
 from connectors.dinero import CAMBIO, TRM_COLOMBIA
 from connectors.ia import IA
+from connectors.telegram import ENVIAR as ENVIAR_TELEGRAM
 
 # Versión 1 (aplicada en Supabase): sigue en el registro para las soluciones ya guardadas con ella.
 # Versión 2: mismas reglas, pero sus entradas aceptan la salida de otros pasos (ver componible).
 PRIMERA_VERSION = [PRONOSTICO, HISTORICO, FESTIVOS, TRM_COLOMBIA, CAMBIO, REFERENCIA]
-CONNECTORS: list[Connector] = [*PRIMERA_VERSION, *IA, *(connector.componible(2) for connector in PRIMERA_VERSION)]
+CONNECTORS: list[Connector] = [*PRIMERA_VERSION, *IA, *(connector.componible(2) for connector in PRIMERA_VERSION),
+                               ENVIAR_TELEGRAM]
 REGISTRY: dict[str, Connector] = {connector.connector_key: connector for connector in CONNECTORS}
 BY_VERSION: dict[str, Connector] = {str(connector.version_id): connector for connector in CONNECTORS}
 assert len(REGISTRY) == len(CONNECTORS) == len(BY_VERSION), "connector_key repetido"

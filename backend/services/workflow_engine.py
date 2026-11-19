@@ -43,7 +43,8 @@ def execute_workflow(job, runner, progress=None):
         step["artifact_hash"] = version["artifact_hash"]
         checkpoint()
         # Los conectores no tienen candidato: su identidad es el artifact_hash del registro.
-        subjob = {"kind": "run", "candidate_id": manifest.get("candidate_id"),
+        # context: lo pone el trabajador (p. ej. el chat de Telegram del dueño); solo lo leen conectores.
+        subjob = {"kind": "run", "candidate_id": manifest.get("candidate_id"), "context": job.get("context"),
                   "artifact_hash": version["artifact_hash"],
                   "payload": {"manifest": manifest, "inputs": inputs, "parameters": node.parameters,
                               "profile": version["profile"]}}
