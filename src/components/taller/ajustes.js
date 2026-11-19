@@ -20,13 +20,25 @@ function escala(spec) {
   };
 }
 
+// Un color: texto cuyo nombre o descripción habla de color (o hexadecimal) y sin lista fija.
+const esColor = (nombre, spec) => spec.type === 'string' && !spec.enum && /colou?r|hex/i.test(`${nombre} ${spec.description || ''}`);
+export const HEX = /^#[0-9a-f]{6}$/i;
+
+/** Archivos que la persona puede agregar si quiere (logo, fondo, plantilla propia). */
+export function archivosOpcionales(definition) {
+  const schema = definition.input_schema || {};
+  return Object.entries(schema.properties || {}).filter(([nombre, spec]) => esArchivo(spec) && !schema.required?.includes(nombre))
+    .map(([nombre, spec]) => ({ nombre, media: spec.contentMediaType || 'image/png', etiqueta: spec.title || etiquetaDe(nombre), descripcion: spec.description || '' }));
+}
+
 /** Opciones editables: los parámetros y las entradas que no son archivos. */
 export function opcionesEditables(definition) {
   const lista = [];
   for (const [origen, schema] of [['parametro', definition.parameter_schema], ['entrada', definition.input_schema]]) {
     for (const [nombre, spec] of Object.entries(schema?.properties || {})) {
       if (esArchivo(spec) || !['number', 'integer', 'string', 'boolean'].includes(spec.type)) continue;
-      lista.push({ nombre, origen, tipo: spec.type, etiqueta: spec.title || etiquetaDe(nombre), descripcion: spec.description || '', opciones: spec.enum, ...escala(spec) });
+      lista.push({ nombre, origen, tipo: spec.type, etiqueta: spec.title || etiquetaDe(nombre), descripcion: spec.description || '', opciones: spec.enum,
+        color: esColor(nombre, spec), ...escala(spec) });
     }
   }
   return lista;

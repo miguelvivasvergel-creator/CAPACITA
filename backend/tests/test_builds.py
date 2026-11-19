@@ -151,6 +151,15 @@ class BuildTests(unittest.TestCase):
         _, report = execute_build(job, lambda _: {"cleanup_verified": True, "termination": "exited",
                                                   "exit_code": 1, "output": traceback})
         self.assertEqual(report["cases"][0]["error_type"], "KeyError")
+        self.assertNotIn("error_detail", report["cases"][0])
+        # Un import inexistente sí trae el nombre (sin ruta) para poder corregirlo.
+        importacion = "ImportError: cannot import name 'Drawing' from 'reportlab.platypus' (/usr/lib/x/__init__.py)"
+        _, report = execute_build(job, lambda _: {"cleanup_verified": True, "termination": "exited",
+                                                  "exit_code": 1, "output": importacion})
+        self.assertEqual(report["cases"][0]["error_detail"], "cannot import name 'Drawing' from 'reportlab.platypus'")
+        _, report = execute_build(job, lambda _: {"cleanup_verified": True, "termination": "exited",
+                                                  "exit_code": 1, "output": "AttributeError: private-secret: 12, 3"})
+        self.assertNotIn("error_detail", report["cases"][0])
         _, report = execute_build(job, lambda _: {"cleanup_verified": True, "termination": "exited",
                                                   "exit_code": 0, "output": '{"resultado":"private-secret"}'})
         self.assertEqual(report["cases"][0]["mismatched_fields"], ["resultado"])

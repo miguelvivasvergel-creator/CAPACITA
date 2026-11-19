@@ -30,7 +30,7 @@ export function observacionPruebas(definicion, build) {
   const partes = (build.report?.cases || []).filter((caso) => !caso.passed).map((caso) => {
     const ejemplo = definicion.examples?.[caso.index] || {};
     let detalle = MOTIVOS[caso.reason] || caso.reason;
-    if (caso.error_type) detalle += ` (${caso.error_type})`;
+    if (caso.error_type) detalle += ` (${caso.error_type}${caso.error_detail ? `: ${caso.error_detail}` : ''})`;
     if (caso.reason === 'output_mismatch') {
       detalle += caso.schema_valid === false ? '; la salida no cumple output_schema'
         : `; campos con valor distinto: ${(caso.mismatched_fields || []).join(', ') || 'no identificados'}`;

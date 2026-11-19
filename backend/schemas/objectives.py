@@ -31,6 +31,8 @@ class ObjectiveRequest(BaseModel):
     objective: str = Field(min_length=10, max_length=2000)
     clarifications: list[ClarificationAnswer] = Field(default_factory=list, max_length=6)
     consent_to_provider: bool = False
+    # Lo que ya investigó el chat al empezar (POST /objectives/research): se usa sin buscar de nuevo.
+    research_summary: str | None = Field(default=None, min_length=1, max_length=4000)
 
 
 class DraftField(BaseModel):
@@ -41,6 +43,10 @@ class DraftField(BaseModel):
     required: bool = True
     items_type: ItemType = "string"
     file: FileType = ""
+    # Personalización: valores fijos para elegir (plantilla, estilo…) y escalas numéricas.
+    options: list[Annotated[str, Field(min_length=1, max_length=60)]] = Field(default_factory=list, max_length=12)
+    minimum: float | None = None
+    maximum: float | None = None
 
 
 class DefinitionDraft(BaseModel):
@@ -126,8 +132,23 @@ class AdjustResponse(BaseModel):
     parameters: dict | None = None
 
 
+class ResearchSource(BaseModel):
+    title: str = Field(max_length=300)
+    uri: str = Field(max_length=2000, pattern=r"^https://")
+
+
+class ResearchResult(BaseModel):
+    """Lo que encontró la búsqueda web para hacer bien la tarea; se muestra tal cual y no se guarda."""
+    summary: str = Field(min_length=1, max_length=4000)
+    queries: list[Annotated[str, Field(max_length=300)]] = Field(default_factory=list, max_length=10)
+    sources: list[ResearchSource] = Field(default_factory=list, max_length=10)
+    # HTML de «Search Suggestions» que Google exige mostrar junto a resultados con búsqueda.
+    suggestions_html: str = Field(default="", max_length=60000)
+
+
 class ObjectiveResponse(BaseModel):
     interpretation: ObjectiveInterpretation
+    research: ResearchResult | None = None
     definition: CapabilityDefinition | None = None
     definition_hash: str | None = None
     matches: CapabilityListResponse
@@ -149,16 +170,29 @@ def draft_to_definition(draft: DefinitionDraft) -> CapabilityDefinition:
                 **({"description": field.description} if field.description else {}),
                 **({"items": {"type": field.items_type}} if field.type == "array" and not field.file else {}),
                 **({"contentEncoding": "base64", "contentMediaType": MEDIA_TYPES[field.file]} if field.file else {}),
+                **({"enum": list(dict.fromkeys(field.options))} if field.options and field.type == "string" and not field.file else {}),
+                **({key: getattr(field, key) for key in ("minimum", "maximum") if getattr(field, key) is not None}
+                   if field.type in ("number", "integer") and not field.file else {}),
             } for field in fields},
             "required": [field.name for field in fields if field.required],
             "additionalProperties": False,
         }
+    inputs, parameters = list(draft.inputs), list(draft.parameters)
+    example_inputs, example_parameters = json.loads(draft.example_inputs_json), json.loads(draft.example_parameters_json)
+    # Un archivo (logo, plantilla…) nunca es una opción: se pasa a entradas opcionales para que
+    # la persona lo pueda subir y la prueba lo use con un archivo de muestra.
+    if isinstance(example_inputs, dict) and isinstance(example_parameters, dict):
+        for field in [field for field in parameters if field.file]:
+            parameters.remove(field)
+            inputs.append(field.model_copy(update={"required": False}))
+            if field.name in example_parameters:
+                example_inputs[field.name] = example_parameters.pop(field.name)
     data = draft.model_dump(exclude={"inputs", "parameters", "outputs", "example_inputs_json", "example_parameters_json", "example_output_json"})
     data.update(
-        input_schema=contract(draft.inputs), parameter_schema=contract(draft.parameters),
+        input_schema=contract(inputs), parameter_schema=contract(parameters),
         output_schema=contract(draft.outputs), examples=[{
-            "inputs": json.loads(draft.example_inputs_json),
-            "parameters": json.loads(draft.example_parameters_json),
+            "inputs": example_inputs,
+            "parameters": example_parameters,
             "expected_output": json.loads(draft.example_output_json),
         }],
     )

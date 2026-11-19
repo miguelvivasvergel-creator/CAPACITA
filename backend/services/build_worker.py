@@ -12,6 +12,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -81,6 +82,22 @@ def error_type(output):
         name = line.split(":", 1)[0].strip()
         if name in STANDARD_ERRORS:
             return name
+    return None
+
+
+# Errores de NOMBRES de código (import o atributo inexistente): su mensaje solo trae
+# identificadores ("cannot import name 'Drawing' from 'reportlab.platypus'"), no datos, y sin
+# él la corrección automática no sabe qué nombre cambiar. Cualquier otro carácter lo descarta.
+NAME_ERRORS = frozenset({"ImportError", "ModuleNotFoundError", "AttributeError"})
+SAFE_DETAIL = re.compile(r"^[A-Za-z0-9_ .'\"]{1,160}$")
+
+
+def error_detail(output):
+    for line in reversed((output or "").splitlines()[-20:]):
+        name, _, message = line.partition(":")
+        if name.strip() in NAME_ERRORS:
+            message = re.sub(r"\s*\([^)]*\)\s*$", "", message.strip())  # quita la ruta del archivo
+            return message if SAFE_DETAIL.match(message) else None
     return None
 
 
@@ -185,6 +202,8 @@ def execute_build(job, runner=invoke_runner):
             reason = "candidate_error"
             if error_type(result.get("output")):
                 hints = {"error_type": error_type(result.get("output"))}
+                if error_detail(result.get("output")):
+                    hints["error_detail"] = error_detail(result.get("output"))
         report["cases"].append({"index": index, "executed": True, "passed": passed,
                                 "reason": reason, **hints, **{key: result[key] for key in (
                                     "exit_code", "elapsed_seconds", "output_bytes", "cleanup_verified"

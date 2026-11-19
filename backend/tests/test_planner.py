@@ -186,6 +186,22 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(result['validation'])
         self.assertIsNone(result['proposal']['definition'])
 
+    async def test_invalid_connections_are_retried_once_with_the_validation_error(self):
+        malo = deepcopy(self.definition)
+        malo['nodes'][0]['bindings']['texto'] = {'source': 'mayusculas', 'field': 'missing'}
+        bueno = self.provider.plan.return_value
+        self.provider.plan.side_effect = [{**bueno, 'definition': malo}, bueno]
+        limits = GenerationLimiter()
+        with patch('services.planner_service.planner_options', AsyncMock(return_value=self.options)), \
+             patch('services.planner_service.check_workflow', self.validate):
+            result = await propose_plan(self.request, self.catalog, self.provider, limits)
+        self.assertEqual(result['validation']['order'], ['limpiar', 'mayusculas'])
+        self.assertEqual(self.provider.plan.await_count, 2)
+        self.assertTrue(self.provider.plan.await_args.kwargs['feedback'])
+        # Un pedido de la persona gasta un solo turno del limitador, aunque haya reintento.
+        self.assertEqual(len(limits.attempts['owner']), 1)
+        self.assertEqual(limits.active, set())
+
     async def test_versions_revalidated_after_inference_and_limiter_released(self):
         limits = GenerationLimiter()
         with patch('services.planner_service.planner_options', AsyncMock(return_value=self.options)), \

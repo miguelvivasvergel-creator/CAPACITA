@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
-import { ajustarOpciones, interpretarObjetivo } from '../../services/objetivos';
+import { ajustarOpciones, interpretarObjetivo, investigar } from '../../services/objetivos';
 import { ajusteDirecto, opcionesEditables } from './ajustes';
 import { guardarWorkflow } from '../../services/workflows';
 import { camposChat } from '../../utils/formularioDatos';
@@ -11,6 +11,7 @@ import ResultadoDatos from '../common/ResultadoDatos';
 import LienzoTaller from './LienzoTaller';
 import { ESTADOS_NODO } from './estadosNodo';
 import TarjetaPlan from './TarjetaPlan';
+import TarjetaInvestigacion from './TarjetaInvestigacion';
 
 // Ejemplos de la demo: los que llevan archivo abren el 📎 al tocarlos.
 const SUGERENCIAS = [
@@ -22,6 +23,8 @@ const SUGERENCIAS = [
 ];
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
 const activo = (status) => ['queued', 'running'].includes(status);
+// Respuestas para saltar un archivo opcional (logo, plantilla…).
+const SALTAR = /^\s*(no|nop|sin|ninguno|omitir|saltar|no tengo|despu[eé]s|as[ií] est[aá] bien)/i;
 
 /**
  * Pantalla principal: conversación a la izquierda y taller visual a la derecha.
@@ -164,6 +167,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const campo = estado.campos[estado.indice];
     if (!campo) { agregar({ de: 'capacita', tipo: 'confirmar', definicion: estado.definicion, datos: estado.datos }); return; }
     const inicio = estado.indice ? 'Ahora necesito' : 'Para ejecutarla necesito';
+    if (campo.opcional) {
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Si quieres personalizarla, sube ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}) con el botón 📎. Es opcional: si no, escribe «no» 👇` });
+      return;
+    }
     agregar({ de: 'capacita', tipo: 'texto', texto: campo.archivo ? `${inicio}: ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}). Súbelo con el botón 📎 de abajo 👇` : `${inicio}: ${campo.etiqueta}. Escríbelo abajo 👇` });
   }
 
@@ -174,8 +181,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const estado = estadoParaDato(), campo = estado.campos[estado.indice];
     agregar({ de: 'tu', tipo: 'texto', texto: valor }); setTexto('');
     if (campo.archivo) {
+      if (campo.opcional && SALTAR.test(valor)) { pedirSiguiente({ ...estado, indice: estado.indice + 1 }); return; }
       setPidiendo(estado);
-      agregar({ de: 'capacita', tipo: 'texto', texto: `Aquí necesito un archivo: ${campo.etiqueta}. Súbelo con el botón 📎 de abajo 👇` });
+      agregar({ de: 'capacita', tipo: 'texto', texto: campo.opcional ? `Para ${campo.etiqueta} súbelo con el botón 📎, o escribe «no» si prefieres seguir sin él.` : `Aquí necesito un archivo: ${campo.etiqueta}. Súbelo con el botón 📎 de abajo 👇` });
       return;
     }
     const numero = campo.tipo !== 'string';
@@ -229,6 +237,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
 
   function mostrarDefinicion(value, objetivoDefinido) {
     const interpretation = value.interpretation;
+    if (value.research) agregar({ de: 'capacita', tipo: 'investigacion', investigacion: value.research });
     if (interpretation?.explanation) agregar({ de: 'capacita', tipo: 'texto', texto: interpretation.explanation });
     if (interpretation?.decision === 'clarify') {
       setPendientes(interpretation.questions); agregar({ de: 'capacita', tipo: 'preguntas', preguntas: interpretation.questions });
@@ -242,6 +251,34 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     setConversacion((old) => ({ ...old, ruta: 'definir', metaDefinir: objetivoDefinido }));
   }
 
+  // Tras consultar al planner, la IA pide 30 s de turno: espera una vez y reintenta el diseño.
+  async function disenarTrasPlan(objetivo, aclaraciones, signal, investigacion) {
+    for (let intento = 0; ; intento += 1) {
+      try { return await interpretarObjetivo(objetivo, aclaraciones, true, signal, investigacion); } catch (cause) {
+        if (cause.status !== 429 || intento >= 1 || signal.aborted) throw cause;
+        setFase('⏳ Esperando turno con la IA (unos 30 segundos)…');
+        await new Promise((resolve) => { setTimeout(resolve, 31000); });
+        if (signal.aborted) throw cause;
+        setFase('Con lo que investigué, diseño una herramienta nueva…');
+      }
+    }
+  }
+
+  // Lo primero ante una necesidad nueva: buscar en internet cómo se hace bien, antes de hacer
+  // nada. Una vez por conversación; las aclaraciones y herramientas que falten lo reutilizan.
+  async function investigarPrimero(estado, signal) {
+    if (estado.investigacion !== undefined) return estado.investigacion;
+    setFase('🔎 Antes de empezar, investigo en internet cómo se hace bien…');
+    let resultado = null;
+    try { resultado = await investigar(estado.objetivo.slice(0, 2000), signal); } catch (cause) { if (signal.aborted) throw cause; }
+    if (signal.aborted) return null;
+    if (resultado) agregar({ de: 'capacita', tipo: 'investigacion', investigacion: resultado });
+    else agregar({ de: 'capacita', tipo: 'texto', texto: 'No pude buscar en internet en este momento; sigo con lo que ya sé.' });
+    const investigacion = resultado?.summary || null;
+    setConversacion((old) => (old ? { ...old, investigacion } : old));
+    return investigacion;
+  }
+
   async function resolver(estado) {
     const { objetivo, aclaraciones, ruta, metaDefinir } = estado;
     const completo = [objetivo, ...aclaraciones.map((item) => `${item.question}: ${item.answer}`)].join('\n');
@@ -249,9 +286,11 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const controller = new AbortController(); peticion.current?.abort(); peticion.current = controller;
     setOcupado(true); setPendientes([]);
     try {
+      const investigacion = await investigarPrimero(estado, controller.signal);
+      if (controller.signal.aborted) return;
       if (ruta === 'definir') {
-        setFase('Estoy diseñando la herramienta que falta…');
-        const value = await interpretarObjetivo(metaDefinir || objetivo, aclaraciones, true, controller.signal);
+        setFase('Con lo que investigué, diseño la herramienta que falta…');
+        const value = await interpretarObjetivo(metaDefinir || objetivo, aclaraciones, true, controller.signal, investigacion);
         if (!controller.signal.aborted) mostrarDefinicion(value, metaDefinir || objetivo);
         return;
       }
@@ -260,13 +299,24 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       opcionesPlan.current = opciones.items; // contratos de cada versión, para ajustar después
       if (controller.signal.aborted) return;
       if (!opciones.items.length) {
-        setFase('No encontré herramientas para esto. Voy a diseñar una nueva…');
-        const value = await interpretarObjetivo(objetivo, aclaraciones, true, controller.signal);
+        setFase('No encontré herramientas para esto. Con lo que investigué, diseño una nueva…');
+        const value = await interpretarObjetivo(objetivo, aclaraciones, true, controller.signal, investigacion);
         if (!controller.signal.aborted) mostrarDefinicion(value, objetivo);
         return;
       }
       setFase(`Encontré ${opciones.items.length} herramienta${opciones.items.length === 1 ? '' : 's'} posibles. Armando tu proceso…`);
-      const { proposal } = await proponerPlan(completo, opciones.items.slice(0, 12), controller.signal);
+      let proposal;
+      try {
+        ({ proposal } = await proponerPlan(completo, opciones.items.slice(0, 12), controller.signal));
+      } catch (cause) {
+        // Si no logra combinar bien tus herramientas (contratos que no encajan), diseña una nueva
+        // en vez de dejarte con un error. Cuota, permisos y cancelación sí se informan.
+        if (controller.signal.aborted || cause.status !== 502) throw cause;
+        setFase('No logré combinar tus herramientas. Con lo que investigué, diseño una nueva…');
+        const value = await disenarTrasPlan(objetivo, aclaraciones, controller.signal, investigacion);
+        if (!controller.signal.aborted) mostrarDefinicion(value, objetivo);
+        return;
+      }
       if (controller.signal.aborted) return;
       agregar({ de: 'capacita', tipo: 'texto', texto: proposal.explanation });
       if (proposal.decision === 'clarify') {
@@ -280,8 +330,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       } else {
         // El planner a veces marca "blocked" cuando solo falta una herramienta. El
         // diseñador tiene sus propios controles y bloquea si de verdad hace falta algo externo.
-        setFase('Ninguna de tus herramientas sirve para esto. Voy a diseñar una nueva…');
-        const value = await interpretarObjetivo(objetivo, aclaraciones, true, controller.signal);
+        setFase('Ninguna de tus herramientas sirve para esto. Con lo que investigué, diseño una nueva…');
+        const value = await disenarTrasPlan(objetivo, aclaraciones, controller.signal, investigacion);
         if (!controller.signal.aborted) mostrarDefinicion(value, objetivo);
       }
     } catch (cause) {
@@ -455,9 +505,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       case 'bloqueado': return <p className="max-w-[90%] rounded-2xl bg-amber-50 px-4 py-2.5 text-sm text-amber-900">Para esto falta un recurso o permiso que Capacita todavía no tiene. No he creado ni ejecutado nada; puedes reformular tu necesidad.</p>;
       case 'consentimiento': return <div className={tarjeta}>
         <p className="font-semibold">Antes de empezar</p>
-        <p className="mt-1 text-sm text-slate-600">Para entender tu necesidad usaré la IA de Google Gemini. Le enviaré lo que escribas en esta conversación y los nombres y contratos de las herramientas que encuentre (incluidas tus privadas). Nunca tus datos de ejecución ni código. Evita escribir datos sensibles: el nivel gratuito puede usar el contenido para mejorar sus productos.</p>
+        <p className="mt-1 text-sm text-slate-600">Para entender tu necesidad usaré la IA de Google Gemini. Le enviaré lo que escribas en esta conversación y los nombres y contratos de las herramientas que encuentre (incluidas tus privadas). Nunca tus datos de ejecución ni código. Para diseñar herramientas nuevas también puede buscar en Google cómo se hace bien la tarea (solo con lo que escribas; nunca tus archivos). Evita escribir datos sensibles: el nivel gratuito puede usar el contenido para mejorar sus productos.</p>
         <button type="button" disabled={consentimiento || ocupado} onClick={() => { setConsentimiento(true); resolver(mensaje.estado); }} className="mt-3 min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{consentimiento ? 'Aceptado' : 'Acepto, continuar'}</button>
       </div>;
+      case 'investigacion': return <TarjetaInvestigacion investigacion={mensaje.investigacion} clase={tarjeta} />;
       case 'preguntas': return <div className={tarjeta}>
         <p className="font-semibold">Necesito aclarar algo</p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{mensaje.preguntas.map((pregunta, index) => <li key={index} className="break-words">{pregunta}</li>)}</ul>
@@ -520,7 +571,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         <div ref={fin} />
       </div>
       {campoActual && <div className="flex items-center justify-between gap-2 px-1 pb-1 text-xs text-slate-600">
-        <span className="break-words">{campoActual.archivo ? '📎' : '✍️'} Esperando: {campoActual.etiqueta}</span>
+        <span className="break-words">{campoActual.archivo ? '📎' : '✍️'} Esperando: {campoActual.etiqueta}{campoActual.opcional ? ' (opcional: escribe «no» para seguir sin él)' : ''}</span>
         <button type="button" className="shrink-0 rounded-lg px-2 py-1 font-semibold text-blue-700 hover:bg-blue-50" onClick={() => { setPidiendo(null); entrada.current?.focus(); }}>Pedir otra cosa</button>
       </div>}
       <form onSubmit={enviar} className="taller-compositor">

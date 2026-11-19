@@ -98,25 +98,36 @@ async def propose_plan(request, catalog, provider, limits=limiter):
         raise HTTPException(409, "Los contratos o metadatos seleccionados cambiaron; vuelve a buscar y revisa antes de autorizar")
     options = [{key: value for key, value in row.items() if key != "review_hash"} for row in options]
     bounded_json({"objective": request.objective, "versions": options}, 65536)
+    validation, feedback = None, None
+    # Gemini a veces conecta mal los puertos: se le devuelve el error exacto y se reintenta una
+    # vez, dentro del mismo turno del limitador (un pedido de la persona = un intento).
     limits.start(catalog.user_id)
     try:
-        proposal = PlannerProposal.model_validate(await provider.plan(request.objective, options))
-    except ValidationError:
-        raise HTTPException(502, "La IA devolvió un plan inválido; no se guardó ni ejecutó") from None
+        for attempt in range(2):
+            try:
+                raw = await (provider.plan(request.objective, options, feedback=feedback) if feedback
+                             else provider.plan(request.objective, options))
+                proposal = PlannerProposal.model_validate(raw)
+            except ValidationError:
+                raise HTTPException(502, "La IA devolvió un plan inválido; no se guardó ni ejecutó") from None
+            if not proposal.definition:
+                break
+            if any(str(node.version_id) not in selected for node in proposal.definition.nodes):
+                raise HTTPException(502, "La propuesta incluye una versión no seleccionada; no se guardó")
+            try:
+                validation = await check_workflow(proposal.definition, catalog)
+            except HTTPException as exc:
+                if exc.status_code in {404, 409}:
+                    raise HTTPException(409, "Una versión cambió o dejó de estar disponible; vuelve a buscar") from None
+                if exc.status_code == 422 and attempt == 0:
+                    feedback = str(exc.detail)
+                    continue
+                if exc.status_code == 422:
+                    raise HTTPException(502, "La propuesta no cumple los contratos del workflow; revisa el objetivo") from None
+                raise
+            proposal.definition = arrange_definition(proposal.definition, validation["order"])
+            break
     finally:
         limits.finish(catalog.user_id)
-    validation = None
-    if proposal.definition:
-        if any(str(node.version_id) not in selected for node in proposal.definition.nodes):
-            raise HTTPException(502, "La propuesta incluye una versión no seleccionada; no se guardó")
-        try:
-            validation = await check_workflow(proposal.definition, catalog)
-        except HTTPException as exc:
-            if exc.status_code in {404, 409}:
-                raise HTTPException(409, "Una versión cambió o dejó de estar disponible; vuelve a buscar") from None
-            if exc.status_code == 422:
-                raise HTTPException(502, "La propuesta no cumple los contratos del workflow; revisa el objetivo") from None
-            raise
-        proposal.definition = arrange_definition(proposal.definition, validation["order"])
     return {"proposal": proposal.model_dump(mode="json"), "validation": validation,
             "search_truncated": available["search_truncated"], "saved": False, "executed": False}

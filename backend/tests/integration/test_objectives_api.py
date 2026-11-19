@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 from api.candidates import get_provider
 from api.objectives import router
 from core.supabase import SupabaseGateway, get_supabase_gateway
-from schemas.objectives import AdjustProposal, ObjectiveInterpretation
-from services.objective_service import adjust_limiter
+from schemas.objectives import AdjustProposal, ObjectiveInterpretation, ResearchResult
+from services.objective_service import adjust_limiter, research_limiter
 from services.candidate_generation import limiter
 from tests.fixtures.objectives import objective_draft
 from tests.fixtures.supabase_catalog import SupabaseFixture, PRIVATE_ID, FAHIDA
@@ -24,10 +24,15 @@ class FakeInterpreter:
         self.requests.append(payload)
         return AdjustProposal(**self.ajuste)
 
-    async def interpret(self, payload):
+    async def interpret(self, payload, research=None):
         assert any(request.url.path == "/rest/v1/capabilities" for request in self.database.requests), "Buscar catálogo antes de IA"
         self.requests.append(payload)
+        self.research_used = research
         return ObjectiveInterpretation(**self.result)
+
+    async def research(self, payload):
+        self.searches = getattr(self, "searches", 0) + 1
+        return ResearchResult(summary="1. Totales destacados", sources=[{"title": "ejemplo.com", "uri": "https://ejemplo.com"}])
 
 
 class ObjectiveAPITests(unittest.TestCase):
@@ -121,7 +126,8 @@ class ObjectiveAPITests(unittest.TestCase):
         result = self.interpret().json()["data"]
         self.assertNotIn(PRIVATE_ID, [item["id"] for item in result["matches"]["items"]])
         request = self.provider.requests[0].model_dump()
-        self.assertEqual(set(request), {"objective", "clarifications", "consent_to_provider"})
+        # research_summary es lo investigado en Google por esta conversación, no datos del catálogo.
+        self.assertEqual(set(request), {"objective", "clarifications", "consent_to_provider", "research_summary"})
         self.assertNotIn("PRIVATE", str(request))
 
     def test_clarification_keeps_definition_absent_and_accepts_user_answers(self):
@@ -152,6 +158,23 @@ class ObjectiveAPITests(unittest.TestCase):
         self.assertEqual(self.interpret().status_code, 200)
         self.assertEqual(self.interpret().status_code, 429)
         self.assertEqual(len(self.provider.requests), 1)
+
+    def test_research_first_then_design_reuses_it_without_searching_again(self):
+        research_limiter.attempts.clear(); research_limiter.active.clear()
+        self.assertEqual(self.client.post("/api/objectives/research", json=self.payload).status_code, 401)
+        self.assertEqual(self.client.post("/api/objectives/research", headers=self.headers,
+                                          json=self.payload | {"consent_to_provider": False}).status_code, 422)
+        before = len(self.database.rows)
+        found = self.client.post("/api/objectives/research", headers=self.headers, json=self.payload)
+        self.assertEqual(found.status_code, 200, found.text)
+        self.assertEqual(found.json()["data"]["summary"], "1. Totales destacados")
+        self.assertEqual(len(self.database.rows), before)  # lo encontrado no se guarda
+        designed = self.interpret(research_summary="1. Totales destacados")
+        self.assertEqual(designed.status_code, 200, designed.text)
+        self.assertEqual(self.provider.searches, 1)  # el diseño no buscó otra vez
+        self.assertEqual(self.provider.research_used.summary, "1. Totales destacados")
+        self.assertIsNone(designed.json()["data"]["research"])  # la tarjeta ya se mostró
+        research_limiter.attempts.clear(); research_limiter.active.clear()
 
     def test_request_rejects_unknown_fields_and_unbounded_history(self):
         self.assertEqual(self.interpret(owner_id=FAHIDA).status_code, 422)

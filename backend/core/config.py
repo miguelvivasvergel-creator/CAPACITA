@@ -37,8 +37,15 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: SecretStr = SecretStr("")
     GEMINI_MODEL: str = Field(default="gemini-4-hydrogen", pattern=r"^gemini-[a-z0-9.-]+$")
     GEMINI_TIMEOUT_SECONDS: float = Field(default=45, ge=1, le=60)
-    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=4096, ge=256, le=8192)
+    # Herramientas personalizables (plantillas, opciones, logo) necesitan código más largo.
+    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=8192, ge=256, le=8192)
     CANDIDATE_REPAIR_LIMIT: int = Field(default=4, ge=0, le=5)
+    # Investigación web antes de diseñar una herramienta (Grounding with Google Search).
+    # gemini-2.5-flash la tiene gratis (500/día) hasta que Google lo redirija el 01/12/2026;
+    # si falla, el diseño sigue sin fuentes. Lo encontrado no se guarda (términos de Google).
+    RESEARCH_ENABLED: bool = True
+    RESEARCH_MODEL: str = Field(default="gemini-2.5-flash", pattern=r"^gemini-[a-z0-9.-]+$")
+    RESEARCH_TIMEOUT_SECONDS: float = Field(default=30, ge=1, le=60)
     PUBLICATIONS_ENABLED: bool = False  # Activar solo despues de SQL 09 verificado.
 
     model_config = SettingsConfigDict(

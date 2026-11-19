@@ -7,7 +7,9 @@ from fastapi import HTTPException
 from jsonschema import Draft202012Validator
 
 from repositories.capabilities import CapabilityRepository
-from schemas.objectives import AdjustRequest, AdjustResponse, ObjectiveRequest, ObjectiveResponse, draft_to_definition
+from schemas.objectives import (
+    AdjustRequest, AdjustResponse, ObjectiveRequest, ObjectiveResponse, ResearchResult, draft_to_definition,
+)
 from services.candidate_generation import GenerationLimiter, limiter
 from services.contract_validation import validate_definition
 
@@ -48,6 +50,21 @@ async def search_catalog(queries, repository: CapabilityRepository):
 
 # Ajustes conversados («ponle 30 %»): turno propio para no gastar el de crear herramientas.
 adjust_limiter = GenerationLimiter(hourly_limit=60, min_gap=3)
+# La investigación va antes del planner y del diseño: su propio turno para no chocar con ellos.
+research_limiter = GenerationLimiter(hourly_limit=60, min_gap=3)
+
+
+async def research_objective(request: ObjectiveRequest, user_id, provider, limits=research_limiter) -> ResearchResult | None:
+    """Busca en Google cómo se hace bien lo pedido, antes de hacer nada. None si no se pudo."""
+    if not request.consent_to_provider:
+        raise HTTPException(422, "Confirma que autorizas enviar tu necesidad a Gemini")
+    if not hasattr(provider, "research"):
+        return None
+    limits.start(user_id)
+    try:
+        return await provider.research(request)
+    finally:
+        limits.finish(user_id)
 
 
 async def adjust_parameters(request: AdjustRequest, user_id, provider, limits=adjust_limiter) -> AdjustResponse:
@@ -77,7 +94,14 @@ async def interpret_objective(request: ObjectiveRequest, repository: CapabilityR
     # Nunca enviar catálogo privado/público al proveedor: solo objetivo y respuestas consentidos.
     limits.start(repository.user_id)
     try:
-        interpreted = await provider.interpret(request)
+        # Investigación web: la que ya hizo el chat al empezar o, si no llegó, una búsqueda nueva.
+        # Si falla o está apagada, el diseño sigue igual que antes.
+        if request.research_summary:
+            research, mostrar = ResearchResult(summary=request.research_summary), False
+        else:
+            research = await provider.research(request) if hasattr(provider, "research") else None
+            mostrar = True
+        interpreted = await (provider.interpret(request, research) if research else provider.interpret(request))
     finally:
         limits.finish(repository.user_id)
     definition, definition_hash = None, None
@@ -93,7 +117,7 @@ async def interpret_objective(request: ObjectiveRequest, repository: CapabilityR
         queries = list(dict.fromkeys([*queries, definition.name]))
         truncated = truncated or extra_truncated
     return ObjectiveResponse(
-        interpretation=interpreted, definition=definition, definition_hash=definition_hash,
+        interpretation=interpreted, research=research if mostrar else None, definition=definition, definition_hash=definition_hash,
         matches={"items": matches[:20], "next_cursor": None}, search_queries=queries,
         search_truncated=truncated or len(matches) > 20,
     )

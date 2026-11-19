@@ -4,6 +4,32 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 18/11/2026: herramientas personalizables e investigación web
+
+Implementado en `integracion/Fahida-bloque-6`:
+- Herramientas personalizables: estilos (`enum`), escalas (`minimum`/`maximum`), colores
+  `#RRGGBB` con selector, secciones `incluir_…` y archivo de marca opcional (logo) que el chat
+  ofrece al final y se puede saltar con «no».
+- Investigación web antes de empezar: `POST /objectives/research` con Grounding with Google
+  Search sobre `gemini-2.5-flash` (gratis, 500/día) una vez por conversación; tarjeta con
+  fuentes y Search Suggestions; lo investigado no se guarda (términos de Google) y se pasa al
+  diseño como `research_summary`. Si falla, el chat lo avisa y sigue sin fuentes.
+- Calidad: constraints «Calidad:» obligatorias para el código, receta de informes de datos e
+  imports de reportlab 4.2.5 comprobados; el sandbox devuelve `error_detail` (solo nombres de
+  código) para Import/AttributeError, y la corrección automática sabe qué cambiar.
+- Planner: si el plan no cumple contratos, reintenta una vez con el error; si sigue fallando,
+  el chat diseña una herramienta nueva en vez de mostrar el error.
+
+Verificado: 185/187 pruebas del backend (fallan 2 de `test_planner_api` ya rotas antes de
+estos cambios), lint y build; búsqueda real con la clave gratuita; fábrica real Excel → PDF en
+gVisor con `gemini-3.5-flash-lite`, que pasó al primer intento con informe completo
+(`3.1-flash-lite` fue inconsistente en 6 pruebas). `backend/.env` local cambiado a
+`GEMINI_MODEL=gemini-3.5-flash-lite`.
+No verificado: recorrido completo en el navegador tras el último cambio; cuota gratuita de
+`3.5-flash-lite` (revisar ai.dev/rate-limit); comportamiento después del 01/12/2026, cuando
+Google redirige `gemini-2.5-flash`. Correr las pruebas del backend cierra el trabajador
+(una prueba usa el sandbox real): reiniciarlo después.
+
 Traspaso a Fahida: [resumen operativo](historial/PARA_FAHIDA_MARTES.md) con commits de
 Miguel, pruebas, pendientes por dueño, B6 sin certificar y aceptación conjunta
 para el martes. Disponible en rama miguel; lectura de Fahida no confirmada.

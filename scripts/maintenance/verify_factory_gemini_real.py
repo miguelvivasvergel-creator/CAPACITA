@@ -47,7 +47,8 @@ def observacion(definition, report):
         if caso.get("passed"):
             continue
         ej = definition.examples[caso["index"]].model_dump(mode="json")
-        detalle = caso["reason"] + (f" ({caso['error_type']})" if caso.get("error_type") else "")
+        detalle = caso["reason"] + (f" ({caso['error_type']}{': ' + caso['error_detail'] if caso.get('error_detail') else ''})"
+                                    if caso.get("error_type") else "")
         if caso["reason"] == "output_mismatch":
             detalle += "; la salida no cumple output_schema" if caso.get("schema_valid") is False else \
                 f"; campos con valor distinto: {', '.join(caso.get('mismatched_fields') or []) or 'no identificados'}"
