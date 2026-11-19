@@ -30,6 +30,15 @@ No verificado: recorrido completo en el navegador tras el último cambio; cuota 
 Google redirige `gemini-2.5-flash`. Correr las pruebas del backend cierra el trabajador
 (una prueba usa el sandbox real): reiniciarlo después.
 
+Preparación de demo: `scripts/demo/iniciar-demo.ps1` comprueba memoria libre, sandbox
+(socket + `runsc`), arranca backend, trabajador y frontend en ventanas propias y espera a que
+respondan; `docs/demo/ventas.xlsx` es un resumen mensual de 12 productos de un restaurante con
+las mismas columnas que la muestra de la fábrica (Producto, Cantidad, Precio) más Categoría.
+El prompt agrupa productos repetidos y limita la tabla a 15 + «Otros».
+Verificado: sintaxis del script y sus comprobaciones de sandbox (socket y gVisor OK); 13
+pruebas de Gemini/investigación. No verificado: el script completo (no se arrancaron los
+procesos: solo había 0,5 GB de memoria libre) ni un informe real hecho con `ventas.xlsx`.
+
 Traspaso a Fahida: [resumen operativo](historial/PARA_FAHIDA_MARTES.md) con commits de
 Miguel, pruebas, pendientes por dueño, B6 sin certificar y aceptación conjunta
 para el martes. Disponible en rama miguel; lectura de Fahida no confirmada.

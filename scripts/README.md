@@ -14,6 +14,18 @@ Ejecutar desde la raíz con el Python de `.venv/`. No muestran claves ni aplican
 
 Los SQL numerados para permisos están en db/, no son scripts de arranque. No ejecutar los esquemas históricos automáticamente sobre un proyecto existente.
 
+## Demo
+
+`demo/iniciar-demo.ps1` arranca todo para una demo local: avisa si hay poca memoria, comprueba
+el sandbox de WSL (Docker en `/run/capacita-docker.sock` con gVisor), abre backend, trabajador
+y frontend en ventanas propias, espera a que cada uno responda y abre el navegador. No instala
+nada ni muestra claves. Para apagar, cerrar las tres ventanas. Archivo de ejemplo:
+`docs/demo/ventas.xlsx`.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\demo\iniciar-demo.ps1
+```
+
 ## Gemini
 
 `ai/check_gemini.py` consulta metadatos del modelo, sin generar contenido ni imprimir claves. `--generate-example` realiza una única generación con un ejemplo público y comprueba sintaxis/firma/hash, sin ejecutar código ni persistir candidatos. Esta opción consume cuota del proveedor; no activa facturación. Configuración solo en backend/.env. La consulta de metadatos no confirma cuota ni nivel de facturación.

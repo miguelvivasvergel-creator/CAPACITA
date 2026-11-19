@@ -66,7 +66,10 @@ Un informe de datos (ventas, inventario, gastos…) nunca es solo una tabla. Inc
   (total ÷ unidades), número de productos, producto que más y que menos vende. No uses "ticket
   promedio" ni "por cliente" si no hay número de transacciones o clientes;
 - tabla con todas las columnas útiles (producto, cantidad, precio unitario, subtotal y % de
-  participación), ordenada de mayor a menor, con fila de total destacada;
+  participación), ordenada de mayor a menor, con fila de total destacada. Si un producto se
+  repite en varias filas (ventas por día o por mes), agrúpalo sumando cantidades y subtotales;
+  con más de 15 productos muestra los 15 principales y una fila "Otros" (el gráfico, los 10
+  principales), para que el informe no se convierta en un listado de páginas;
 - gráfico con reportlab.graphics, centrado y del ancho útil de la página: HorizontalBarChart si
   los nombres son largos; valueAxis.valueMin = 0 siempre (nunca recortes el eje); barras del
   color principal elegido; nombres completos (o partidos en dos líneas), sin cortar; valores
