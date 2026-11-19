@@ -112,6 +112,7 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
     task = asyncio.create_task(heartbeat())
     clean_exit = False
     bot_next = [0.0]
+    assistants_next = [0.0]
     try:
         # Limpieza local antes de recuperar estados de la reserva anterior.
         recovery = await asyncio.to_thread(guarded_runner, recover=True)
@@ -128,6 +129,16 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
                 if once:
                     clean_exit = True
                     return
+                # Asistentes recurrentes (SQL 17): la base crea los trabajos de los turnos vencidos.
+                if time.monotonic() >= assistants_next[0]:
+                    try:
+                        creados = await session.rpc_raw("assistant_enqueue_due", p_session=identity)
+                        assistants_next[0] = time.monotonic() + 30
+                        if creados.get("enqueued"):
+                            print(f"Asistentes: {creados['enqueued']} trabajo(s) en cola", flush=True)
+                            continue
+                    except Exception:
+                        assistants_next[0] = time.monotonic() + 300
                 if bot is not None and time.monotonic() >= bot_next[0]:
                     # Telegram nunca detiene al trabajador: ante un fallo, espera un minuto.
                     try:

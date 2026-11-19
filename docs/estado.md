@@ -4,6 +4,35 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 20/11/2026: fase 5 asistentes recurrentes — verificada
+
+Último commit: `391b044` (fase 3), etiqueta `respaldo/antes-fase-4`.
+- `db/17_asistentes.sql` (NO aplicado): tabla privada `assistants` (revisión y hash exactos de la
+  solución, datos fijos, horario {frequency daily|weekly, days ISO 1-7, time HH:MM, timezone}) y
+  `jobs.assistant_id`. RPC: assistant_save/list/set_active/delete (persona) y
+  assistant_enqueue_due (trabajador con reserva): crea aprobación + trabajo a nombre del dueño con
+  la misma comprobación de versiones que una aprobación manual. Límites: 5 activos por persona,
+  un trabajo por turno (clave asistente:id:turno), turnos con >6 h de atraso se saltan, un trabajo
+  a la vez por asistente, topes de cola 3/20, 3 fallos seguidos → pausa; solución cambiada o
+  versión no disponible → pausa con motivo.
+- `api/assistants.py`: GET/POST /assistants, POST /{id}/pause|resume, DELETE /{id}; crear revalida
+  como una aprobación (revisión, datos contra el contrato) y exige content_consent si hay IA o
+  Telegram. Nombres en la lista permitida del gateway.
+- Trabajador: cada 30 s llama assistant_enqueue_due (si falla, reintenta en 5 min).
+- Chat: «🔁 Repetir automáticamente» en la tarjeta del plan tras una ejecución exitosa (todos los
+  días / algunos días L-D, hora de Colombia, mismos datos, mismo «Acepto»). Soluciones → «Mis
+  asistentes» con horario en palabras, próximo turno, último resultado, pausar/reanudar/borrar.
+Verificado: 3 pruebas de la API (revisión exacta, horario inválido, datos inválidos, «Acepto» con
+Telegram), suite 236/238 (las 2 de siempre), lint y build; backend y trabajador reiniciados.
+Fahida aplicó `db/17_asistentes.sql` y creó un asistente diario a pocos minutos sobre «Pronóstico →
+Telegram»: el trabajador creó el turno solo y el mensaje llegó a su Telegram (20/11, «funciona,
+llegó el mensaje solo»). Conviene pausarlo o borrarlo en Soluciones → Mis asistentes si no se
+quiere recibir a diario.
+Siguiente: fase 4 (caja interna: pandas, matplotlib, rembg, Tesseract; requiere reconstruir la
+imagen del sandbox como root en Ubuntu) o fase 6 (Google: Drive, Sheets, Gmail, Calendar), y
+armar la demo del asistente del restaurante.
+
+
 ### Fahida — 20/11/2026: fase 3 Telegram — verificada de punta a punta
 
 Último commit estable: `0843fc5`. Bot @Capacita_web_bot; TELEGRAM_BOT_TOKEN (verificado con getMe)

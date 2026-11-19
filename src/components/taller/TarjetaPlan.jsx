@@ -3,6 +3,53 @@ import { aprobarWorkflow, ejecutarWorkflow } from '../../services/workflows';
 import { admiteFormulario, camposChat, datosIniciales, pasosEnOrden } from '../../utils/formularioDatos';
 import { infoTipo, tamano, urlDatos } from '../../utils/archivos';
 import FormularioDatos from '../common/FormularioDatos';
+import { crearAsistente, horarioEnPalabras } from '../../services/asistentes';
+
+const DIAS_CORTOS = [[1, 'L'], [2, 'M'], [3, 'X'], [4, 'J'], [5, 'V'], [6, 'S'], [7, 'D']];
+
+/**
+ * Después de una ejecución que salió bien: convertir esta solución, con estos mismos datos, en un
+ * asistente que se ejecuta solo (fase 5). Usa el mismo «Acepto» de la tarjeta si hay IA o envíos.
+ */
+function RepetirAutomatico({ obtenerGuardada, valores, nombre, requiereAcepto, aceptado }) {
+  const [abierto, setAbierto] = useState(false);
+  const [frecuencia, setFrecuencia] = useState('weekly');
+  const [dias, setDias] = useState([1]);
+  const [hora, setHora] = useState('07:00');
+  const [creado, setCreado] = useState(null);
+  const [error, setError] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const horario = { frequency: frecuencia, days: frecuencia === 'weekly' ? dias : [], time: hora };
+
+  async function crear() {
+    if (requiereAcepto && !aceptado) { setError('Marca primero el «Acepto» de arriba: el asistente hará esos envíos cada vez.'); return; }
+    if (frecuencia === 'weekly' && !dias.length) { setError('Elige al menos un día.'); return; }
+    setOcupado(true); setError('');
+    try {
+      const guardada = await obtenerGuardada();
+      setCreado(await crearAsistente(guardada, valores, horario, `${nombre} · ${horarioEnPalabras(horario).toLowerCase()}`, requiereAcepto && aceptado));
+    } catch (causa) { setError(causa.message); } finally { setOcupado(false); }
+  }
+
+  if (creado) return <p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-900">🔁 Asistente creado: {horarioEnPalabras(horario)}, con estos mismos datos. Lo ves y lo pausas en Soluciones → Mis asistentes.</p>;
+  if (!abierto) return <button type="button" onClick={() => setAbierto(true)} className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">🔁 Repetir automáticamente</button>;
+  return <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+    <p className="font-semibold">¿Cada cuánto?</p>
+    <div className="flex flex-wrap gap-2">{[['daily', 'Todos los días'], ['weekly', 'Algunos días']].map(([valor, texto]) =>
+      <button key={valor} type="button" aria-pressed={frecuencia === valor} onClick={() => setFrecuencia(valor)}
+        className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold ${frecuencia === valor ? 'bg-blue-700 text-white' : 'border border-slate-300 bg-white'}`}>{texto}</button>)}</div>
+    {frecuencia === 'weekly' && <div className="flex flex-wrap gap-1" role="group" aria-label="Días de la semana">{DIAS_CORTOS.map(([dia, letra]) =>
+      <button key={dia} type="button" aria-pressed={dias.includes(dia)} onClick={() => setDias((old) => (old.includes(dia) ? old.filter((d) => d !== dia) : [...old, dia].sort()))}
+        className={`h-11 w-11 rounded-full text-sm font-semibold ${dias.includes(dia) ? 'bg-blue-700 text-white' : 'border border-slate-300 bg-white'}`}>{letra}</button>)}</div>}
+    <label className="flex items-center gap-2">A las <input type="time" value={hora} onChange={(event) => setHora(event.target.value || '07:00')} className="min-h-11 rounded-lg border px-2" /> <span className="text-xs text-slate-500">(hora de Colombia)</span></label>
+    <p className="text-xs text-slate-600">{horarioEnPalabras(horario)}, con los mismos datos de esta ejecución. Se pausa solo si falla 3 veces o si cambias la solución.</p>
+    {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+    <div className="flex flex-wrap gap-2">
+      <button type="button" disabled={ocupado} onClick={crear} className="min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{ocupado ? 'Creando…' : 'Crear asistente'}</button>
+      <button type="button" disabled={ocupado} onClick={() => setAbierto(false)} className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Cancelar</button>
+    </div>
+  </div>;
+}
 
 const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50';
 
@@ -66,6 +113,8 @@ export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupad
     <button type="submit" disabled={busy || ocupadoExterno || (requiereAcepto && !aceptaIA)} className={`${BOTON} bg-emerald-600 text-white`}>
       {busy ? 'Preparando…' : ejecutadas ? 'Ejecutar de nuevo' : 'Aprobar y ejecutar'}
     </button>
+    {ejecutadas > 0 && <RepetirAutomatico obtenerGuardada={obtenerGuardada} valores={valores} nombre={definition.name}
+      requiereAcepto={requiereAcepto} aceptado={aceptaIA} />}
   </>;
 
   if (datos) {

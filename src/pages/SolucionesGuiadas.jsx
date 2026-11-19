@@ -3,6 +3,7 @@ import Icono from '../components/common/Icono';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import PlanGuiado from '../components/capabilities/PlanGuiado';
+import MisAsistentes from '../components/taller/MisAsistentes';
 
 export default function SolucionesGuiadas({ workflowId, onCambiarSeccion }) {
   const [page,setPage]=useState({items:[],next_cursor:null});
@@ -22,6 +23,7 @@ export default function SolucionesGuiadas({ workflowId, onCambiarSeccion }) {
     catch(cause){setError(cause.message);}finally{setBusy(false);}
   }
   return <div className="vista-contenedor guiado-pagina space-y-5"><EncabezadoVista icono="soluciones" titulo="Mis soluciones" descripcion="Soluciones privadas que puedes volver a usar con otros datos. Cada ejecución necesita tu confirmación."/>
+    {!workflowId && <MisAsistentes onCambiarSeccion={onCambiarSeccion} />}
     <button type="button" className="vista-boton-primario" onClick={()=>onCambiarSeccion?.('inicio')}>Resolver otra necesidad</button>
     {busy&&<p role="status">Cargando soluciones…</p>}{error&&<div role="alert" className="text-sm text-red-700"><p>{error}</p><button type="button" className="min-h-11 underline" onClick={()=>{setError('');setBusy(true);setRevision(old=>old+1);}}>Volver a consultar</button></div>}
     {saved&&<PlanGuiado key={saved.id+':'+saved.revision} definition={saved.definition} initialSaved={saved} onCambiarSeccion={onCambiarSeccion}/>}

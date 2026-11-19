@@ -21,6 +21,8 @@ EXECUTION_RPCS = {
     # Telegram (SQL 16): las tres primeras para la persona; las otras exigen al trabajador.
     "telegram_link_start", "telegram_link_status", "telegram_unlink",
     "telegram_link_complete", "telegram_unlink_chat", "telegram_chat_for_job",
+    # Asistentes recurrentes (SQL 17): las cuatro primeras para la persona; la última, el trabajador.
+    "assistant_save", "assistant_list", "assistant_set_active", "assistant_delete", "assistant_enqueue_due",
 }
 
 
