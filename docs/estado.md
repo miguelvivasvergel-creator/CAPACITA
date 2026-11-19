@@ -4,6 +4,71 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 19/11/2026: fase 1, conectores (banco de APIs), sin commit todavía
+
+Implementado en código; **falta aplicar SQL** y probarlo en la app:
+- `backend/connectors/`: registro revisado (no lo escribe la IA) con 6 conectores gratuitos y sin clave:
+  `clima_pronostico` y `clima_historico` (Open-Meteo), `festivos_pais` (Nager.Date), `trm_colombia`
+  (datos.gov.co; Frankfurter no tiene COP), `cambio_moneda` (open.er-api, con atribución) y
+  `verificar_referencia` (Crossref, cita APA; exige apellido coincidente y nunca dice «inventada»).
+- `services/connector_broker.py`: solo https a los hosts del conector, IP pública, sin
+  redirecciones ni credenciales, 1 MB, 20 s, tope de peticiones; 429 → «servicio ocupado».
+- `services/connector_runtime.py` + rama en `execution_engine` y `workflow_validation`: el
+  trabajador ejecuta el paso fuera del sandbox y rechaza un manifiesto distinto al del registro.
+- Planner: recibe `profile` y sabe que los `connector-v1` existen (no responde «bloqueado» por eso).
+- Chat: sello 🌐 con el proveedor en lienzo, plan y detalle; aviso de qué dato sale; errores en
+  palabras (`detail` del paso, nunca el valor); sugerencia «¿Va a llover esta semana en Bogotá?».
+- SQL: `db/14_connectors.sql` (columna `connector_key`, regla `version_executor` ampliada) y
+  `db/15_conectores_iniciales.sql`, GENERADO con `scripts/connectors/generate_seed_sql.py`
+  (capacidad pública + versión + publicación por conector, autor = cuenta del trabajador).
+  Una prueba falla si db/15 no coincide con el registro. Cambiar un conector ya aplicado exige
+  subir su `version` (key@N).
+Límite conocido: solo como paso de una solución (lo que usa el chat). Ejecutar una versión
+publicada suelta exige candidato (regla `execution_target`, SQL 08).
+
+Verificado: 22 pruebas de conectores (broker, cada conector, recorrido del trabajador con un paso
+conector sin sandbox) y suite completa 215/217 (las 2 de `test_planner_api` fallan desde antes);
+lint y build. Llamadas reales a las 6 APIs: pronóstico Bogotá, histórico Medellín, 19 festivos
+CO 2026, TRM (domingo → la del sábado), 250 USD → COP y Crossref (LeCun 2015 encontrada; Sampieri
+«no encontrada» en vez de confundirla con otro libro; Attention avisa del año distinto).
+Fahida aplicó SQL 14 y 15 en Supabase (19/11): `version_executor` con la rama `connector-v1` y los
+6 conectores `enabled` y publicados. Probado en el navegador (cuenta de Fahida, guiado): «¿Va a
+llover esta semana en Bogotá?» ofreció el conector sin IA, sello 🌐 Open-Meteo, el trabajador lo
+ejecutó y devolvió el pronóstico real. Tras esa prueba: resumen con días en palabras («el domingo
+22… de noviembre», decimales con coma), resultados con el resumen primero y listas como tabla
+(jsonb reordena las claves: el orden lo decide `ResultadoDatos`), y el chat da el ejemplo del dato
+(«Ciudad (… por ejemplo Bogotá)»); el primer intento había mandado la pregunta entera como ciudad.
+No verificado: planner real (Gemini) combinando un conector con otra herramienta, TRM/cambio/
+Crossref desde el navegador.
+
+### Fahida — 19/11/2026: fase 0 del plan de capacidades (detector de cambios)
+
+Punto de respaldo antes de esta fase: commit `cdbfe57`, etiqueta local `respaldo/antes-banco-apis`.
+Plan acordado (propuesta, no implementado salvo la fase 0): 0 detector de cambios · 1 broker de
+conectores + APIs sin cuenta (Open-Meteo, festivos, Frankfurter, Crossref) con SQL 14 · 2 Gemini
+en ejecución con un «Acepto» propio (aceptado por Fahida) · 3 Telegram con aprobación ·
+4 caja interna ampliada (pandas, matplotlib, rembg, Tesseract) · 5 asistentes recurrentes ·
+6 OAuth de Google. Los nodos de conector necesitan SQL nuevo: aprobar/encolar/reclamar exigen que
+cada nodo sea una fila de `capacita_execution.versions` (SQL 08/09).
+
+Fase 0, sin commit todavía:
+- `public/muestras/documento_v2.docx`: versión nueva de `documento.docx` (12 → 18 por ciento y un
+  párrafo agregado). `MUESTRA:word2` en `archivos.js` y en `verify_factory_gemini_real.py`.
+- Prompts (`gemini.py`): describen ambas muestras, una regla de conteo determinista por párrafos
+  (difflib; 1 modificado, 1 agregado, 0 eliminados), el diseño de una comparación (entradas
+  original/nueva, contadores, colores, secciones) y la receta del Word marcado.
+- Vista previa: con dos o más archivos obligatorios usa muestras distintas (antes repetía el mismo
+  archivo y no habría cambios). Sugerencia nueva en la bienvenida del chat.
+- `backend/tests/test_samples.py`: las muestras deben coincidir con lo que dice el prompt.
+
+Verificado: 39 pruebas relacionadas, lint y build; fábrica real (`gemini-3.5-flash-lite` + gVisor,
+sin Supabase) diseñó «comparar_documentos_word» y pasó al primer intento (2 llamadas, 18 s); otra
+ejecución real devolvió un Word con «12» rojo tachado, «18» verde subrayado, párrafo nuevo en verde,
+resumen y tabla «Cambios importantes» antes del texto. Varía entre generaciones: a veces omite en
+la tabla la cifra de un párrafo agregado y escribe «párrafo(s)».
+No verificado: el recorrido en el navegador (chat → crear → vista previa → Me gusta → usar con dos
+archivos propios), ni con PDF.
+
 ### Fahida — 18/11/2026 (noche): arreglos de UX tras la revisión a fondo
 
 Sin commit todavía, en `integracion/Fahida-bloque-6`:

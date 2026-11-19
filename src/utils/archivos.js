@@ -12,7 +12,9 @@ export const TIPOS = {
   [WORD]: { nombre: 'Word', ext: 'docx', icono: '📝', acepta: '.docx' },
   [EXCEL]: { nombre: 'Excel', ext: 'xlsx', icono: '📊', acepta: '.xlsx' },
 };
-const MUESTRAS = { foto: 'foto.jpg', pdf: 'documento.pdf', word: 'documento.docx', excel: 'hoja.xlsx' };
+// word2: versión nueva de documento.docx (cambios descritos en backend/providers/gemini.py) para
+// probar herramientas que comparan dos versiones.
+const MUESTRAS = { foto: 'foto.jpg', pdf: 'documento.pdf', word: 'documento.docx', word2: 'documento_v2.docx', excel: 'hoja.xlsx' };
 // Con 4 MB de límite total, un archivo de hasta ~2,8 MB cabe en base64.
 const MAX_BYTES = 2_800_000;
 const LADO_MAX = 1600;

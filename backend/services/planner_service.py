@@ -58,7 +58,8 @@ async def planner_options(objective, catalog, mode='text'):
             capability = await catalog.get(UUID(version["capability_id"]))
             if version.get('contract_only'):
                 option = {key: version[key] for key in ('id', 'capability_id', 'name', 'description')}
-                option.update(publication_id=version.get('publication_id'), license=version.get('license'))
+                option.update(publication_id=version.get('publication_id'), license=version.get('license'),
+                              profile=version.get('profile'))
                 option.update(version['contracts'], visibility=capability['visibility'])
                 options.append(option | {'review_hash': review_hash(option)})
                 continue

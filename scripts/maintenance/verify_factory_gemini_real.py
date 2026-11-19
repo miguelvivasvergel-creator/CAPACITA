@@ -26,7 +26,8 @@ from services.contract_validation import validate_definition  # noqa: E402
 from services.candidate_preparation import prepare_candidate  # noqa: E402
 from services.execution_engine import execute_job  # noqa: E402
 
-MUESTRAS = {"foto": "foto.jpg", "pdf": "documento.pdf", "word": "documento.docx", "excel": "hoja.xlsx"}
+MUESTRAS = {"foto": "foto.jpg", "pdf": "documento.pdf", "word": "documento.docx", "word2": "documento_v2.docx",
+            "excel": "hoja.xlsx"}
 CORREGIBLES = {"output_mismatch", "candidate_error", "invalid_json_output", "timeout", "output_limit", "memory_limit"}
 
 

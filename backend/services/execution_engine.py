@@ -6,6 +6,7 @@ from jsonschema import Draft202012Validator
 from services.build_validation import validate_manifest
 from services.contract_validation import DATA_BYTES
 from services.build_worker import execute_build, invoke_runner
+from connectors.base import PROFILE as CONNECTOR_PROFILE
 
 # Copia de sandbox_runner.IMAGES (ese módulo solo importa en Linux); un test exige igualdad.
 IMAGES = {
@@ -50,6 +51,12 @@ def execute_job(job, runner=invoke_runner, progress=None):
     if payload.get("execution_type") == "workflow":
         from services.workflow_engine import execute_workflow
         return execute_workflow(job, runner, progress)
+    if payload.get("profile") == CONNECTOR_PROFILE:
+        # Conector revisado: lo ejecuta el broker del trabajador, nunca el sandbox.
+        if job["kind"] != "run":
+            raise ValueError("unsupported_execution")
+        from services.connector_runtime import run_connector
+        return run_connector(job)
     manifest = validate_manifest(payload["manifest"])
     if str(manifest.candidate_id) != job["candidate_id"] or manifest.artifact_hash != job["artifact_hash"]:
         raise ValueError("identity_mismatch")

@@ -12,7 +12,9 @@ const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opac
  * muestra un formulario. "Aprobar y ejecutar" guarda (una sola vez por plan), aprueba
  * esos datos exactos y ejecuta. Editar los datos invalida la aprobación anterior.
  */
-export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupadoExterno, onEjecucion }) {
+const SIN_CONECTORES = new Map();
+
+export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupadoExterno, onEjecucion, conectores = SIN_CONECTORES }) {
   const esquema = definition.input_schema;
   const campos = camposChat(esquema);
   const formulario = admiteFormulario(esquema);
@@ -44,8 +46,11 @@ export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupad
       finally { lock.current = false; if (alive.current) setBusy(false); }
     })();
   };
+  // Servicios externos que consulta este plan (sello 🌐): se dicen antes de aprobar.
+  const externos = [...new Set(definition.nodes.map((node) => conectores.get(node.version_id)).filter(Boolean))];
   const boton = <>
     <p className="text-xs text-slate-500">🔒 Al confirmar autorizas estos pasos con estos datos. Tus datos no se envían a la IA.</p>
+    {externos.length > 0 && <p className="text-xs text-sky-800">🌐 Este proceso consulta {externos.join(', ')}: solo recibe{externos.length > 1 ? 'n' : ''} los datos de su{externos.length > 1 ? 's' : ''} paso{externos.length > 1 ? 's' : ''} (por ejemplo, la ciudad o la referencia), nunca tus archivos ni tu cuenta.</p>}
     <button type="submit" disabled={busy || ocupadoExterno} className={`${BOTON} bg-emerald-600 text-white`}>
       {busy ? 'Preparando…' : ejecutadas ? 'Ejecutar de nuevo' : 'Aprobar y ejecutar'}
     </button>
@@ -77,7 +82,7 @@ export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupad
     </div>
     <ol className="space-y-2">{pasos.map((node, index) => <li key={node.id} className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm">
       <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-bold text-blue-800">{index + 1}</span>
-      <span className="break-words">{node.label}</span>
+      <span className="break-words">{node.label}{conectores.get(node.version_id) && <span className="ml-2 inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800">🌐 {conectores.get(node.version_id)}</span>}</span>
     </li>)}</ol>
     {campos ? null
       : formulario ? <form className="space-y-4 border-t pt-4" onSubmit={ejecutar}>

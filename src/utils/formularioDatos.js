@@ -35,7 +35,10 @@ export function camposChat(schema) {
     const tecnica = /base ?64|codificad|encoded|mime/i.test(spec.description || '');
     const descripcion = spec.description && spec.description.length <= 80 && !(archivo && tecnica) ? spec.description.replace(/\.$/, '') : '';
     // Un archivo opcional (logo, fondo, plantilla) se nombra por su campo, no como «Tu foto».
-    return { nombre, tipo: spec.type, archivo, opcional,
+    // ayuda: la descripción como ejemplo («Ciudad o municipio, por ejemplo Bogotá») cuando el
+    // título ya da el nombre corto; así no se responde con la pregunta entera.
+    const ayuda = spec.title && descripcion && descripcion.toLowerCase() !== spec.title.toLowerCase() ? descripcion : '';
+    return { nombre, tipo: spec.type, archivo, opcional, ayuda,
       etiqueta: spec.title || descripcion || (archivo && !opcional ? NOMBRE_ARCHIVO(archivo) : etiquetaLegible(nombre)) };
   };
   const obligatorios = propiedades.filter(([nombre]) => schema.required?.includes(nombre)).map((entrada) => campo(entrada));

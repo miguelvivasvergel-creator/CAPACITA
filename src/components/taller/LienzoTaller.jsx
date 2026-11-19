@@ -11,6 +11,7 @@ function Nodo({ data }) {
     {data.entrada && <Handle type="target" position={Position.Left} isConnectable={false} />}
     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{data.tipo}</p>
     <p className="mt-1 break-words font-semibold leading-snug text-slate-900">{data.label}</p>
+    {data.conector && <p className="mt-1 inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800" title="Consulta un servicio externo">🌐 {data.conector}</p>}
     <p className="mt-2 text-xs text-slate-600"><span aria-hidden="true">{estado.icono}</span> {estado.texto}</p>
     {data.salida && <Handle type="source" position={Position.Right} isConnectable={false} />}
   </div>;
@@ -21,7 +22,10 @@ const nodeTypes = { paso: Nodo };
  * Taller visual: dibuja el plan de izquierda a derecha (datos → pasos → resultado)
  * con el estado real de cada paso, o una herramienta nueva mientras se crea.
  */
-export default function LienzoTaller({ definicion, creando, estadoCreacion, estados = {}, seleccionado, onSeleccionar }) {
+// version_id → proveedor («Open-Meteo») de los pasos que consultan un servicio externo.
+const SIN_CONECTORES = new Map();
+
+export default function LienzoTaller({ definicion, creando, estadoCreacion, estados = {}, seleccionado, onSeleccionar, conectores = SIN_CONECTORES }) {
   const contenedor = useRef(null), flujo = useRef(null);
   // React Flow oculta un nodo hasta medirlo. Cada cambio de estado crea nodos nuevos sin
   // medidas y, si el tamaño no cambia, no se vuelven a medir: quedaban invisibles al ejecutar.
@@ -48,7 +52,7 @@ export default function LienzoTaller({ definicion, creando, estadoCreacion, esta
     const nodos = [
       { id: '$input', type: 'paso', position: { x: 0, y: 40 }, data: { tipo: 'Inicio', label: 'Tus datos', estado: estados.$input || 'espera', salida: true } },
       ...pasos.map((node, index) => ({ id: node.id, type: 'paso', position: { x: (index + 1) * 270, y: index % 2 ? 90 : 0 },
-        data: { tipo: `Paso ${index + 1}`, label: node.label, estado: estados[node.id] || 'espera', entrada: true, salida: true, seleccionado: seleccionado === node.id } })),
+        data: { tipo: `Paso ${index + 1}`, label: node.label, estado: estados[node.id] || 'espera', entrada: true, salida: true, seleccionado: seleccionado === node.id, conector: conectores.get(node.version_id) } })),
       { id: '$output', type: 'paso', position: { x: (pasos.length + 1) * 270, y: 40 }, data: { tipo: 'Final', label: 'Resultado', estado: estados.$output || 'espera', entrada: true } },
     ];
     const conexiones = new Map();
@@ -60,7 +64,7 @@ export default function LienzoTaller({ definicion, creando, estadoCreacion, esta
     for (const binding of Object.values(definicion.outputs || {})) conexiones.set(`${binding.source}>$output`, { source: binding.source, target: '$output' });
     const activa = (edge) => estados[edge.target] === 'running';
     return { nodes: nodos, edges: [...conexiones.entries()].map(([id, edge]) => ({ id, ...edge, type: 'smoothstep', animated: activa(edge), style: { strokeWidth: 2 } })) };
-  }, [definicion, creando, estadoCreacion, estados, seleccionado]);
+  }, [definicion, creando, estadoCreacion, estados, seleccionado, conectores]);
   const nodes = useMemo(() => nodosBase.map((node) => (medidas[node.id] ? { ...node, measured: medidas[node.id] } : node)), [nodosBase, medidas]);
 
   const cantidad = nodes.length;

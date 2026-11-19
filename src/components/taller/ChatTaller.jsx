@@ -21,6 +21,8 @@ const SUGERENCIAS = [
   { icono: '🎨', texto: 'Ponle un filtro vintage cálido a mi foto', archivo: true },
   { icono: '📄', texto: 'Agrégale a mi PDF una portada con un título', archivo: true },
   { icono: '📊', texto: 'Convierte mi Excel de ventas en un informe PDF con los totales', archivo: true },
+  { icono: '🔍', texto: 'Compara dos versiones de mi documento Word y márcame todo lo que cambió', archivo: true },
+  { icono: '🌦️', texto: '¿Va a llover esta semana en Bogotá? Dime qué días', archivo: false },
   { icono: '✍️', texto: 'Cuenta cuántas palabras tiene un texto y dime las más repetidas', archivo: false },
 ];
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
@@ -53,6 +55,36 @@ function herramientasParecidas(items, objetivo) {
     .sort((a, b) => b.puntos - a.puntos || String(b.item.created_at || '').localeCompare(String(a.item.created_at || '')))
     .filter(({ item }) => !vistas.has(item.capability_id) && vistas.add(item.capability_id))
     .slice(0, 3).map(({ item }) => item);
+}
+
+// Pasos que consultan un servicio externo (sello 🌐): version_id → proveedor («Open-Meteo»).
+const SIN_CONECTORES = new Map();
+const proveedorDe = (item) => /^Conector externo \(([^)]+)\)/.exec(item.description || '')?.[1] || 'Servicio externo';
+const mapaConectores = (items) => new Map(items.filter((item) => item.profile === 'connector-v1').map((item) => [item.id, proveedorDe(item)]));
+
+// Errores del trabajador en palabras. detail es un código fijo (nunca el valor que escribió la persona).
+const DATO = {
+  ciudad: 'la ciudad', ciudad_no_encontrada: 'la ciudad (no la encontré)', fecha: 'la fecha', fecha_inicio: 'la fecha inicial',
+  fecha_fin: 'la fecha final', rango_fechas: 'las fechas (hasta un año y no en el futuro)', dias: 'los días', pais: 'el país',
+  anio_pais: 'el año o el país', pais_sin_datos: 'el país (no hay datos)', monto_moneda: 'el monto o las monedas',
+  moneda_origen: 'la moneda de origen', moneda_destino: 'la moneda de destino', referencia: 'la referencia',
+  sin_datos: 'los datos (el servicio no tiene información para eso)',
+};
+const ERRORES = {
+  connector_provider_unavailable: 'El servicio externo no respondió. Intenta de nuevo en unos minutos',
+  connector_not_found: 'El servicio externo no tiene datos para eso',
+  connector_provider_busy: 'El servicio externo está recibiendo muchas consultas. Espera un minuto y vuelve a intentarlo',
+  connector_provider_rejected: 'El servicio externo rechazó la consulta; revisa los datos',
+  connector_invalid_response: 'El servicio externo respondió algo que no pude leer',
+  connector_mismatch: 'Este conector no coincide con el revisado en Capacita; avisa al equipo',
+  input_contract: 'Algún dato no tiene el formato esperado', output_contract: 'El resultado no tuvo el formato esperado',
+  sandbox_unavailable: 'El entorno de ejecución no está disponible; revisa que el trabajador esté encendido',
+};
+function explicarError(report) {
+  const paso = report?.steps?.find((step) => step.status === 'failed');
+  if (paso?.error === 'connector_input') return `Revisa ${DATO[paso.detail] || 'los datos'} en el paso «${paso.label}»`;
+  const codigo = paso?.error || report?.error;
+  return ERRORES[codigo] || (paso ? `Falló el paso «${paso.label}»` : codigo);
 }
 
 // Respuestas para saltar un archivo opcional (logo, plantilla…).
@@ -97,6 +129,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const recienCreadas = useRef([]);
   // Para ajustar un resultado: contratos de las versiones del plan y el último archivo usado.
   const opcionesPlan = useRef([]), ultimoArchivo = useRef(null);
+  // Qué pasos del plan son conectores (sello 🌐); se recalcula cada vez que cambian las opciones.
+  const [conectores, setConectores] = useState(SIN_CONECTORES);
+  function fijarOpciones(items) { opcionesPlan.current = items; setConectores(mapaConectores(items)); }
   const registrarAjustador = useCallback((fn, previo) => {
     if (fn) ajustador.current = fn;
     else if (ajustador.current === previo) ajustador.current = null;
@@ -124,7 +159,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   }
   async function cargarOpcionesDe(definicion) {
     // Sin opciones: ajustarPlan lo explica si la persona intenta ajustar.
-    opcionesPlan.current = await buscarVersiones(definicion.nodes.map((nodo) => nodo.version_id)).catch(() => []);
+    fijarOpciones(await buscarVersiones(definicion.nodes.map((nodo) => nodo.version_id)).catch(() => []));
   }
 
   // Desde Soluciones o Herramientas: abrir una solución guardada o dejar escrito un pedido.
@@ -171,7 +206,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
           : 'Esta herramienta todavía no tiene una versión probada que se pueda usar. Cuéntame qué necesitas y busco o creo una que sí funcione 👇' });
         return;
       }
-      opcionesPlan.current = [version];
+      fijarOpciones([version]);
       const guardada = await solucionGuardadaDe(version.id).catch(() => null);
       const ajena = version.owner_id && usuario?.id && version.owner_id !== usuario.id;
       abrirSolucion(guardada?.definition || definicion, guardada,
@@ -243,7 +278,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       agregar({ de: 'capacita', tipo: 'texto', texto: `Si quieres personalizarla, sube ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}) con el botón 📎. Es opcional: si no, escribe «no» 👇` });
       return;
     }
-    agregar({ de: 'capacita', tipo: 'texto', texto: campo.archivo ? `${inicio}: ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}). Súbelo con el botón 📎 de abajo 👇` : `${inicio}: ${campo.etiqueta}. Escríbelo abajo 👇` });
+    agregar({ de: 'capacita', tipo: 'texto', texto: campo.archivo ? `${inicio}: ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}). Súbelo con el botón 📎 de abajo 👇` : `${inicio}: ${campo.etiqueta}${campo.ayuda ? ` (${campo.ayuda})` : ''}. Escríbelo abajo 👇` });
   }
 
   // Tras ejecutar, un dato nuevo vuelve a empezar la recogida para ejecutarla otra vez.
@@ -389,13 +424,13 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       const faltantes = recienCreadas.current.filter((id) => !items.some((item) => item.id === id));
       if (faltantes.length) items = [...await buscarVersiones(faltantes).catch(() => []), ...items];
       if (controller.signal.aborted) return;
-      opcionesPlan.current = items; // contratos de cada versión, para ajustar después
+      fijarOpciones(items); // contratos de cada versión, para ajustar después
       // Si el planner no logra usar lo recién creado, se usa directo: diseñar otra sería un duplicado.
       const usarRecienCreada = () => {
         const version = items.find((item) => recienCreadas.current.includes(item.id));
         const definicion = version && solucionDeVersion(version);
         if (!definicion) return false;
-        opcionesPlan.current = [version];
+        fijarOpciones([version]);
         abrirSolucion(definicion, null, `Uso «${version.name}», la herramienta que acabamos de crear. Te pido los datos 👇`);
         return true;
       };
@@ -661,8 +696,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       case 'crear': return <FabricaHerramienta definition={mensaje.definicion} onEstado={setEstadoCreacion} onLista={herramientaLista}
         archivo={adjunto || ultimoArchivo.current} registrarAjustador={registrarAjustador} onMejorar={mejorarHerramienta}
         automatica={Boolean(mensaje.automatica)} onFallo={falloEnCola} />;
-      case 'plan': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status))} onEjecucion={alEjecutar} /></div>;
-      case 'confirmar': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} datos={mensaje.datos} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status)) || mensaje.definicion !== plan} onEjecucion={alEjecutar} /></div>;
+      case 'plan': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status))} onEjecucion={alEjecutar} conectores={conectores} /></div>;
+      case 'confirmar': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} datos={mensaje.datos} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status)) || mensaje.definicion !== plan} onEjecucion={alEjecutar} conectores={conectores} /></div>;
       case 'resultado': {
         const actual = run && run.id === mensaje.runId ? run : null;
         if (!actual && runId !== mensaje.runId) return <p className="text-sm text-slate-500">Ejecución anterior · <button type="button" className="text-blue-700 underline" onClick={() => onCambiarSeccion?.(`historial/${mensaje.runId}`)}>ver en Resultados</button></p>;
@@ -670,7 +705,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
           <p className="font-semibold">{actual ? ESTADO_RUN[actual.status] || actual.status : 'Iniciando…'}</p>
           {actual?.status === 'queued' && <p className="mt-1 text-sm text-slate-600">Tu solicitud está guardada; empezará cuando el trabajador esté disponible.</p>}
           {actual?.output != null && <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm"><ResultadoDatos value={actual.output} /></div>}
-          {actual?.report?.error && <p role="alert" className="mt-2 break-words text-sm text-red-700">{actual.report.error}. Los pasos que terminaron se conservan; revisa tus datos e inténtalo de nuevo.</p>}
+          {actual?.report?.error && <p role="alert" className="mt-2 break-words text-sm text-red-700">{explicarError(actual.report)}. Los pasos que terminaron se conservan; revisa tus datos e inténtalo de nuevo.</p>}
           {actual && !activo(actual.status) && <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={() => onCambiarSeccion?.(`historial/${actual.id}`)}>Ver en Resultados</button>
             <button type="button" className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={() => { setPidiendo(null); entrada.current?.focus(); }}>Pedir otra cosa</button>
@@ -725,7 +760,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         <p className="font-bold text-slate-900">🧩 Taller</p>
         {(plan || creando) && <p className="text-xs text-slate-500">{creando ? (ESTADOS_NODO[estadoCreacion] || ESTADOS_NODO.creando).texto : run ? ESTADO_RUN[run.status] || run.status : 'Plan listo · toca un paso para ver detalles'}</p>}
       </div>
-      <div className="min-h-0 flex-1"><LienzoTaller definicion={plan} creando={creando} estadoCreacion={estadoCreacion} estados={estados} seleccionado={seleccionado} onSeleccionar={setSeleccionado} /></div>
+      <div className="min-h-0 flex-1"><LienzoTaller definicion={plan} creando={creando} estadoCreacion={estadoCreacion} estados={estados} seleccionado={seleccionado} onSeleccionar={setSeleccionado} conectores={conectores} /></div>
       {nodoElegido && <div className="taller-detalle">
         <div className="flex items-start justify-between gap-2">
           <p className="break-words font-semibold">{nodoElegido.label}</p>
@@ -734,7 +769,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         <p className="mt-1 text-xs text-slate-600">{(ESTADOS_NODO[estados[nodoElegido.id]] || ESTADOS_NODO.espera).icono} {(ESTADOS_NODO[estados[nodoElegido.id]] || ESTADOS_NODO.espera).texto} · {Object.values(nodoElegido.bindings || {}).some((binding) => binding.source !== '$input') ? 'usa el resultado del paso anterior' : 'usa tus datos'}</p>
         {Object.keys(nodoElegido.parameters || {}).length > 0 && <div className="mt-2 text-sm"><p className="text-xs font-semibold text-slate-500">Opciones</p><ResultadoDatos value={nodoElegido.parameters} /></div>}
         {pasoElegido?.output != null && <div className="mt-2 text-sm"><p className="text-xs font-semibold text-slate-500">Lo que produjo</p><ResultadoDatos value={pasoElegido.output} /></div>}
-        {pasoElegido?.error && <p className="mt-2 break-words text-sm text-red-700">{pasoElegido.error}</p>}
+        {pasoElegido?.error && <p className="mt-2 break-words text-sm text-red-700">{explicarError({ steps: [pasoElegido] })}.</p>}
+        {conectores.get(nodoElegido.version_id) && <p className="mt-2 text-xs text-sky-800">🌐 Consulta {conectores.get(nodoElegido.version_id)}: solo recibe los datos de este paso.</p>}
       </div>}
     </aside>
   </section>;

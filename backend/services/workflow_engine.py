@@ -42,7 +42,8 @@ def execute_workflow(job, runner, progress=None):
         step["status"] = "running"
         step["artifact_hash"] = version["artifact_hash"]
         checkpoint()
-        subjob = {"kind": "run", "candidate_id": manifest["candidate_id"],
+        # Los conectores no tienen candidato: su identidad es el artifact_hash del registro.
+        subjob = {"kind": "run", "candidate_id": manifest.get("candidate_id"),
                   "artifact_hash": version["artifact_hash"],
                   "payload": {"manifest": manifest, "inputs": inputs, "parameters": node.parameters,
                               "profile": version["profile"]}}
@@ -61,6 +62,8 @@ def execute_workflow(job, runner, progress=None):
                 status, details = "failed", {"error": "intermediate_output_limit"}
         if status != "completed":
             step.update(status="failed", error=details.get("error", "step_failed"))
+            if details.get("detail"):
+                step["detail"] = details["detail"]  # qué dato revisar (código fijo, nunca el valor)
             for later in steps[index + 1:]:
                 later["status"] = "skipped"
             checkpoint()

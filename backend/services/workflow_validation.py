@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from fastapi import HTTPException
 from jsonschema import Draft202012Validator
 
+from connectors import PROFILE as CONNECTOR_PROFILE, from_manifest
 from schemas.workflows import WorkflowDefinition
 from services.build_validation import validate_manifest
 from services.contract_validation import DATA_BYTES, validate_schema
@@ -86,7 +87,17 @@ def compile_workflow(raw, versions, inputs=None):
             raise HTTPException(404, "Versión no encontrada")
         if version["status"] != "enabled":
             raise HTTPException(409, "Una versión del proceso está deshabilitada")
-        if version.get('contract_only'):
+        if version.get('profile') == CONNECTOR_PROFILE and not version.get('contract_only'):
+            # En el trabajador llega el manifiesto guardado: debe ser el del registro revisado.
+            connector = from_manifest(version.get('manifest'), version.get('artifact_hash'))
+            if connector is None:
+                raise HTTPException(409, "El conector no coincide con el revisado en Capacita")
+            spec = connector.definition
+            manifest = SimpleNamespace(artifact_hash=connector.artifact_hash, definition_hash=connector.definition_hash,
+                                       definition=SimpleNamespace(input_schema=spec['input_schema'],
+                                                                  parameter_schema=spec['parameter_schema'],
+                                                                  output_schema=spec['output_schema']))
+        elif version.get('contract_only'):
             for schema in version['contracts'].values():
                 validate_schema(schema)
             manifest = SimpleNamespace(artifact_hash=version['artifact_hash'], definition_hash=version['definition_hash'],

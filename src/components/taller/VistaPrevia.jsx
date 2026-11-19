@@ -38,21 +38,26 @@ export default function VistaPrevia({ version, definition, archivo, registrarAju
   useEffect(() => { final.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [intentos, trabajando]);
 
   // Los archivos de entrada se preparan una sola vez: el de la persona o uno de muestra.
+  // Con dos o más archivos obligatorios (comparar versiones) solo hay uno de la persona: se
+  // usan muestras distintas (word, word2…) para que el resultado tenga sentido.
   function entradasArchivo() {
     archivos.current ||= (async () => {
       const entradas = {}; let deMuestra = false;
       const requeridos = definition.input_schema?.required || [];
-      for (const [nombre, spec] of Object.entries(definition.input_schema?.properties || {})) {
-        if (!esArchivo(spec) || !requeridos.includes(nombre)) continue;
+      const campos = Object.entries(definition.input_schema?.properties || {}).filter(([nombre, spec]) => esArchivo(spec) && requeridos.includes(nombre));
+      const vistos = {};
+      for (const [nombre, spec] of campos) {
+        const tipo = MUESTRA_DE(spec.contentMediaType || 'image/jpeg');
+        vistos[tipo] = (vistos[tipo] || 0) + 1;
         try {
-          if (!archivo) throw new Error('sin archivo');
+          if (!archivo || campos.length > 1) throw new Error('sin archivo');
           entradas[nombre] = await leerArchivo(archivo, spec.contentMediaType);
         } catch {
-          entradas[nombre] = await conMuestras(`MUESTRA:${MUESTRA_DE(spec.contentMediaType || 'image/jpeg')}`);
+          entradas[nombre] = await conMuestras(`MUESTRA:${tipo}${vistos[tipo] === 2 && tipo === 'word' ? '2' : ''}`);
           deMuestra = true;
         }
       }
-      return { entradas, deMuestra };
+      return { entradas, deMuestra, varios: campos.length > 1 };
     })();
     return archivos.current;
   }
@@ -64,8 +69,10 @@ export default function VistaPrevia({ version, definition, archivo, registrarAju
     setElegido(-1); onEstado?.('probando');
     const actualizar = (cambios) => vivo.current && setIntentos((old) => old.map((item) => (item.id === id ? { ...item, ...cambios } : item)));
     try {
-      const { entradas, deMuestra } = await entradasArchivo();
-      if (deMuestra && vivo.current) setAviso('No tenía tu archivo para esta herramienta, así que usé uno de muestra. Sube el tuyo con 📎 y pide otra cosa para usarlo.');
+      const { entradas, deMuestra, varios } = await entradasArchivo();
+      if (deMuestra && vivo.current) setAviso(varios
+        ? 'Para mostrarte cómo queda usé archivos de muestra. Cuando la guardes y la uses, te pido los tuyos uno por uno.'
+        : 'No tenía tu archivo para esta herramienta, así que usé uno de muestra. Sube el tuyo con 📎 y pide otra cosa para usarlo.');
       const extra = Object.fromEntries(Object.entries(nuevos.archivos || {}).filter(([, clave]) => subidos.current.has(clave))
         .map(([campo, clave]) => [campo, subidos.current.get(clave).base64]));
       let run = await ejecutarVersion(version.id, { ...nuevos.entrada, ...entradas, ...extra }, nuevos.parametro, id);
