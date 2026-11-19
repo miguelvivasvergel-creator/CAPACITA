@@ -39,6 +39,15 @@ Verificado: sintaxis del script y sus comprobaciones de sandbox (socket y gVisor
 pruebas de Gemini/investigación. No verificado: el script completo (no se arrancaron los
 procesos: solo había 0,5 GB de memoria libre) ni un informe real hecho con `ventas.xlsx`.
 
+Reutilizar herramientas sin IA: en Herramientas cada una dice «✓ Lista · Usar ahora» o «Sin
+terminar» (las listas primero). «Usar ahora» abre el chat con la herramienta como solución de
+un paso (`solucionDirecta.js`): sin Gemini ni búsqueda web, pide los datos y ejecuta; si ya
+existe una solución guardada de un paso con esa versión, la reutiliza en vez de duplicarla.
+Resultados muestra el nombre de la herramienta o solución de cada ejecución.
+Verificado: la solución de un paso pasa `compile_workflow` del backend con contratos de
+ejemplo (archivo de entrada, PDF de salida, opciones enum/color/booleanas); lint y build.
+No verificado: el recorrido en el navegador con datos reales de Supabase.
+
 Traspaso a Fahida: [resumen operativo](historial/PARA_FAHIDA_MARTES.md) con commits de
 Miguel, pruebas, pendientes por dueño, B6 sin certificar y aceptación conjunta
 para el martes. Disponible en rama miguel; lectura de Fahida no confirmada.

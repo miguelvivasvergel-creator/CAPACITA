@@ -12,6 +12,7 @@ import LienzoTaller from './LienzoTaller';
 import { ESTADOS_NODO } from './estadosNodo';
 import TarjetaPlan from './TarjetaPlan';
 import TarjetaInvestigacion from './TarjetaInvestigacion';
+import { solucionDeVersion, solucionGuardadaDe, versionLista } from './solucionDirecta';
 
 // Ejemplos de la demo: los que llevan archivo abren el 📎 al tocarlos.
 const SUGERENCIAS = [
@@ -35,6 +36,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState('');
   const [consentimiento, setConsentimiento] = useState(false);
+  // Copia inmediata del consentimiento: las acciones que siguen al «Acepto» corren antes del render.
+  const consentido = useRef(false);
   const [ocupado, setOcupado] = useState(false);
   const [fase, setFase] = useState('');
   const [conversacion, setConversacion] = useState(null); // { objetivo, aclaraciones, ruta, metaDefinir }
@@ -96,18 +99,44 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       entrada.current?.focus();
       return;
     }
+    if (tipo === 'herramienta') { abrirHerramienta(valor); return; }
     if (tipo !== 'solucion') return;
     api(`/workflows/${encodeURIComponent(valor)}`).then((guardada) => {
-      solucion.current = { definicion: guardada.definition, guardada, incierta: false };
-      setPlan(guardada.definition);
-      setConversacion({ objetivo: guardada.definition.name, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
-      agregar({ de: 'capacita', tipo: 'texto', texto: `Abrí tu solución «${guardada.definition.name}». Revisa sus pasos en el taller; te pido los datos para usarla 👇` });
-      agregar({ de: 'capacita', tipo: 'plan', definicion: guardada.definition });
-      empezarDatos(guardada.definition);
+      abrirSolucion(guardada.definition, guardada, `Abrí tu solución «${guardada.definition.name}». Revisa sus pasos en el taller; te pido los datos para usarla 👇`);
       cargarOpcionesDe(guardada.definition);
     }).catch((cause) => agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Puedes describir tu necesidad aquí.` }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // guardada: la solución ya guardada, o null si se guarda al ejecutarla por primera vez.
+  function abrirSolucion(definicion, guardada, aviso) {
+    solucion.current = { definicion, guardada, incierta: false };
+    setPlan(definicion);
+    setConversacion({ objetivo: definicion.name, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
+    agregar({ de: 'capacita', tipo: 'texto', texto: aviso });
+    agregar({ de: 'capacita', tipo: 'plan', definicion });
+    empezarDatos(definicion);
+  }
+
+  // «Usar» desde Mis herramientas: sin IA ni búsqueda en internet. Si ya tiene una solución de
+  // un paso guardada, se reutiliza; si no, se arma y se guarda al ejecutarla.
+  async function abrirHerramienta(capacidadId) {
+    setOcupado(true); setFase('Abriendo tu herramienta…');
+    try {
+      const version = await versionLista(capacidadId);
+      const definicion = version && solucionDeVersion(version);
+      if (!definicion) {
+        agregar({ de: 'capacita', tipo: 'texto', texto: 'Esta herramienta todavía no está lista para usar (le falta superar sus pruebas). Cuéntame qué necesitas y la preparo contigo 👇' });
+        return;
+      }
+      opcionesPlan.current = [version];
+      const guardada = await solucionGuardadaDe(version.id).catch(() => null);
+      abrirSolucion(guardada?.definition || definicion, guardada,
+        `Abrí tu herramienta «${version.name}». No necesito la IA para usarla: te pido los datos y la ejecuto 👇`);
+    } catch (cause) {
+      agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Puedes describir tu necesidad aquí.` });
+    } finally { setOcupado(false); setFase(''); }
+  }
   useEffect(() => { fin.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [mensajes, fase, run?.status]);
 
   // Seguimiento en vivo de la ejecución: alimenta los estados de los nodos del taller.
@@ -224,8 +253,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   }
 
   function empezarDatos(definicion) {
-    const campos = camposChat(definicion.input_schema);
-    if (!campos) { setPidiendo(null); return; }
+    // En una solución solo llegan a los pasos los datos obligatorios (las conexiones desde la
+    // entrada exigen campos obligatorios): pedir un logo opcional sería pedir algo que se ignora.
+    const campos = camposChat(definicion.input_schema)?.filter((campo) => !campo.opcional);
+    if (!campos?.length) { setPidiendo(null); return; }
     const estado = { definicion, campos, indice: 0, datos: {} };
     if (adjunto && campos[0].archivo) {
       agregar({ de: 'capacita', tipo: 'texto', texto: `Uso el archivo que me enviaste (${adjunto.name}).` });
@@ -343,7 +374,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
 
   function continuar(estado) {
     setConversacion(estado);
-    if (!consentimiento) { agregar({ de: 'capacita', tipo: 'consentimiento', estado }); return; }
+    if (!consentimiento && !consentido.current) { agregar({ de: 'capacita', tipo: 'consentimiento', estado }); return; }
     resolver(estado);
   }
 
@@ -432,6 +463,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const directo = ajusteDirecto(valor, opcionesEditables({ parameter_schema: schema, input_schema: {} }), actuales);
     if (directo) ({ parametros: nuevos, explicacion } = directo);
     else {
+      // Una solución abierta desde el menú no pasó por el «Acepto»: la frase va a Gemini, así
+      // que se pide antes. Al aceptar se retoma este mismo ajuste.
+      if (!consentimiento && !consentido.current) { agregar({ de: 'capacita', tipo: 'consentimiento', alAceptar: () => ajustarPlan(valor) }); return; }
       setOcupado(true); setFase('Ajustando tu resultado…');
       try {
         const respuesta = await ajustarOpciones({ request: valor, tool_name: plan.name, tool_description: plan.description, parameter_schema: schema, current: actuales });
@@ -451,7 +485,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const anterior = solucion.current;
     solucion.current = { definicion: ajustado, guardada: null, incierta: false, base: anterior.guardada || anterior.base || null };
     setPlan(ajustado); setPidiendo({ ...pidiendo, definicion: ajustado });
-    agregar({ de: 'capacita', tipo: 'texto', texto: `${explicacion} Uso la misma foto; confirma para ver cómo queda 👇` });
+    agregar({ de: 'capacita', tipo: 'texto', texto: `${explicacion} Uso el mismo archivo; confirma para ver cómo queda 👇` });
     agregar({ de: 'capacita', tipo: 'confirmar', definicion: ajustado, datos: pidiendo.datos });
   }
 
@@ -480,7 +514,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     if (terminada && !conversacion?.metaDefinir?.startsWith('Preparar únicamente')) {
       // El taller la sigue mostrando, ya en verde, hasta la siguiente necesidad.
       setEstadoCreacion('completed');
-      agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! 🎉 Descarga el resultado desde la tarjeta o cuéntame qué más necesitas.' });
+      agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! 🎉 Descarga el resultado desde la tarjeta. Para usarla otra vez con otro archivo, búscala en «Herramientas» y toca «Usar ahora»: no hará falta esperar a la IA.' });
       return;
     }
     agregar({ de: 'capacita', tipo: 'texto', texto: '¡La herramienta nueva quedó probada y lista! Vuelvo a armar tu solución con ella…' });
@@ -506,7 +540,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       case 'consentimiento': return <div className={tarjeta}>
         <p className="font-semibold">Antes de empezar</p>
         <p className="mt-1 text-sm text-slate-600">Para entender tu necesidad usaré la IA de Google Gemini. Le enviaré lo que escribas en esta conversación y los nombres y contratos de las herramientas que encuentre (incluidas tus privadas). Nunca tus datos de ejecución ni código. Para diseñar herramientas nuevas también puede buscar en Google cómo se hace bien la tarea (solo con lo que escribas; nunca tus archivos). Evita escribir datos sensibles: el nivel gratuito puede usar el contenido para mejorar sus productos.</p>
-        <button type="button" disabled={consentimiento || ocupado} onClick={() => { setConsentimiento(true); resolver(mensaje.estado); }} className="mt-3 min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{consentimiento ? 'Aceptado' : 'Acepto, continuar'}</button>
+        <button type="button" disabled={consentimiento || ocupado} onClick={() => { consentido.current = true; setConsentimiento(true); if (mensaje.alAceptar) mensaje.alAceptar(); else resolver(mensaje.estado); }} className="mt-3 min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{consentimiento ? 'Aceptado' : 'Acepto, continuar'}</button>
       </div>;
       case 'investigacion': return <TarjetaInvestigacion investigacion={mensaje.investigacion} clase={tarjeta} />;
       case 'preguntas': return <div className={tarjeta}>
