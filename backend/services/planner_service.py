@@ -14,6 +14,7 @@ from services.workflow_service import check_workflow
 from services.workflow_validation import bounded_json
 from schemas.search import SearchRequest
 from core.config import settings
+from connectors import BY_VERSION, PROFILE as CONNECTOR_PROFILE
 from services.search_service import search as search_authorized
 
 
@@ -50,6 +51,7 @@ async def planner_options(objective, catalog, mode='text'):
     allowed = {row["id"] for row in matches}
     shared = SharedExecutionRepository(catalog)
     options, cursor = [], None
+    conectores = {}  # capability_id → (orden, opción) de la versión más nueva
     for _ in range(2):
         page = await shared.rpc('publication_versions' if settings.PUBLICATIONS_ENABLED else 'versions', p_cursor=cursor, p_limit=100)
         for version in page["items"]:
@@ -61,6 +63,15 @@ async def planner_options(objective, catalog, mode='text'):
                 option.update(publication_id=version.get('publication_id'), license=version.get('license'),
                               profile=version.get('profile'))
                 option.update(version['contracts'], visibility=capability['visibility'])
+                # De un conector solo se ofrece su versión más nueva (las viejas siguen sirviendo a
+                # las soluciones guardadas, pero a la IA la confundirían como duplicados).
+                if version.get('profile') == CONNECTOR_PROFILE:
+                    registrado = BY_VERSION.get(str(version['id']))
+                    orden = (registrado.version if registrado else 0, str(version.get('created_at')))
+                    previa = conectores.get(version['capability_id'])
+                    if previa is None or orden > previa[0]:
+                        conectores[version['capability_id']] = (orden, option)
+                    continue
                 options.append(option | {'review_hash': review_hash(option)})
                 continue
             row = await CandidateRepository(catalog).get(UUID(version["candidate_id"]))
@@ -81,6 +92,7 @@ async def planner_options(objective, catalog, mode='text'):
         cursor = page["next_cursor"]
         if not cursor:
             break
+    options.extend(option | {'review_hash': review_hash(option)} for _, option in conectores.values())
     bounded_json(options, 131072)
     return {"items": options, "next_cursor": None, "search_kind": mode,
             "search_truncated": bool(cursor) or truncated}

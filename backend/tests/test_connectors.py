@@ -74,8 +74,10 @@ class RegistryTests(unittest.TestCase):
             self.assertTrue(Draft202012Validator(d["input_schema"]).is_valid(ejemplo["inputs"]), connector.key)
             self.assertTrue(Draft202012Validator(d["parameter_schema"]).is_valid(ejemplo["parameters"]), connector.key)
             self.assertTrue(connector.hosts and all("/" not in host for host in connector.hosts))
-            ids |= {connector.capability_id, connector.version_id}
-        self.assertEqual(len(ids), 2 * len(CONNECTORS))
+            ids.add(connector.version_id)
+        # Una versión por fila; las versiones de un mismo conector comparten su ficha de catálogo.
+        self.assertEqual(len(ids), len(CONNECTORS))
+        self.assertEqual(len({c.capability_id for c in CONNECTORS}), len({c.key for c in CONNECTORS}))
 
     def test_seed_sql_matches_registry(self):
         spec = importlib.util.spec_from_file_location("seed", ROOT / "scripts" / "connectors" / "generate_seed_sql.py")
@@ -396,3 +398,31 @@ class AIConnectorTests(unittest.TestCase):
         self.assertEqual(reporte["detail"], "respuesta_muy_larga")
         _, reporte, _ = ejecutar_ia("tarea_texto@1", {"texto": "x", "instruccion": "y"}, {}, gemini({"otro": 1}))
         self.assertEqual(reporte["error"], "connector_invalid_response")
+
+
+class ComposableVersionTests(unittest.TestCase):
+    """Versión 2: las entradas aceptan la salida de otros pasos; la versión 1 sigue intacta."""
+
+    def test_v2_inputs_accept_outputs_from_other_steps(self):
+        from services.workflow_validation import compatible
+        texto, numero, entero = {"type": "string"}, {"type": "number"}, {"type": "integer"}
+        pares = [("clima_pronostico", "ciudad", texto), ("clima_historico", "fecha_inicio", texto),
+                 ("festivos_pais", "anio", entero), ("trm_colombia", "fecha", texto),
+                 ("cambio_moneda", "monto", numero), ("verificar_referencia", "referencia", texto)]
+        for key, campo, salida in pares:
+            v1, v2 = REGISTRY[f"{key}@1"], REGISTRY[f"{key}@2"]
+            self.assertFalse(compatible(salida, v1.definition["input_schema"]["properties"][campo]), key)
+            self.assertTrue(compatible(salida, v2.definition["input_schema"]["properties"][campo]), key)
+            # Misma ficha de catálogo, otra versión con su propio id y hash.
+            self.assertEqual(v1.capability_id, v2.capability_id)
+            self.assertNotEqual((v1.version_id, v1.artifact_hash), (v2.version_id, v2.artifact_hash))
+            self.assertEqual(v1.artifact_hash, PUBLICADOS[f"{key}@1"])
+
+    def test_v2_still_validates_limits_in_code(self):
+        estado, reporte, _ = ejecutar("festivos_pais@2", {"anio": 3000}, {"pais": "CO"})
+        self.assertEqual((estado, reporte["detail"]), ("failed", "anio_pais"))
+        estado, reporte, _ = ejecutar("verificar_referencia@2", {"referencia": "corta"}, {})
+        self.assertEqual(reporte["detail"], "referencia")
+        estado, reporte, _ = ejecutar("cambio_moneda@2", {"monto": -5, "moneda_origen": "USD", "moneda_destino": "COP"}, {})
+        self.assertEqual(reporte["detail"], "monto_moneda")
+        self.assertEqual(ejecutar("clima_pronostico@2", {"ciudad": "Bogotá"}, {"dias": 2, "pais": "CO"})[0], "completed")

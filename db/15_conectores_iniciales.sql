@@ -14,15 +14,139 @@ BEGIN
     RAISE EXCEPTION 'Falta la cuenta del trabajador en capacita_execution.workers (con perfil en public.profiles)';
   END IF;
 
-  -- clima_pronostico@1 · Open-Meteo
+  -- Capacidad clima_pronostico (datos de clima_pronostico@2) · Open-Meteo
   INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
     visibility, status, input_schema, output_schema, config)
   VALUES ('6d429ad5-59d4-5547-8872-2de19d4edcd6'::uuid, propietario, $txt$Pronóstico del clima por ciudad$txt$, $txt$Conector externo (Open-Meteo): pronóstico del clima de los próximos días (hoy, mañana, esta semana) en una ciudad: si va a llover o llueve, temperatura máxima y mínima, lluvia y probabilidad de lluvia por día. Ej.: ¿va a llover esta semana en Bogotá, Medellín, Cali o Barranquilla?$txt$,
     $txt$datos$txt$, 'texto', 'datos', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"ciudad":{"description":"Ciudad o municipio, por ejemplo Bogotá","maxLength":80,"minLength":2,"title":"Ciudad","type":"string"}},"required":["ciudad"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"ciudad":{"description":"Ciudad o municipio, por ejemplo Bogotá","title":"Ciudad","type":"string"}},"required":["ciudad"],"type":"object"}$json$::jsonb,
     $json${"additionalProperties":false,"properties":{"ciudad":{"title":"Ciudad","type":"string"},"dias":{"items":{"additionalProperties":false,"properties":{"estado":{"type":"string"},"fecha":{"type":"string"},"lluvia_mm":{"type":"number"},"probabilidad_lluvia":{"type":"integer"},"temperatura_max":{"type":"number"},"temperatura_min":{"type":"number"}},"required":["fecha","estado","temperatura_max","temperatura_min","lluvia_mm","probabilidad_lluvia"],"type":"object"},"maxItems":400,"title":"Días","type":"array"},"dias_con_lluvia":{"title":"Días con lluvia","type":"integer"},"resumen":{"title":"Resumen","type":"string"}},"required":["ciudad","resumen","dias_con_lluvia","dias"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["api.open-meteo.com","geocoding-api.open-meteo.com"],"key":"clima_pronostico@1","provider":"Open-Meteo","provider_url":"https://open-meteo.com","seal":"conectada"},"definition":{"constraints":["Envía a Open-Meteo solo la ciudad escrita; no envía archivos ni datos de la cuenta.","Pronóstico, no certeza: puede cambiar."],"definition_hash":"8b718f01cf80d78965dfb570376db577ae3fafe2a7f7e629609b2b7f57f5066c","examples":[{"inputs":{"ciudad":"Bogotá"},"parameters":{"dias":7,"pais":"CO"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"dias":{"default":7,"description":"Cuántos días de pronóstico, de 1 a 16","maximum":16,"minimum":1,"title":"Días","type":"integer"},"pais":{"default":"CO","description":"Código de 2 letras del país donde buscar la ciudad (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["dias","pais"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+    $json${"connector":{"hosts":["api.open-meteo.com","geocoding-api.open-meteo.com"],"key":"clima_pronostico@2","provider":"Open-Meteo","provider_url":"https://open-meteo.com","seal":"conectada"},"definition":{"constraints":["Envía a Open-Meteo solo la ciudad escrita; no envía archivos ni datos de la cuenta.","Pronóstico, no certeza: puede cambiar."],"definition_hash":"5d3ff9c12e7df2bf11d3d9ab895e9e0bc5d6ea38bcd7d77114fb004fbd1e171f","examples":[{"inputs":{"ciudad":"Bogotá"},"parameters":{"dias":7,"pais":"CO"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"dias":{"default":7,"description":"Cuántos días de pronóstico, de 1 a 16","maximum":16,"minimum":1,"title":"Días","type":"integer"},"pais":{"default":"CO","description":"Código de 2 letras del país donde buscar la ciudad (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["dias","pais"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad clima_historico (datos de clima_historico@2) · Open-Meteo
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('4fda9137-8898-50d9-91ee-b4a741b31eac'::uuid, propietario, $txt$Clima histórico por ciudad$txt$, $txt$Conector externo (Open-Meteo): clima que hizo cada día entre dos fechas en una ciudad: si llovió, temperatura y lluvia. Sirve para comparar ventas, asistencia o actividades con el clima pasado (semana, mes o año anterior).$txt$,
+    $txt$datos$txt$, 'texto', 'datos', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"ciudad":{"description":"Ciudad o municipio, por ejemplo Bogotá","title":"Ciudad","type":"string"},"fecha_fin":{"description":"Fecha AAAA-MM-DD, como máximo un año después de la inicial","title":"Fecha final","type":"string"},"fecha_inicio":{"description":"Fecha AAAA-MM-DD","title":"Fecha inicial","type":"string"}},"required":["ciudad","fecha_inicio","fecha_fin"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"ciudad":{"title":"Ciudad","type":"string"},"dias":{"items":{"additionalProperties":false,"properties":{"estado":{"type":"string"},"fecha":{"type":"string"},"llovio":{"type":"boolean"},"lluvia_mm":{"type":"number"},"temperatura_max":{"type":"number"},"temperatura_min":{"type":"number"}},"required":["fecha","estado","temperatura_max","temperatura_min","lluvia_mm","llovio"],"type":"object"},"maxItems":400,"title":"Días","type":"array"},"dias_con_lluvia":{"title":"Días con lluvia","type":"integer"},"resumen":{"title":"Resumen","type":"string"}},"required":["ciudad","resumen","dias_con_lluvia","dias"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["archive-api.open-meteo.com","geocoding-api.open-meteo.com"],"key":"clima_historico@2","provider":"Open-Meteo","provider_url":"https://open-meteo.com","seal":"conectada"},"definition":{"constraints":["Envía a Open-Meteo solo la ciudad y las fechas; no envía archivos ni datos de la cuenta.","Hasta 366 días por consulta; los últimos días pueden faltar porque el archivo se publica con retraso."],"definition_hash":"0a3511d3dc81094ea1b24b03bafd1b6eb9e84c58dad533c5ff4538f22b34211c","examples":[{"inputs":{"ciudad":"Bogotá","fecha_fin":"2026-10-31","fecha_inicio":"2026-10-01"},"parameters":{"pais":"CO"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"pais":{"default":"CO","description":"Código de 2 letras del país donde buscar la ciudad (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["pais"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad festivos_pais (datos de festivos_pais@2) · Nager.Date
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('751cc5f1-e3f5-5dfc-825e-29be4d67cd52'::uuid, propietario, $txt$Festivos de un país por año$txt$, $txt$Conector externo (Nager.Date): días festivos o feriados oficiales de un año (los puentes festivos de Colombia por defecto), con la fecha, el día de la semana y el nombre del festivo.$txt$,
+    $txt$datos$txt$, 'datos', 'datos', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"anio":{"description":"Año, por ejemplo 2026","title":"Año","type":"integer"}},"required":["anio"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"festivos":{"items":{"additionalProperties":false,"properties":{"dia_semana":{"type":"string"},"fecha":{"type":"string"},"nombre":{"type":"string"}},"required":["fecha","dia_semana","nombre"],"type":"object"},"maxItems":60,"title":"Festivos","type":"array"},"resumen":{"title":"Resumen","type":"string"},"total":{"title":"Total","type":"integer"}},"required":["festivos","total","resumen"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["date.nager.at"],"key":"festivos_pais@2","provider":"Nager.Date","provider_url":"https://date.nager.at","seal":"conectada"},"definition":{"constraints":["Envía a Nager.Date solo el año y el país."],"definition_hash":"14ab074a18e456c74f7a3733996a88e4cbe8dadd343987c5dc23ce4ed7e48987","examples":[{"inputs":{"anio":2026},"parameters":{"pais":"CO"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"pais":{"default":"CO","description":"Código de 2 letras del país (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["pais"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad trm_colombia (datos de trm_colombia@2) · datos.gov.co (Superintendencia Financiera)
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('7a59d9d5-cda1-5de5-833d-e014655a71fa'::uuid, propietario, $txt$TRM del dólar en Colombia$txt$, $txt$Conector externo (datos.gov.co): TRM oficial, cuántos pesos colombianos vale un dólar hoy o en una fecha (precio del dólar en Colombia). Sirve para convertir dólares a pesos.$txt$,
+    $txt$datos$txt$, 'texto', 'datos', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"fecha":{"description":"Fecha AAAA-MM-DD; vacío para la TRM vigente hoy","title":"Fecha","type":"string"}},"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"fecha":{"title":"Vigente desde","type":"string"},"resumen":{"title":"Resumen","type":"string"},"valor_cop_por_usd":{"title":"Pesos por dólar","type":"number"}},"required":["fecha","valor_cop_por_usd","resumen"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["www.datos.gov.co"],"key":"trm_colombia@2","provider":"datos.gov.co (Superintendencia Financiera)","provider_url":"https://www.datos.gov.co/d/32sa-8pi3","seal":"conectada"},"definition":{"constraints":["Envía a datos.gov.co solo la fecha consultada.","Los fines de semana y festivos rige la TRM del último día hábil."],"definition_hash":"f80d0b79dbf96fbeed45cca24b33b51f4ea5a8a28c50fbafc3ba3d35a0aa01bf","examples":[{"inputs":{},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad cambio_moneda (datos de cambio_moneda@2) · ExchangeRate-API (acceso abierto)
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('6c24782b-7f0e-513f-aeac-a0a67c180537'::uuid, propietario, $txt$Convertir dinero entre monedas$txt$, $txt$Conector externo (ExchangeRate-API): convierte un monto de una moneda a otra con la tasa del día (dólares, euros, pesos colombianos, mexicanos y más de 150 monedas, códigos USD, EUR, COP…).$txt$,
+    $txt$datos$txt$, 'datos', 'datos', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"moneda_destino":{"description":"Código de 3 letras, por ejemplo COP","title":"Moneda de destino","type":"string"},"moneda_origen":{"description":"Código de 3 letras, por ejemplo USD","title":"Moneda de origen","type":"string"},"monto":{"title":"Monto","type":"number"}},"required":["monto","moneda_origen","moneda_destino"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"fecha_tasa":{"title":"Fecha de la tasa","type":"string"},"fuente":{"title":"Fuente","type":"string"},"monto_convertido":{"title":"Monto convertido","type":"number"},"resumen":{"title":"Resumen","type":"string"},"tasa":{"title":"Tasa","type":"number"}},"required":["monto_convertido","tasa","fecha_tasa","resumen","fuente"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["open.er-api.com"],"key":"cambio_moneda@2","provider":"ExchangeRate-API (acceso abierto)","provider_url":"https://www.exchangerate-api.com/docs/free","seal":"conectada"},"definition":{"constraints":["Envía al proveedor solo la moneda de origen; el monto se calcula aquí.","Tasa de referencia diaria del mercado, no la TRM oficial ni la de un banco."],"definition_hash":"c2503fd7a1580a84d729ebc583c0580cdadbded128ba7885574dc632927d9a69","examples":[{"inputs":{"moneda_destino":"COP","moneda_origen":"USD","monto":100},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad verificar_referencia (datos de verificar_referencia@2) · Crossref
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('ee6baeaf-d29d-5234-8712-570f313ae9ad'::uuid, propietario, $txt$Verificar una referencia bibliográfica (Crossref)$txt$, $txt$Conector externo (Crossref): busca una referencia, cita o bibliografía académica (artículo, paper) para comprobar que existe y devuelve su DOI, autores, año, revista y la cita en formato APA 7.$txt$,
+    $txt$documentos$txt$, 'texto', 'datos', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"referencia":{"description":"La referencia tal como aparece en el trabajo","title":"Referencia","type":"string"}},"required":["referencia"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"anio":{"title":"Año","type":"string"},"autores":{"title":"Autores","type":"string"},"cita_apa":{"title":"Cita APA","type":"string"},"confianza":{"title":"Confianza","type":"number"},"doi":{"title":"DOI","type":"string"},"encontrada":{"title":"Encontrada","type":"boolean"},"resumen":{"title":"Resumen","type":"string"},"revista":{"title":"Revista","type":"string"},"titulo":{"title":"Título","type":"string"}},"required":["encontrada","confianza","doi","titulo","autores","anio","revista","cita_apa","resumen"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["api.crossref.org"],"key":"verificar_referencia@2","provider":"Crossref","provider_url":"https://www.crossref.org","seal":"conectada"},"definition":{"constraints":["Envía a Crossref solo el texto de la referencia.","Si no aparece no significa que sea inventada: libros, tesis y fuentes sin DOI pueden no estar."],"definition_hash":"ea120602649912eac550629092980eee9350fc96d412d711d8e183c3edba3d8f","examples":[{"inputs":{"referencia":"Vaswani, A. et al. (2017). Attention is all you need."},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad resumir_texto (datos de resumir_texto@1) · Google Gemini
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('63e45933-0646-585b-a3cc-45f750a21cec'::uuid, propietario, $txt$Resumir un texto con IA$txt$, $txt$Conector de IA (Google Gemini): resume un texto largo (artículo, informe, correo, acta, apuntes) en pocas frases o viñetas, conservando cifras, nombres y fechas.$txt$,
+    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"texto":{"description":"El texto que quieres resumir","title":"Texto","type":"string"}},"required":["texto"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"resumen":{"title":"Resumen","type":"string"}},"required":["resumen"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"resumir_texto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"04e9a6a53e66c6cc5c7a1fb6052c7dd3ae1fb10f82dc0f6566f1d485fac7e004","examples":[{"inputs":{"texto":"Las ventas de octubre subieron 12 % frente a septiembre gracias al nuevo menú."},"parameters":{"formato":"párrafo","longitud":"corto"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"formato":{"default":"viñetas","description":"Cómo se presenta el resumen","enum":["párrafo","viñetas"],"title":"Formato","type":"string"},"longitud":{"default":"medio","description":"Qué tan largo es el resumen","enum":["corto","medio","largo"],"title":"Largo","type":"string"}},"required":["longitud","formato"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad traducir_texto (datos de traducir_texto@1) · Google Gemini
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('3a762b09-b0ac-5a2d-982d-11403dae6a51'::uuid, propietario, $txt$Traducir un texto con IA$txt$, $txt$Conector de IA (Google Gemini): traduce un texto a inglés, español, portugués, francés, alemán o italiano conservando nombres, cifras y formato.$txt$,
+    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"texto":{"description":"El texto que quieres traducir","title":"Texto","type":"string"}},"required":["texto"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"traduccion":{"title":"Traducción","type":"string"}},"required":["traduccion"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"traducir_texto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"eafbd66a58140db29d3d1c1ca8a794677fe005e7534284090f3ab4cf05cfcc34","examples":[{"inputs":{"texto":"Bienvenidos a nuestro restaurante."},"parameters":{"idioma":"inglés","tono":"igual al original"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"idioma":{"default":"inglés","description":"A qué idioma traducir","enum":["inglés","español","portugués","francés","alemán","italiano"],"title":"Idioma","type":"string"},"tono":{"default":"igual al original","description":"Tono de la traducción","enum":["igual al original","formal","informal"],"title":"Tono","type":"string"}},"required":["idioma","tono"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad redactar_texto (datos de redactar_texto@1) · Google Gemini
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('0331b0ab-bc98-57b2-afc3-b7d0c5b18d40'::uuid, propietario, $txt$Redactar un texto con IA$txt$, $txt$Conector de IA (Google Gemini): escribe una publicación para redes, un correo, una descripción de producto, un mensaje de WhatsApp o un anuncio a partir de tus indicaciones, sin inventar precios ni datos de contacto.$txt$,
+    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"indicaciones":{"description":"Qué quieres decir, para quién y los datos clave","title":"Indicaciones","type":"string"}},"required":["indicaciones"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"texto":{"title":"Texto","type":"string"}},"required":["texto"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"redactar_texto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"2c5e0fd205bf178e49ca87ac0534864a35ba90bf6e06c3c30ea92aa429bf17da","examples":[{"inputs":{"indicaciones":"Promoción de sancocho 2x1 este jueves en el restaurante La Fogata."},"parameters":{"extension":"corto","tipo":"publicación para redes","tono":"cercano"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"extension":{"default":"corto","description":"Largo del texto","enum":["corto","medio","largo"],"title":"Extensión","type":"string"},"tipo":{"default":"publicación para redes","description":"Qué tipo de texto","enum":["publicación para redes","correo","descripción de producto","mensaje de WhatsApp","anuncio"],"title":"Tipo","type":"string"},"tono":{"default":"cercano","description":"Tono del texto","enum":["cercano","profesional","divertido","elegante"],"title":"Tono","type":"string"}},"required":["tipo","tono","extension"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad leer_texto_foto (datos de leer_texto_foto@1) · Google Gemini
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('60f2bcad-5b69-5249-86a0-a59ae633687c'::uuid, propietario, $txt$Leer el texto de una foto (IA)$txt$, $txt$Conector de IA (Google Gemini): lee y transcribe el texto de una foto: documento, factura, recibo, letrero, pizarra o nota escrita a mano (OCR).$txt$,
+    $txt$texto$txt$, 'imagen', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"foto":{"contentEncoding":"base64","contentMediaType":"image/jpeg","description":"Foto del documento, factura, letrero o nota","title":"Foto","type":"string"}},"required":["foto"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"texto":{"title":"Texto","type":"string"}},"required":["texto"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"leer_texto_foto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"55bbe5386f1800041d73cf104d103dd9b38d90c696fb764e2870045103a6f987","examples":[{"inputs":{"foto":"MUESTRA:foto"},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"required":[],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad extraer_datos_foto (datos de extraer_datos_foto@1) · Google Gemini
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('cf12c21a-4e46-5721-a18c-18890be4feb8'::uuid, propietario, $txt$Sacar datos de una foto (IA)$txt$, $txt$Conector de IA (Google Gemini): saca los datos que pidas de la foto de una factura, recibo, formulario o documento (fecha, total, proveedor, NIT, número…) sin adivinar los que no se ven.$txt$,
+    $txt$datos$txt$, 'imagen', 'datos', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"campos":{"description":"Separados por comas, por ejemplo: fecha, total, proveedor","title":"Datos a sacar","type":"string"},"foto":{"contentEncoding":"base64","contentMediaType":"image/jpeg","description":"Foto del documento, factura, letrero o nota","title":"Foto","type":"string"}},"required":["foto","campos"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"datos":{"items":{"additionalProperties":false,"properties":{"campo":{"type":"string"},"encontrado":{"type":"boolean"},"valor":{"type":"string"}},"required":["campo","valor","encontrado"],"type":"object"},"maxItems":20,"title":"Datos","type":"array"},"resumen":{"title":"Resumen","type":"string"}},"required":["resumen","datos"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"extraer_datos_foto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"6bc041eb15230aa3f6bd6c0efb009575d3cb623e078c34f1d65d1679394d5aaa","examples":[{"inputs":{"campos":"fecha, total","foto":"MUESTRA:foto"},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"required":[],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad tarea_texto (datos de tarea_texto@1) · Google Gemini
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('0c2a265d-c260-5342-a9c5-69abb324f297'::uuid, propietario, $txt$Pedirle algo a la IA sobre un texto$txt$, $txt$Conector de IA (Google Gemini): hace lo que le pidas con un texto: clasificar comentarios, corregir ortografía, sacar correos o nombres, reescribirlo más claro, responder preguntas sobre él.$txt$,
+    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"instruccion":{"description":"Por ejemplo: corrige la ortografía","title":"Qué hacer","type":"string"},"texto":{"description":"El texto con el que trabajar","title":"Texto","type":"string"}},"required":["texto","instruccion"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"resultado":{"title":"Resultado","type":"string"}},"required":["resultado"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"tarea_texto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"2ee15f8e0d1df9da403aa318e3782ae71e2ad8269635548838d262dfd6dcf6b7","examples":[{"inputs":{"instruccion":"¿Es positivo o negativo?","texto":"Me encanto la comida pero la atencion fue lenta."},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"required":[],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Versión clima_pronostico@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('20b38de4-88fd-5ce9-8c89-b814a6257430'::uuid, propietario, '6d429ad5-59d4-5547-8872-2de19d4edcd6'::uuid,
@@ -33,15 +157,7 @@ BEGIN
   SELECT '20b38de4-88fd-5ce9-8c89-b814a6257430'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '20b38de4-88fd-5ce9-8c89-b814a6257430'::uuid AND active);
 
-  -- clima_historico@1 · Open-Meteo
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('4fda9137-8898-50d9-91ee-b4a741b31eac'::uuid, propietario, $txt$Clima histórico por ciudad$txt$, $txt$Conector externo (Open-Meteo): clima que hizo cada día entre dos fechas en una ciudad: si llovió, temperatura y lluvia. Sirve para comparar ventas, asistencia o actividades con el clima pasado (semana, mes o año anterior).$txt$,
-    $txt$datos$txt$, 'texto', 'datos', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"ciudad":{"description":"Ciudad o municipio, por ejemplo Bogotá","maxLength":80,"minLength":2,"title":"Ciudad","type":"string"},"fecha_fin":{"description":"Fecha AAAA-MM-DD, como máximo un año después de la inicial","maxLength":10,"minLength":10,"title":"Fecha final","type":"string"},"fecha_inicio":{"description":"Fecha AAAA-MM-DD","maxLength":10,"minLength":10,"title":"Fecha inicial","type":"string"}},"required":["ciudad","fecha_inicio","fecha_fin"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"ciudad":{"title":"Ciudad","type":"string"},"dias":{"items":{"additionalProperties":false,"properties":{"estado":{"type":"string"},"fecha":{"type":"string"},"llovio":{"type":"boolean"},"lluvia_mm":{"type":"number"},"temperatura_max":{"type":"number"},"temperatura_min":{"type":"number"}},"required":["fecha","estado","temperatura_max","temperatura_min","lluvia_mm","llovio"],"type":"object"},"maxItems":400,"title":"Días","type":"array"},"dias_con_lluvia":{"title":"Días con lluvia","type":"integer"},"resumen":{"title":"Resumen","type":"string"}},"required":["ciudad","resumen","dias_con_lluvia","dias"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["archive-api.open-meteo.com","geocoding-api.open-meteo.com"],"key":"clima_historico@1","provider":"Open-Meteo","provider_url":"https://open-meteo.com","seal":"conectada"},"definition":{"constraints":["Envía a Open-Meteo solo la ciudad y las fechas; no envía archivos ni datos de la cuenta.","Hasta 366 días por consulta; los últimos días pueden faltar porque el archivo se publica con retraso."],"definition_hash":"ddf61105d85946b31540c475ebeabdb4d6ac38bd22b147b06039872e26e42265","examples":[{"inputs":{"ciudad":"Bogotá","fecha_fin":"2026-10-31","fecha_inicio":"2026-10-01"},"parameters":{"pais":"CO"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"pais":{"default":"CO","description":"Código de 2 letras del país donde buscar la ciudad (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["pais"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión clima_historico@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('ff3dfba9-7667-5546-a65d-bb0f25379280'::uuid, propietario, '4fda9137-8898-50d9-91ee-b4a741b31eac'::uuid,
@@ -52,15 +168,7 @@ BEGIN
   SELECT 'ff3dfba9-7667-5546-a65d-bb0f25379280'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'ff3dfba9-7667-5546-a65d-bb0f25379280'::uuid AND active);
 
-  -- festivos_pais@1 · Nager.Date
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('751cc5f1-e3f5-5dfc-825e-29be4d67cd52'::uuid, propietario, $txt$Festivos de un país por año$txt$, $txt$Conector externo (Nager.Date): días festivos o feriados oficiales de un año (los puentes festivos de Colombia por defecto), con la fecha, el día de la semana y el nombre del festivo.$txt$,
-    $txt$datos$txt$, 'datos', 'datos', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"anio":{"description":"Año, por ejemplo 2026","maximum":2100,"minimum":1975,"title":"Año","type":"integer"}},"required":["anio"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"festivos":{"items":{"additionalProperties":false,"properties":{"dia_semana":{"type":"string"},"fecha":{"type":"string"},"nombre":{"type":"string"}},"required":["fecha","dia_semana","nombre"],"type":"object"},"maxItems":60,"title":"Festivos","type":"array"},"resumen":{"title":"Resumen","type":"string"},"total":{"title":"Total","type":"integer"}},"required":["festivos","total","resumen"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["date.nager.at"],"key":"festivos_pais@1","provider":"Nager.Date","provider_url":"https://date.nager.at","seal":"conectada"},"definition":{"constraints":["Envía a Nager.Date solo el año y el país."],"definition_hash":"4bffde7e8617977b19ea50606307df4257aabe1dd1d124b36384864b0ceddd3f","examples":[{"inputs":{"anio":2026},"parameters":{"pais":"CO"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"pais":{"default":"CO","description":"Código de 2 letras del país (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["pais"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión festivos_pais@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('851c16a9-c097-5753-89dd-1498296c735c'::uuid, propietario, '751cc5f1-e3f5-5dfc-825e-29be4d67cd52'::uuid,
@@ -71,15 +179,7 @@ BEGIN
   SELECT '851c16a9-c097-5753-89dd-1498296c735c'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '851c16a9-c097-5753-89dd-1498296c735c'::uuid AND active);
 
-  -- trm_colombia@1 · datos.gov.co (Superintendencia Financiera)
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('7a59d9d5-cda1-5de5-833d-e014655a71fa'::uuid, propietario, $txt$TRM del dólar en Colombia$txt$, $txt$Conector externo (datos.gov.co): TRM oficial, cuántos pesos colombianos vale un dólar hoy o en una fecha (precio del dólar en Colombia). Sirve para convertir dólares a pesos.$txt$,
-    $txt$datos$txt$, 'texto', 'datos', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"fecha":{"description":"Fecha AAAA-MM-DD; vacío para la TRM vigente hoy","maxLength":10,"title":"Fecha","type":"string"}},"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"fecha":{"title":"Vigente desde","type":"string"},"resumen":{"title":"Resumen","type":"string"},"valor_cop_por_usd":{"title":"Pesos por dólar","type":"number"}},"required":["fecha","valor_cop_por_usd","resumen"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["www.datos.gov.co"],"key":"trm_colombia@1","provider":"datos.gov.co (Superintendencia Financiera)","provider_url":"https://www.datos.gov.co/d/32sa-8pi3","seal":"conectada"},"definition":{"constraints":["Envía a datos.gov.co solo la fecha consultada.","Los fines de semana y festivos rige la TRM del último día hábil."],"definition_hash":"81077562aa36587ad377b351a53f491120aa230265a38e16b8d3655d586e2231","examples":[{"inputs":{},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión trm_colombia@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('31cc84b9-e040-5457-94ab-c613abad9d87'::uuid, propietario, '7a59d9d5-cda1-5de5-833d-e014655a71fa'::uuid,
@@ -90,15 +190,7 @@ BEGIN
   SELECT '31cc84b9-e040-5457-94ab-c613abad9d87'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '31cc84b9-e040-5457-94ab-c613abad9d87'::uuid AND active);
 
-  -- cambio_moneda@1 · ExchangeRate-API (acceso abierto)
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('6c24782b-7f0e-513f-aeac-a0a67c180537'::uuid, propietario, $txt$Convertir dinero entre monedas$txt$, $txt$Conector externo (ExchangeRate-API): convierte un monto de una moneda a otra con la tasa del día (dólares, euros, pesos colombianos, mexicanos y más de 150 monedas, códigos USD, EUR, COP…).$txt$,
-    $txt$datos$txt$, 'datos', 'datos', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"moneda_destino":{"description":"Código de 3 letras, por ejemplo COP","maxLength":3,"minLength":3,"title":"Moneda de destino","type":"string"},"moneda_origen":{"description":"Código de 3 letras, por ejemplo USD","maxLength":3,"minLength":3,"title":"Moneda de origen","type":"string"},"monto":{"maximum":1000000000000,"minimum":0,"title":"Monto","type":"number"}},"required":["monto","moneda_origen","moneda_destino"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"fecha_tasa":{"title":"Fecha de la tasa","type":"string"},"fuente":{"title":"Fuente","type":"string"},"monto_convertido":{"title":"Monto convertido","type":"number"},"resumen":{"title":"Resumen","type":"string"},"tasa":{"title":"Tasa","type":"number"}},"required":["monto_convertido","tasa","fecha_tasa","resumen","fuente"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["open.er-api.com"],"key":"cambio_moneda@1","provider":"ExchangeRate-API (acceso abierto)","provider_url":"https://www.exchangerate-api.com/docs/free","seal":"conectada"},"definition":{"constraints":["Envía al proveedor solo la moneda de origen; el monto se calcula aquí.","Tasa de referencia diaria del mercado, no la TRM oficial ni la de un banco."],"definition_hash":"8d8e67d7255e4ed60c0732decc56a1b7968fa3147963103f5d7ddf823935e571","examples":[{"inputs":{"moneda_destino":"COP","moneda_origen":"USD","monto":100},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión cambio_moneda@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('07476b4c-68ed-59ef-8801-f9282ebab4c7'::uuid, propietario, '6c24782b-7f0e-513f-aeac-a0a67c180537'::uuid,
@@ -109,15 +201,7 @@ BEGIN
   SELECT '07476b4c-68ed-59ef-8801-f9282ebab4c7'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '07476b4c-68ed-59ef-8801-f9282ebab4c7'::uuid AND active);
 
-  -- verificar_referencia@1 · Crossref
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('ee6baeaf-d29d-5234-8712-570f313ae9ad'::uuid, propietario, $txt$Verificar una referencia bibliográfica (Crossref)$txt$, $txt$Conector externo (Crossref): busca una referencia, cita o bibliografía académica (artículo, paper) para comprobar que existe y devuelve su DOI, autores, año, revista y la cita en formato APA 7.$txt$,
-    $txt$documentos$txt$, 'texto', 'datos', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"referencia":{"description":"La referencia tal como aparece en el trabajo","maxLength":1000,"minLength":10,"title":"Referencia","type":"string"}},"required":["referencia"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"anio":{"title":"Año","type":"string"},"autores":{"title":"Autores","type":"string"},"cita_apa":{"title":"Cita APA","type":"string"},"confianza":{"title":"Confianza","type":"number"},"doi":{"title":"DOI","type":"string"},"encontrada":{"title":"Encontrada","type":"boolean"},"resumen":{"title":"Resumen","type":"string"},"revista":{"title":"Revista","type":"string"},"titulo":{"title":"Título","type":"string"}},"required":["encontrada","confianza","doi","titulo","autores","anio","revista","cita_apa","resumen"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["api.crossref.org"],"key":"verificar_referencia@1","provider":"Crossref","provider_url":"https://www.crossref.org","seal":"conectada"},"definition":{"constraints":["Envía a Crossref solo el texto de la referencia.","Si no aparece no significa que sea inventada: libros, tesis y fuentes sin DOI pueden no estar."],"definition_hash":"34e74f43490d923e61a3a5e7e99d88d1940c5fff0bab4656e7580b0cc447adb5","examples":[{"inputs":{"referencia":"Vaswani, A. et al. (2017). Attention is all you need."},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión verificar_referencia@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('29824ceb-c2d0-518f-9c1b-be91eb99f0ea'::uuid, propietario, 'ee6baeaf-d29d-5234-8712-570f313ae9ad'::uuid,
@@ -128,15 +212,7 @@ BEGIN
   SELECT '29824ceb-c2d0-518f-9c1b-be91eb99f0ea'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '29824ceb-c2d0-518f-9c1b-be91eb99f0ea'::uuid AND active);
 
-  -- resumir_texto@1 · Google Gemini
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('63e45933-0646-585b-a3cc-45f750a21cec'::uuid, propietario, $txt$Resumir un texto con IA$txt$, $txt$Conector de IA (Google Gemini): resume un texto largo (artículo, informe, correo, acta, apuntes) en pocas frases o viñetas, conservando cifras, nombres y fechas.$txt$,
-    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"texto":{"description":"El texto que quieres resumir","title":"Texto","type":"string"}},"required":["texto"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"resumen":{"title":"Resumen","type":"string"}},"required":["resumen"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"resumir_texto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"04e9a6a53e66c6cc5c7a1fb6052c7dd3ae1fb10f82dc0f6566f1d485fac7e004","examples":[{"inputs":{"texto":"Las ventas de octubre subieron 12 % frente a septiembre gracias al nuevo menú."},"parameters":{"formato":"párrafo","longitud":"corto"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"formato":{"default":"viñetas","description":"Cómo se presenta el resumen","enum":["párrafo","viñetas"],"title":"Formato","type":"string"},"longitud":{"default":"medio","description":"Qué tan largo es el resumen","enum":["corto","medio","largo"],"title":"Largo","type":"string"}},"required":["longitud","formato"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión resumir_texto@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('babbf251-11ea-53f0-9129-6e4f63dbeb94'::uuid, propietario, '63e45933-0646-585b-a3cc-45f750a21cec'::uuid,
@@ -147,15 +223,7 @@ BEGIN
   SELECT 'babbf251-11ea-53f0-9129-6e4f63dbeb94'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'babbf251-11ea-53f0-9129-6e4f63dbeb94'::uuid AND active);
 
-  -- traducir_texto@1 · Google Gemini
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('3a762b09-b0ac-5a2d-982d-11403dae6a51'::uuid, propietario, $txt$Traducir un texto con IA$txt$, $txt$Conector de IA (Google Gemini): traduce un texto a inglés, español, portugués, francés, alemán o italiano conservando nombres, cifras y formato.$txt$,
-    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"texto":{"description":"El texto que quieres traducir","title":"Texto","type":"string"}},"required":["texto"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"traduccion":{"title":"Traducción","type":"string"}},"required":["traduccion"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"traducir_texto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"eafbd66a58140db29d3d1c1ca8a794677fe005e7534284090f3ab4cf05cfcc34","examples":[{"inputs":{"texto":"Bienvenidos a nuestro restaurante."},"parameters":{"idioma":"inglés","tono":"igual al original"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"idioma":{"default":"inglés","description":"A qué idioma traducir","enum":["inglés","español","portugués","francés","alemán","italiano"],"title":"Idioma","type":"string"},"tono":{"default":"igual al original","description":"Tono de la traducción","enum":["igual al original","formal","informal"],"title":"Tono","type":"string"}},"required":["idioma","tono"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión traducir_texto@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('938f925a-9218-5e90-87d5-44c3d20f4e00'::uuid, propietario, '3a762b09-b0ac-5a2d-982d-11403dae6a51'::uuid,
@@ -166,15 +234,7 @@ BEGIN
   SELECT '938f925a-9218-5e90-87d5-44c3d20f4e00'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '938f925a-9218-5e90-87d5-44c3d20f4e00'::uuid AND active);
 
-  -- redactar_texto@1 · Google Gemini
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('0331b0ab-bc98-57b2-afc3-b7d0c5b18d40'::uuid, propietario, $txt$Redactar un texto con IA$txt$, $txt$Conector de IA (Google Gemini): escribe una publicación para redes, un correo, una descripción de producto, un mensaje de WhatsApp o un anuncio a partir de tus indicaciones, sin inventar precios ni datos de contacto.$txt$,
-    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"indicaciones":{"description":"Qué quieres decir, para quién y los datos clave","title":"Indicaciones","type":"string"}},"required":["indicaciones"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"texto":{"title":"Texto","type":"string"}},"required":["texto"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"redactar_texto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"2c5e0fd205bf178e49ca87ac0534864a35ba90bf6e06c3c30ea92aa429bf17da","examples":[{"inputs":{"indicaciones":"Promoción de sancocho 2x1 este jueves en el restaurante La Fogata."},"parameters":{"extension":"corto","tipo":"publicación para redes","tono":"cercano"}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{"extension":{"default":"corto","description":"Largo del texto","enum":["corto","medio","largo"],"title":"Extensión","type":"string"},"tipo":{"default":"publicación para redes","description":"Qué tipo de texto","enum":["publicación para redes","correo","descripción de producto","mensaje de WhatsApp","anuncio"],"title":"Tipo","type":"string"},"tono":{"default":"cercano","description":"Tono del texto","enum":["cercano","profesional","divertido","elegante"],"title":"Tono","type":"string"}},"required":["tipo","tono","extension"],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión redactar_texto@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('e2c5be52-6246-5ba6-b393-26a6a16feeb6'::uuid, propietario, '0331b0ab-bc98-57b2-afc3-b7d0c5b18d40'::uuid,
@@ -185,15 +245,7 @@ BEGIN
   SELECT 'e2c5be52-6246-5ba6-b393-26a6a16feeb6'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'e2c5be52-6246-5ba6-b393-26a6a16feeb6'::uuid AND active);
 
-  -- leer_texto_foto@1 · Google Gemini
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('60f2bcad-5b69-5249-86a0-a59ae633687c'::uuid, propietario, $txt$Leer el texto de una foto (IA)$txt$, $txt$Conector de IA (Google Gemini): lee y transcribe el texto de una foto: documento, factura, recibo, letrero, pizarra o nota escrita a mano (OCR).$txt$,
-    $txt$texto$txt$, 'imagen', 'texto', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"foto":{"contentEncoding":"base64","contentMediaType":"image/jpeg","description":"Foto del documento, factura, letrero o nota","title":"Foto","type":"string"}},"required":["foto"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"texto":{"title":"Texto","type":"string"}},"required":["texto"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"leer_texto_foto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"55bbe5386f1800041d73cf104d103dd9b38d90c696fb764e2870045103a6f987","examples":[{"inputs":{"foto":"MUESTRA:foto"},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"required":[],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión leer_texto_foto@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('16b786f0-42a1-56c3-84b9-66b5c58bf63c'::uuid, propietario, '60f2bcad-5b69-5249-86a0-a59ae633687c'::uuid,
@@ -204,15 +256,7 @@ BEGIN
   SELECT '16b786f0-42a1-56c3-84b9-66b5c58bf63c'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '16b786f0-42a1-56c3-84b9-66b5c58bf63c'::uuid AND active);
 
-  -- extraer_datos_foto@1 · Google Gemini
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('cf12c21a-4e46-5721-a18c-18890be4feb8'::uuid, propietario, $txt$Sacar datos de una foto (IA)$txt$, $txt$Conector de IA (Google Gemini): saca los datos que pidas de la foto de una factura, recibo, formulario o documento (fecha, total, proveedor, NIT, número…) sin adivinar los que no se ven.$txt$,
-    $txt$datos$txt$, 'imagen', 'datos', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"campos":{"description":"Separados por comas, por ejemplo: fecha, total, proveedor","title":"Datos a sacar","type":"string"},"foto":{"contentEncoding":"base64","contentMediaType":"image/jpeg","description":"Foto del documento, factura, letrero o nota","title":"Foto","type":"string"}},"required":["foto","campos"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"datos":{"items":{"additionalProperties":false,"properties":{"campo":{"type":"string"},"encontrado":{"type":"boolean"},"valor":{"type":"string"}},"required":["campo","valor","encontrado"],"type":"object"},"maxItems":20,"title":"Datos","type":"array"},"resumen":{"title":"Resumen","type":"string"}},"required":["resumen","datos"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"extraer_datos_foto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"6bc041eb15230aa3f6bd6c0efb009575d3cb623e078c34f1d65d1679394d5aaa","examples":[{"inputs":{"campos":"fecha, total","foto":"MUESTRA:foto"},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"required":[],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión extraer_datos_foto@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('dc0f06ac-2e35-5184-9a79-574955899ef5'::uuid, propietario, 'cf12c21a-4e46-5721-a18c-18890be4feb8'::uuid,
@@ -223,15 +267,7 @@ BEGIN
   SELECT 'dc0f06ac-2e35-5184-9a79-574955899ef5'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'dc0f06ac-2e35-5184-9a79-574955899ef5'::uuid AND active);
 
-  -- tarea_texto@1 · Google Gemini
-  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
-    visibility, status, input_schema, output_schema, config)
-  VALUES ('0c2a265d-c260-5342-a9c5-69abb324f297'::uuid, propietario, $txt$Pedirle algo a la IA sobre un texto$txt$, $txt$Conector de IA (Google Gemini): hace lo que le pidas con un texto: clasificar comentarios, corregir ortografía, sacar correos o nombres, reescribirlo más claro, responder preguntas sobre él.$txt$,
-    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
-    $json${"additionalProperties":false,"properties":{"instruccion":{"description":"Por ejemplo: corrige la ortografía","title":"Qué hacer","type":"string"},"texto":{"description":"El texto con el que trabajar","title":"Texto","type":"string"}},"required":["texto","instruccion"],"type":"object"}$json$::jsonb,
-    $json${"additionalProperties":false,"properties":{"resultado":{"title":"Resultado","type":"string"}},"required":["resultado"],"type":"object"}$json$::jsonb,
-    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"tarea_texto@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"2ee15f8e0d1df9da403aa318e3782ae71e2ad8269635548838d262dfd6dcf6b7","examples":[{"inputs":{"instruccion":"¿Es positivo o negativo?","texto":"Me encanto la comida pero la atencion fue lenta."},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"required":[],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
-  ON CONFLICT (id) DO NOTHING;
+  -- Versión tarea_texto@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('91232cd6-2d28-5edb-a5e9-def3afd3b329'::uuid, propietario, '0c2a265d-c260-5342-a9c5-69abb324f297'::uuid,
@@ -241,6 +277,72 @@ BEGIN
   INSERT INTO capacita_execution.publications(version_id, owner_id, license)
   SELECT '91232cd6-2d28-5edb-a5e9-def3afd3b329'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '91232cd6-2d28-5edb-a5e9-def3afd3b329'::uuid AND active);
+
+  -- Versión clima_pronostico@2
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('ce3fc309-865b-5e9d-986f-131019f87f38'::uuid, propietario, '6d429ad5-59d4-5547-8872-2de19d4edcd6'::uuid,
+    $json${"connector_key":"clima_pronostico@2","definition":{"category":"datos","constraints":["Envía a Open-Meteo solo la ciudad escrita; no envía archivos ni datos de la cuenta.","Pronóstico, no certeza: puede cambiar."],"description":"Conector externo (Open-Meteo): pronóstico del clima de los próximos días (hoy, mañana, esta semana) en una ciudad: si va a llover o llueve, temperatura máxima y mínima, lluvia y probabilidad de lluvia por día. Ej.: ¿va a llover esta semana en Bogotá, Medellín, Cali o Barranquilla?","examples":[{"inputs":{"ciudad":"Bogotá"},"parameters":{"dias":7,"pais":"CO"}}],"input_schema":{"additionalProperties":false,"properties":{"ciudad":{"description":"Ciudad o municipio, por ejemplo Bogotá","title":"Ciudad","type":"string"}},"required":["ciudad"],"type":"object"},"input_type":"texto","name":"Pronóstico del clima por ciudad","output_schema":{"additionalProperties":false,"properties":{"ciudad":{"title":"Ciudad","type":"string"},"dias":{"items":{"additionalProperties":false,"properties":{"estado":{"type":"string"},"fecha":{"type":"string"},"lluvia_mm":{"type":"number"},"probabilidad_lluvia":{"type":"integer"},"temperatura_max":{"type":"number"},"temperatura_min":{"type":"number"}},"required":["fecha","estado","temperatura_max","temperatura_min","lluvia_mm","probabilidad_lluvia"],"type":"object"},"maxItems":400,"title":"Días","type":"array"},"dias_con_lluvia":{"title":"Días con lluvia","type":"integer"},"resumen":{"title":"Resumen","type":"string"}},"required":["ciudad","resumen","dias_con_lluvia","dias"],"type":"object"},"output_type":"datos","parameter_schema":{"additionalProperties":false,"properties":{"dias":{"default":7,"description":"Cuántos días de pronóstico, de 1 a 16","maximum":16,"minimum":1,"title":"Días","type":"integer"},"pais":{"default":"CO","description":"Código de 2 letras del país donde buscar la ciudad (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["dias","pais"],"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"5d3ff9c12e7df2bf11d3d9ab895e9e0bc5d6ea38bcd7d77114fb004fbd1e171f","format_version":1,"hosts":["api.open-meteo.com","geocoding-api.open-meteo.com"],"kind":"connector","provider":"Open-Meteo","provider_url":"https://open-meteo.com"}$json$::jsonb,
+    'bdeb0228e92903081e3ff6599a3cf1278af87ca0dc1fbadca5f644cda570bd0a', '5d3ff9c12e7df2bf11d3d9ab895e9e0bc5d6ea38bcd7d77114fb004fbd1e171f', 'connector-v1', 'clima_pronostico@2')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT 'ce3fc309-865b-5e9d-986f-131019f87f38'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'ce3fc309-865b-5e9d-986f-131019f87f38'::uuid AND active);
+
+  -- Versión clima_historico@2
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('f01bbda3-9b3a-5f8b-9984-08288c162f70'::uuid, propietario, '4fda9137-8898-50d9-91ee-b4a741b31eac'::uuid,
+    $json${"connector_key":"clima_historico@2","definition":{"category":"datos","constraints":["Envía a Open-Meteo solo la ciudad y las fechas; no envía archivos ni datos de la cuenta.","Hasta 366 días por consulta; los últimos días pueden faltar porque el archivo se publica con retraso."],"description":"Conector externo (Open-Meteo): clima que hizo cada día entre dos fechas en una ciudad: si llovió, temperatura y lluvia. Sirve para comparar ventas, asistencia o actividades con el clima pasado (semana, mes o año anterior).","examples":[{"inputs":{"ciudad":"Bogotá","fecha_fin":"2026-10-31","fecha_inicio":"2026-10-01"},"parameters":{"pais":"CO"}}],"input_schema":{"additionalProperties":false,"properties":{"ciudad":{"description":"Ciudad o municipio, por ejemplo Bogotá","title":"Ciudad","type":"string"},"fecha_fin":{"description":"Fecha AAAA-MM-DD, como máximo un año después de la inicial","title":"Fecha final","type":"string"},"fecha_inicio":{"description":"Fecha AAAA-MM-DD","title":"Fecha inicial","type":"string"}},"required":["ciudad","fecha_inicio","fecha_fin"],"type":"object"},"input_type":"texto","name":"Clima histórico por ciudad","output_schema":{"additionalProperties":false,"properties":{"ciudad":{"title":"Ciudad","type":"string"},"dias":{"items":{"additionalProperties":false,"properties":{"estado":{"type":"string"},"fecha":{"type":"string"},"llovio":{"type":"boolean"},"lluvia_mm":{"type":"number"},"temperatura_max":{"type":"number"},"temperatura_min":{"type":"number"}},"required":["fecha","estado","temperatura_max","temperatura_min","lluvia_mm","llovio"],"type":"object"},"maxItems":400,"title":"Días","type":"array"},"dias_con_lluvia":{"title":"Días con lluvia","type":"integer"},"resumen":{"title":"Resumen","type":"string"}},"required":["ciudad","resumen","dias_con_lluvia","dias"],"type":"object"},"output_type":"datos","parameter_schema":{"additionalProperties":false,"properties":{"pais":{"default":"CO","description":"Código de 2 letras del país donde buscar la ciudad (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["pais"],"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"0a3511d3dc81094ea1b24b03bafd1b6eb9e84c58dad533c5ff4538f22b34211c","format_version":1,"hosts":["archive-api.open-meteo.com","geocoding-api.open-meteo.com"],"kind":"connector","provider":"Open-Meteo","provider_url":"https://open-meteo.com"}$json$::jsonb,
+    '417cb96f96266f6954bc54ccfa1c2da96bc9de291d090951357e3326ee38c8a8', '0a3511d3dc81094ea1b24b03bafd1b6eb9e84c58dad533c5ff4538f22b34211c', 'connector-v1', 'clima_historico@2')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT 'f01bbda3-9b3a-5f8b-9984-08288c162f70'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'f01bbda3-9b3a-5f8b-9984-08288c162f70'::uuid AND active);
+
+  -- Versión festivos_pais@2
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('c96f119b-e9f5-585a-9c72-2f92743e28cd'::uuid, propietario, '751cc5f1-e3f5-5dfc-825e-29be4d67cd52'::uuid,
+    $json${"connector_key":"festivos_pais@2","definition":{"category":"datos","constraints":["Envía a Nager.Date solo el año y el país."],"description":"Conector externo (Nager.Date): días festivos o feriados oficiales de un año (los puentes festivos de Colombia por defecto), con la fecha, el día de la semana y el nombre del festivo.","examples":[{"inputs":{"anio":2026},"parameters":{"pais":"CO"}}],"input_schema":{"additionalProperties":false,"properties":{"anio":{"description":"Año, por ejemplo 2026","title":"Año","type":"integer"}},"required":["anio"],"type":"object"},"input_type":"datos","name":"Festivos de un país por año","output_schema":{"additionalProperties":false,"properties":{"festivos":{"items":{"additionalProperties":false,"properties":{"dia_semana":{"type":"string"},"fecha":{"type":"string"},"nombre":{"type":"string"}},"required":["fecha","dia_semana","nombre"],"type":"object"},"maxItems":60,"title":"Festivos","type":"array"},"resumen":{"title":"Resumen","type":"string"},"total":{"title":"Total","type":"integer"}},"required":["festivos","total","resumen"],"type":"object"},"output_type":"datos","parameter_schema":{"additionalProperties":false,"properties":{"pais":{"default":"CO","description":"Código de 2 letras del país (CO = Colombia)","maxLength":2,"minLength":2,"title":"País","type":"string"}},"required":["pais"],"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"14ab074a18e456c74f7a3733996a88e4cbe8dadd343987c5dc23ce4ed7e48987","format_version":1,"hosts":["date.nager.at"],"kind":"connector","provider":"Nager.Date","provider_url":"https://date.nager.at"}$json$::jsonb,
+    '4a6da79ed2ebbbb94a995ba1c1024ea9c0d1779f1dc7dee39ce9a3204fb87b12', '14ab074a18e456c74f7a3733996a88e4cbe8dadd343987c5dc23ce4ed7e48987', 'connector-v1', 'festivos_pais@2')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT 'c96f119b-e9f5-585a-9c72-2f92743e28cd'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'c96f119b-e9f5-585a-9c72-2f92743e28cd'::uuid AND active);
+
+  -- Versión trm_colombia@2
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('fac21a0f-8419-5897-8d32-7fa675da28d4'::uuid, propietario, '7a59d9d5-cda1-5de5-833d-e014655a71fa'::uuid,
+    $json${"connector_key":"trm_colombia@2","definition":{"category":"datos","constraints":["Envía a datos.gov.co solo la fecha consultada.","Los fines de semana y festivos rige la TRM del último día hábil."],"description":"Conector externo (datos.gov.co): TRM oficial, cuántos pesos colombianos vale un dólar hoy o en una fecha (precio del dólar en Colombia). Sirve para convertir dólares a pesos.","examples":[{"inputs":{},"parameters":{}}],"input_schema":{"additionalProperties":false,"properties":{"fecha":{"description":"Fecha AAAA-MM-DD; vacío para la TRM vigente hoy","title":"Fecha","type":"string"}},"type":"object"},"input_type":"texto","name":"TRM del dólar en Colombia","output_schema":{"additionalProperties":false,"properties":{"fecha":{"title":"Vigente desde","type":"string"},"resumen":{"title":"Resumen","type":"string"},"valor_cop_por_usd":{"title":"Pesos por dólar","type":"number"}},"required":["fecha","valor_cop_por_usd","resumen"],"type":"object"},"output_type":"datos","parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"f80d0b79dbf96fbeed45cca24b33b51f4ea5a8a28c50fbafc3ba3d35a0aa01bf","format_version":1,"hosts":["www.datos.gov.co"],"kind":"connector","provider":"datos.gov.co (Superintendencia Financiera)","provider_url":"https://www.datos.gov.co/d/32sa-8pi3"}$json$::jsonb,
+    'd4df1527a72601ce9bd494b0df4005bb57d1712b1f02cf4ca2f75277c54263e1', 'f80d0b79dbf96fbeed45cca24b33b51f4ea5a8a28c50fbafc3ba3d35a0aa01bf', 'connector-v1', 'trm_colombia@2')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT 'fac21a0f-8419-5897-8d32-7fa675da28d4'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'fac21a0f-8419-5897-8d32-7fa675da28d4'::uuid AND active);
+
+  -- Versión cambio_moneda@2
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('31daad83-4184-5d01-96df-98a2eb4e5300'::uuid, propietario, '6c24782b-7f0e-513f-aeac-a0a67c180537'::uuid,
+    $json${"connector_key":"cambio_moneda@2","definition":{"category":"datos","constraints":["Envía al proveedor solo la moneda de origen; el monto se calcula aquí.","Tasa de referencia diaria del mercado, no la TRM oficial ni la de un banco."],"description":"Conector externo (ExchangeRate-API): convierte un monto de una moneda a otra con la tasa del día (dólares, euros, pesos colombianos, mexicanos y más de 150 monedas, códigos USD, EUR, COP…).","examples":[{"inputs":{"moneda_destino":"COP","moneda_origen":"USD","monto":100},"parameters":{}}],"input_schema":{"additionalProperties":false,"properties":{"moneda_destino":{"description":"Código de 3 letras, por ejemplo COP","title":"Moneda de destino","type":"string"},"moneda_origen":{"description":"Código de 3 letras, por ejemplo USD","title":"Moneda de origen","type":"string"},"monto":{"title":"Monto","type":"number"}},"required":["monto","moneda_origen","moneda_destino"],"type":"object"},"input_type":"datos","name":"Convertir dinero entre monedas","output_schema":{"additionalProperties":false,"properties":{"fecha_tasa":{"title":"Fecha de la tasa","type":"string"},"fuente":{"title":"Fuente","type":"string"},"monto_convertido":{"title":"Monto convertido","type":"number"},"resumen":{"title":"Resumen","type":"string"},"tasa":{"title":"Tasa","type":"number"}},"required":["monto_convertido","tasa","fecha_tasa","resumen","fuente"],"type":"object"},"output_type":"datos","parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"c2503fd7a1580a84d729ebc583c0580cdadbded128ba7885574dc632927d9a69","format_version":1,"hosts":["open.er-api.com"],"kind":"connector","provider":"ExchangeRate-API (acceso abierto)","provider_url":"https://www.exchangerate-api.com/docs/free"}$json$::jsonb,
+    '72be856263f8ea74af34068524669b3f04565adc9bb5b518169a754ec792cb17', 'c2503fd7a1580a84d729ebc583c0580cdadbded128ba7885574dc632927d9a69', 'connector-v1', 'cambio_moneda@2')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT '31daad83-4184-5d01-96df-98a2eb4e5300'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '31daad83-4184-5d01-96df-98a2eb4e5300'::uuid AND active);
+
+  -- Versión verificar_referencia@2
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('05230354-819c-5371-b942-e6a3abea18fd'::uuid, propietario, 'ee6baeaf-d29d-5234-8712-570f313ae9ad'::uuid,
+    $json${"connector_key":"verificar_referencia@2","definition":{"category":"documentos","constraints":["Envía a Crossref solo el texto de la referencia.","Si no aparece no significa que sea inventada: libros, tesis y fuentes sin DOI pueden no estar."],"description":"Conector externo (Crossref): busca una referencia, cita o bibliografía académica (artículo, paper) para comprobar que existe y devuelve su DOI, autores, año, revista y la cita en formato APA 7.","examples":[{"inputs":{"referencia":"Vaswani, A. et al. (2017). Attention is all you need."},"parameters":{}}],"input_schema":{"additionalProperties":false,"properties":{"referencia":{"description":"La referencia tal como aparece en el trabajo","title":"Referencia","type":"string"}},"required":["referencia"],"type":"object"},"input_type":"texto","name":"Verificar una referencia bibliográfica (Crossref)","output_schema":{"additionalProperties":false,"properties":{"anio":{"title":"Año","type":"string"},"autores":{"title":"Autores","type":"string"},"cita_apa":{"title":"Cita APA","type":"string"},"confianza":{"title":"Confianza","type":"number"},"doi":{"title":"DOI","type":"string"},"encontrada":{"title":"Encontrada","type":"boolean"},"resumen":{"title":"Resumen","type":"string"},"revista":{"title":"Revista","type":"string"},"titulo":{"title":"Título","type":"string"}},"required":["encontrada","confianza","doi","titulo","autores","anio","revista","cita_apa","resumen"],"type":"object"},"output_type":"datos","parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"ea120602649912eac550629092980eee9350fc96d412d711d8e183c3edba3d8f","format_version":1,"hosts":["api.crossref.org"],"kind":"connector","provider":"Crossref","provider_url":"https://www.crossref.org"}$json$::jsonb,
+    'e0a8964a18a60863bbf4a8c5a66051d339fc992119290602e240242969651ecc', 'ea120602649912eac550629092980eee9350fc96d412d711d8e183c3edba3d8f', 'connector-v1', 'verificar_referencia@2')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT '05230354-819c-5371-b942-e6a3abea18fd'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '05230354-819c-5371-b942-e6a3abea18fd'::uuid AND active);
 END $$;
 COMMIT;
 NOTIFY pgrst, 'reload schema';

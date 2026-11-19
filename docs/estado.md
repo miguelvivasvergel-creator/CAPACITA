@@ -4,7 +4,23 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
-### Fahida — 19/11/2026: fase 2, IA en ejecución (sin commit todavía)
+### Fahida — 19/11/2026: conectores combinables (versión 2)
+
+- `Connector.componible(2)`: los 6 conectores de la fase 1 tienen versión 2 con la misma lógica y
+  entradas sin minLength/maxLength/minimum/maximum, para recibir la salida de otros pasos (el
+  validador de conexiones rechazaba unir un texto sin límites a una entrada con límites). Los
+  límites se siguen comprobando en el código del conector.
+- La versión 1 sigue en el registro y en Supabase (sus hashes no cambian; las soluciones ya
+  guardadas con ella siguen funcionando). Comparten ficha de catálogo.
+- `db/15` (18 versiones, 12 fichas): primero las fichas con los datos de la versión más nueva
+  (`ON CONFLICT DO UPDATE`), luego todas las versiones; sirve también en una base nueva.
+- Planner: de cada conector ofrece solo su versión más nueva (por versión del registro y fecha).
+Verificado: 62 pruebas relacionadas y suite 226/228 (las 2 de siempre). Fahida aplicó de nuevo
+`db/15` en Supabase (19/11). Pendiente: una combinación real con el planner (clima histórico + ventas).
+Ojo al reiniciar: el backend corre con recarga y deja un proceso hijo en el puerto 8000; hay que
+detener también los hijos (`multiprocessing-fork`) o seguirá el código viejo.
+
+### Fahida — 19/11/2026: fase 2, IA en ejecución (commit `090d582`)
 
 Respaldo antes de la fase: commit `9480705`, etiqueta `respaldo/antes-fase-2`. Fahida aceptó
 enviar el contenido real a Gemini con un «Acepto» propio.

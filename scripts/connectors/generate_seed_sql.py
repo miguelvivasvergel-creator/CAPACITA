@@ -27,7 +27,8 @@ def jsonb(valor):
     return literal(canonical(valor), "json") + "::jsonb"
 
 
-def bloque(connector):
+def capacidad(connector):
+    """Ficha de catálogo con los datos de la versión más nueva (se actualiza si ya existía)."""
     d = connector.definition
     config = {
         "definition": {"format_version": 1, "definition_hash": connector.definition_hash,
@@ -36,17 +37,24 @@ def bloque(connector):
         "connector": {"key": connector.connector_key, "provider": connector.provider,
                       "provider_url": connector.provider_url, "hosts": connector.hosts, "seal": "conectada"},
     }
-    cap, ver = connector.capability_id, connector.version_id
     return f"""
-  -- {connector.connector_key} · {connector.provider}
+  -- Capacidad {connector.key} (datos de {connector.connector_key}) · {connector.provider}
   INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
     visibility, status, input_schema, output_schema, config)
-  VALUES ('{cap}'::uuid, propietario, {literal(d['name'], 'txt')}, {literal(d['description'], 'txt')},
+  VALUES ('{connector.capability_id}'::uuid, propietario, {literal(d['name'], 'txt')}, {literal(d['description'], 'txt')},
     {literal(d['category'], 'txt')}, '{d['input_type']}', '{d['output_type']}', 'public', 'published',
     {jsonb(d['input_schema'])},
     {jsonb(d['output_schema'])},
     {jsonb(config)})
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+"""
+
+
+def bloque(connector):
+    cap, ver = connector.capability_id, connector.version_id
+    return f"""
+  -- Versión {connector.connector_key}
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
   VALUES ('{ver}'::uuid, propietario, '{cap}'::uuid,
@@ -60,7 +68,13 @@ def bloque(connector):
 
 
 def generar():
-    cuerpo = "".join(bloque(connector) for connector in CONNECTORS)
+    # Primero las fichas (la versión más nueva de cada conector) y luego todas las versiones:
+    # cada versión necesita su ficha creada (clave foránea), también en una base nueva.
+    recientes = {}
+    for connector in CONNECTORS:
+        if connector.key not in recientes or connector.version > recientes[connector.key].version:
+            recientes[connector.key] = connector
+    cuerpo = "".join(capacidad(connector) for connector in recientes.values()) + "".join(bloque(c) for c in CONNECTORS)
     return f"""-- 15. GENERADO por scripts/connectors/generate_seed_sql.py: no editar a mano.
 -- Aplicar una sola vez DESPUES de 14_connectors.sql (se puede repetir: no duplica filas).
 -- Registra los conectores revisados como capacidades públicas publicadas cuyo autor es la cuenta

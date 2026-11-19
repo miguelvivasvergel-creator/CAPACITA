@@ -9,6 +9,7 @@ La base de datos solo guarda un puntero (connector_key + hashes). El trabajador 
 calcular el manifiesto desde este registro y rechaza cualquier diferencia: lo que se ejecuta es
 siempre lo que está revisado en el repositorio.
 """
+import copy
 import hashlib
 import json
 from typing import Any, Callable
@@ -92,3 +93,21 @@ class Connector:
 
     def run(self, http, inputs: dict, parameters: dict) -> dict:
         return self._run(http, inputs, parameters)
+
+    def componible(self, version):
+        """Misma lógica en una versión nueva cuyas entradas no tienen límites de largo ni de rango.
+
+        El validador de conexiones solo une puertos con límites demostrablemente compatibles; una
+        entrada con minLength/maximum no puede recibir la salida de otro paso que no los declare.
+        El conector sigue validando esos límites en su código.
+        """
+        nuevo = copy.copy(self)
+        nuevo.version = version
+        nuevo.definition = copy.deepcopy(self.definition)
+        for spec in nuevo.definition["input_schema"].get("properties", {}).values():
+            for limite in LIMITES:
+                spec.pop(limite, None)
+        return nuevo
+
+
+LIMITES = ("minLength", "maxLength", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum")
