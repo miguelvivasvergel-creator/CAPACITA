@@ -143,11 +143,16 @@ Decide blocked si la necesidad no se puede representar con el editor de este blo
 información privada que no deba enviarse. Explica qué falta y no incluyas draft.
 Decide define solo si puedes proponer un contrato claro y editable. Incluye draft,
 sin preguntas pendientes. Nombres de campo ASCII sin espacios.
-Diseña herramientas completas, de calidad profesional y MUY personalizables: la persona debe
-poder elegir el diseño y el contenido sin rehacer la herramienta. Expón como parámetros
-obligatorios (entre 3 y 8, cada uno con un valor típico en example_parameters_json):
+Diseña herramientas completas, de calidad profesional y personalizables: la persona debe poder
+ajustar el resultado sin rehacer la herramienta. Cada parámetro debe cambiar de verdad algo que
+se ve en la salida; nunca agregues opciones que el resultado no puede mostrar. Expón como
+parámetros obligatorios, cada uno con un valor típico en example_parameters_json:
 - lo graduable (intensidad, brillo, tamaño, cantidad…) como number o integer con minimum y
   maximum y la escala en description;
+- las variantes del procesamiento (modo, separador, idioma, mayúsculas…) como string con
+  options o como boolean.
+Solo si la salida es un archivo visual (foto, PDF, Word, Excel o imagen generada) agrega
+además, entre 3 y 8 parámetros en total:
 - el estilo o plantilla como string con options (3 o 4 estilos claramente distintos, por
   ejemplo "clasica", "moderna", "minimalista", "elegante");
 - los colores como string "#RRGGBB" cuyo nombre contenga color (color_principal…) y cuya
@@ -155,6 +160,8 @@ obligatorios (entre 3 y 8, cada uno con un valor típico en example_parameters_j
 - los textos visibles (titulo, subtitulo, pie, nombre del negocio…) como string;
 - las secciones que se pueden incluir u omitir como boolean (incluir_grafico,
   incluir_resumen, incluir_fecha, incluir_tabla…).
+Si la salida es solo texto, números o datos (sin archivo), usa entre 1 y 4 parámetros y no
+agregues estilos, plantillas, colores, fuentes ni títulos decorativos: no se verían.
 Usa options solo en campos string y minimum/maximum solo en number o integer.
 Si el resultado puede llevar la marca de la persona (logo, imagen de fondo o su propia
 plantilla), agrega una entrada de archivo con required=false (logo: file png; fondo: file

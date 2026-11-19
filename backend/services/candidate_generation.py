@@ -1,5 +1,6 @@
 """Orquestación autorizada: búsqueda, una generación y guardado privado, sin ejecución."""
 from collections import deque
+from math import ceil
 from time import monotonic
 from uuid import UUID
 
@@ -29,8 +30,21 @@ class GenerationLimiter:
         # Eliminar usuarios vencidos para no acumular memoria indefinidamente.
         self.attempts = {key: deque(t for t in values if now - t < 3600) for key, values in self.attempts.items() if values and now - values[-1] < 3600}
         times = self.attempts.setdefault(user_id, deque())
-        if user_id in self.active or len(times) >= self.hourly_limit or (times and now - times[-1] < self.min_gap):
-            raise HTTPException(429, f"Límite de generación: espera {self.min_gap} segundos; máximo {self.hourly_limit} intentos por hora")
+        # Retry-After distingue una espera corta (turno) del tope por hora: el chat solo
+        # reintenta solo cuando la espera es corta.
+        if self.hourly_limit <= 0:
+            # Límite 0 = función desactivada (por ejemplo, correcciones): esperar no sirve.
+            raise HTTPException(429, "Esta función de la IA está desactivada en este servidor.", headers={"Retry-After": "3600"})
+        if len(times) >= self.hourly_limit:
+            wait = max(1, ceil(3600 - (now - times[0])))
+            raise HTTPException(429, f"Usaste los {self.hourly_limit} intentos con la IA de esta hora. Vuelve a intentarlo en unos {ceil(wait / 60)} minutos.",
+                                headers={"Retry-After": str(wait)})
+        if user_id in self.active:
+            raise HTTPException(429, "La IA todavía está trabajando en tu pedido anterior. Espera a que termine.",
+                                headers={"Retry-After": str(max(1, self.min_gap))})
+        if times and now - times[-1] < self.min_gap:
+            wait = max(1, ceil(self.min_gap - (now - times[-1])))
+            raise HTTPException(429, f"Espera {wait} segundos antes de volver a pedirle algo a la IA.", headers={"Retry-After": str(wait)})
         if len(self.attempts) > 10000:
             raise HTTPException(503, "Generación ocupada; inténtalo más tarde")
         times.append(now)
@@ -42,7 +56,10 @@ class GenerationLimiter:
 
 # 30/hora: «Créalas todas» encadena diseño, código y correcciones de varias herramientas.
 # Es un tope propio (el nivel gratuito de Gemini admite más); no activa facturación.
-limiter = GenerationLimiter(hourly_limit=30)
+# 5 s entre inicios (y nunca dos a la vez): cada llamada ya tarda más que eso, así que el
+# planner → diseño → código seguidos no esperan; con 30 s el chat quedaba medio minuto en
+# silencio entre pasos. Por persona son como mucho 12 por minuto, bajo el RPM gratuito.
+limiter = GenerationLimiter(hourly_limit=30, min_gap=5)
 
 
 async def owned_definition(capability_id: UUID, candidates: CandidateRepository):

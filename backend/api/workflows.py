@@ -30,10 +30,12 @@ async def available_versions(repository: Repository, shared: Shared, cursor: UUI
                              limit: Annotated[int, Query(ge=1, le=100)] = 20):
     if settings.PUBLICATIONS_ENABLED:
         page = await shared.rpc('publication_versions', p_cursor=str(cursor) if cursor else None, p_limit=limit)
-        items = []
-        for version in page['items']:
-            await repository.get(UUID(version['capability_id']))
-            items.append(version | version['contracts'])
+        # Se vuelve a comprobar el catálogo visible (visible_to) en una sola consulta, no una
+        # por versión: con 100 versiones eran 100 viajes a Supabase en serie.
+        visible = await repository.visible_ids(version['capability_id'] for version in page['items'])
+        if any(str(UUID(version['capability_id'])) not in visible for version in page['items']):
+            raise HTTPException(404, "Capacidad no encontrada")
+        items = [version | version['contracts'] for version in page['items']]
         return APIResponse(data={'items': items, 'next_cursor': page['next_cursor']})
     page = await shared.rpc("versions", p_cursor=str(cursor) if cursor else None, p_limit=limit)
     items = []

@@ -54,7 +54,11 @@ export default function App() {
   const [experienciaElegida, setExperienciaElegida] = useState(null);
   const experiencia = experienciaElegida && experienciaElegida.userId === usuarioActual?.id ? experienciaElegida.value : leerExperiencia(usuarioActual?.id);
   const [cargandoSesion, setCargandoSesion] = useState(true);
-  
+  // Chat guiado: sigue montado (oculto) al visitar otras secciones para no perder la
+  // conversación ni cortar una herramienta a medio crear. Solo se reinicia al abrir algo
+  // concreto (herramienta, solución, pedido) o al cambiar de cuenta.
+  const [chatGuiado, setChatGuiado] = useState({ clave: null, abrir: [], usuario: null, vista: null, abiertos: 0 });
+
   const initialHash = window.location.hash.replace('#', '');
   const [vista, setVista] = useState(
     esSeccionValida(initialHash) ? initialHash : 'auth'
@@ -253,6 +257,17 @@ export default function App() {
   if (usuarioActual && esSeccionValida(vista)) {
     // '#perfil/fahida' → seccion = 'perfil', parametros = ['fahida']
     const [seccion, ...parametros] = vista.split('/');
+    // Estado derivado de la navegación (se ajusta durante el render, patrón admitido por React).
+    let chat = chatGuiado;
+    // Otra cuenta o fuera del modo guiado: el chat anterior no se retoma.
+    if (chat.usuario !== usuarioActual.id || (experiencia !== 'guiado' && chat.clave)) chat = { ...chat, clave: null, abrir: [], usuario: usuarioActual.id };
+    if (vista !== chat.vista) {
+      // Cada navegación a «inicio/…» con algo que abrir crea un chat nuevo (aunque sea la misma
+      // herramienta otra vez); volver a «inicio» a secas retoma la conversación que había.
+      const nuevo = experiencia === 'guiado' && seccion === 'inicio' && (parametros.length > 0 || !chat.clave);
+      chat = { ...chat, vista, ...(nuevo ? { abiertos: chat.abiertos + 1, clave: `${usuarioActual.id}:guiado:${chat.abiertos + 1}`, abrir: parametros } : {}) };
+    }
+    if (chat !== chatGuiado) setChatGuiado(chat);
 
     return (
       <AppLayout
@@ -270,8 +285,11 @@ export default function App() {
           setExperienciaElegida({userId:usuarioActual.id,value});
         }}
       >
-        {seccion === 'inicio' && (
-          experiencia === 'guiado' ? <InicioGuiado key={`${usuarioActual.id}:guiado:${parametros.join('/')}`} abrir={parametros} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion}/> : <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
+        {experiencia === 'guiado' && chat.clave && <div style={{ display: seccion === 'inicio' ? 'contents' : 'none' }}>
+          <InicioGuiado key={chat.clave} abrir={chat.abrir} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion}/>
+        </div>}
+        {seccion === 'inicio' && experiencia !== 'guiado' && (
+          <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
         {seccion === 'capacidades' && (experiencia === 'guiado' ? <HerramientasGuiadas key={usuarioActual.id} onCambiarSeccion={handleCambiarSeccion}/> : <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />)}
         {seccion === 'workflows' && (experiencia === 'guiado' ? <SolucionesGuiadas key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} onCambiarSeccion={handleCambiarSeccion}/> : <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} _usuario={usuarioActual} />)}

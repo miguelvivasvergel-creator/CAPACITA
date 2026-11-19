@@ -5,7 +5,8 @@ from services.build_validation import validate_manifest
 from services.candidate_generation import GenerationLimiter, limiter, owned_definition
 from services.candidate_preparation import prepare_candidate
 
-repair_limiter = GenerationLimiter(hourly_limit=settings.CANDIDATE_REPAIR_LIMIT)
+# Mismo criterio que el límite general: la corrección llega justo después de una prueba.
+repair_limiter = GenerationLimiter(hourly_limit=settings.CANDIDATE_REPAIR_LIMIT, min_gap=5)
 
 
 async def repair_candidate(identity, payload, candidates, provider, model,

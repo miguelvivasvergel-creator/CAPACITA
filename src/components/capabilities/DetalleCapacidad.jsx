@@ -171,7 +171,7 @@ export default function DetalleCapacidad({
                 Eliminar
               </button>}
             </div>
-          ) : (
+          ) : !onClonar ? <span /> : (
             <button
               type="button"
               onClick={() => onClonar && onClonar(capacidad)}
@@ -200,7 +200,7 @@ export default function DetalleCapacidad({
               disabled={!onUsar}
               className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-full shadow-md shadow-blue-500/25 transition active:scale-[0.99] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span>{onUsar ? 'Abrir capacidad →' : 'Ejecución pendiente'}</span>
+              <span>{!onUsar ? 'Ejecución pendiente' : experiencia === 'guiado' ? 'Usar en el chat →' : 'Abrir capacidad →'}</span>
             </button>
           </div>
         </div>

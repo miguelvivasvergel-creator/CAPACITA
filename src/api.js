@@ -52,6 +52,9 @@ export async function api(ruta, { method = 'GET', body, signal, idempotencyKey }
         : 'No se pudo conectar con el servidor.';
     const error = new Error(mensaje);
     error.status = respuesta.status;
+    // Segundos que pide esperar un 429: separa un turno corto del tope por hora.
+    const reintento = Number(respuesta.headers.get('Retry-After'));
+    if (Number.isFinite(reintento) && reintento > 0) error.retryAfter = reintento;
     throw error;
   }
 

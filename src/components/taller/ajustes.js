@@ -1,12 +1,13 @@
 // Lógica pura de la vista previa: qué se puede ajustar, valores iniciales y ajustes
 // directos («ponle 30 %») que no necesitan IA. Lo ambiguo se le pregunta a Gemini.
 import { esArchivo } from '../../utils/archivos';
+import { etiquetaLegible } from '../../utils/etiquetas';
 
 const NUMERO = /(-?\d+(?:[.,]\d+)?)\s*(%|por ?ciento)?/gi;
 // Comparativos y frases relativas: los interpreta la IA, no una regla fija.
 const RELATIVO = /\b(m[aá]s|menos|mitad|doble|poco|bastante|sube|s[uú]bele|baja|b[aá]jale|aumenta|reduce|quita|agrega)\b/i;
 const sinAcentos = (texto) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const etiquetaDe = (nombre) => nombre.replaceAll('_', ' ').replace(/^./, (letra) => letra.toUpperCase());
+const etiquetaDe = etiquetaLegible;
 
 // Escala desde el contrato (minimum/maximum) o desde la descripción («de 0 a 100»).
 function escala(spec) {

@@ -17,6 +17,9 @@ const MUESTRA_DE = (media) => (media.startsWith('image/') ? 'foto' : media === '
 export default function VistaPrevia({ version, definition, archivo, registrarAjustador, onEstado, onGuardar, onDescartar, onMejorar }) {
   const opciones = useMemo(() => opcionesEditables(definition), [definition]);
   const opcionales = useMemo(() => archivosOpcionales(definition), [definition]);
+  // Solo se habla de «tu archivo» si la herramienta recibe uno obligatorio.
+  const conArchivo = Object.entries(definition.input_schema?.properties || {})
+    .some(([nombre, spec]) => esArchivo(spec) && definition.input_schema?.required?.includes(nombre));
   // archivos: { campo: clave } de los archivos opcionales elegidos (logo, plantilla…); el
   // contenido base64 vive en «subidos» para no copiarlo en cada intento ni compararlo al pintar.
   const iniciales = useMemo(() => ({ ...valoresIniciales(definition, opciones), archivos: {} }), [definition, opciones]);
@@ -103,7 +106,7 @@ export default function VistaPrevia({ version, definition, archivo, registrarAju
       if (respuesta.decision === 'improve') { onMejorar?.(texto, respuesta.explanation); return 'mejorar'; }
       return 'nuevo';
     } catch (cause) {
-      if (vivo.current) { setTrabajando(false); setAviso(cause.status === 429 ? 'Vas muy rápido 🙂. Espera unos segundos y vuelve a escribirlo, o usa los controles.' : cause.message); }
+      if (vivo.current) { setTrabajando(false); setAviso(cause.status === 429 && (cause.retryAfter || 0) <= 15 ? 'Vas muy rápido 🙂. Espera unos segundos y vuelve a escribirlo, o usa los controles.' : cause.message); }
       return 'error';
     }
   }
@@ -156,7 +159,7 @@ export default function VistaPrevia({ version, definition, archivo, registrarAju
       {actual.nota && <p className="mt-1 text-sm text-slate-700">{actual.nota}</p>}
       {(opciones.length > 0 || opcionales.length > 0) && <p className="mt-1 break-words text-xs text-slate-500">{resumen(actual.valores)}</p>}
       {actual.error && <p role="alert" className="mt-2 break-words text-sm text-red-700">{actual.error}</p>}
-      {!actual.error && (!actual.run || activo(actual.run.status)) && <p className="mt-2 text-sm text-slate-600">{actual.run?.status === 'queued' ? '⏳ En cola: esperando al trabajador…' : '⚙️ Aplicándola a tu archivo…'}</p>}
+      {!actual.error && (!actual.run || activo(actual.run.status)) && <p className="mt-2 text-sm text-slate-600">{actual.run?.status === 'queued' ? '⏳ En cola: esperando al trabajador…' : conArchivo ? '⚙️ Aplicándola a tu archivo…' : '⚙️ Probándola con estos datos…'}</p>}
       {actual.run?.status === 'completed' && <div className="mt-2 text-sm"><ResultadoDatos value={actual.run.output} nombre={definition.name} /></div>}
       {actual.run && ['failed', 'interrupted'].includes(actual.run.status) && <p role="alert" className="mt-2 break-words text-sm text-red-700">No pudo terminar{actual.run.report?.error ? `: ${actual.run.report.error}` : ''}. Prueba con otros valores o pide que la mejore.</p>}
     </div>}
@@ -204,8 +207,11 @@ export default function VistaPrevia({ version, definition, archivo, registrarAju
 
     {!cerrada && <p className="text-xs text-slate-500">También puedes escribirme abajo, por ejemplo «ponle solo un 30 %», «hazla moderna en verde» o «un poco más suave». Lo que escribas se envía a Gemini; tus archivos no.</p>}
     {!cerrada && <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={trabajando || !terminados.length} className={`${BOTON} bg-emerald-600 text-white`} onClick={() => { setCerrada(true); onGuardar?.(); }}>✅ Me gusta, guardarla</button>
-      <button type="button" disabled={trabajando} className={`${BOTON} border border-slate-300`} onClick={() => { setCerrada(true); onDescartar?.(); }}>🗑️ Descartar</button>
+      <button type="button" disabled={trabajando || !terminados.length} className={`${BOTON} bg-emerald-600 text-white`} onClick={() => { setCerrada(true); onGuardar?.(actual?.run?.status === 'completed' ? actual.valores : terminados.at(-1)?.valores); }}>✅ Me gusta, guardarla</button>
+      <button type="button" disabled={trabajando} className={`${BOTON} border border-slate-300`} onClick={async () => {
+        // Si no se pudo desactivar, los botones vuelven para poder reintentarlo.
+        setCerrada(true); if (await onDescartar?.() === false && vivo.current) setCerrada(false);
+      }}>🗑️ Descartar</button>
     </div>}
     <div ref={final} />
   </div>;

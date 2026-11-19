@@ -20,8 +20,9 @@ export default function TrabajoCapacidad({ id, usuario, onCambiarSeccion, experi
   }, [id, revision]);
   const propia = capacidad?.owner_id === usuario?.id;
   const completa = propia && capacidad.visibility === 'private' && capacidad.status === 'draft' && capacidad.config?.definition;
+  const guiado = experiencia === 'guiado';
   return <div className="mx-auto max-w-4xl space-y-5 px-4 py-8 sm:px-6">
-    <button type="button" onClick={() => onCambiarSeccion?.('capacidades')} className="text-sm font-semibold text-blue-700 underline">Volver a capacidades</button>
+    <button type="button" onClick={() => onCambiarSeccion?.('capacidades')} className="text-sm font-semibold text-blue-700 underline">{guiado ? 'Volver a Mis herramientas' : 'Volver a capacidades'}</button>
     {retomar && (!retomar.capabilityId || retomar.capabilityId === id) && <aside aria-label="Volver al plan" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
       <p className="font-semibold">Objetivo conservado</p><p className="mt-2 whitespace-pre-wrap break-words">{retomar.objective}</p>
       <p className="mt-2 text-slate-600">Después de probar y habilitar la capacidad, vuelve al planner para buscar las versiones disponibles y revisar una propuesta nueva.</p>
@@ -32,10 +33,10 @@ export default function TrabajoCapacidad({ id, usuario, onCambiarSeccion, experi
         <header><h1 className="break-words text-2xl font-bold text-slate-900">{capacidad.name}</h1><p className="mt-2 break-words text-sm text-slate-600">{capacidad.description}</p></header>
         <PublicacionCapacidad key={`publication-${capacidad.id}`} capacidad={capacidad} propia={propia} onRefresh={() => setRevision(value => value + 1)} onCambiarSeccion={onCambiarSeccion} />
         {completa ? <>
-          <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">{experiencia === 'guiado' ? 'Revisa cómo está preparada esta herramienta. Si todavía falta probarla, puedes aportar un ejemplo y comprobarlo antes de permitir su uso privado.' : 'Revisa tus candidatos y reportes guardados. Desde cada candidato puedes probar una implementación, habilitar una versión probada y usarla con datos nuevos. Cada acción requiere tu revisión.'}</p>
-          {experiencia === 'guiado' ? <PrepararHerramientaGuiada key={capacidad.id} capacidad={capacidad} definition={{name:capacidad.name,description:capacidad.description,category:capacidad.category,input_type:capacidad.input_type,output_type:capacidad.output_type,input_schema:capacidad.input_schema,output_schema:capacidad.output_schema,parameter_schema:capacidad.config.definition.parameter_schema,required_permissions:capacidad.permissions||[],resources:capacidad.config.definition.resources||[],constraints:capacidad.config.definition.constraints||[],examples:capacidad.config.definition.examples||[]}} onRetomar={()=>onCambiarSeccion?.('inicio')}/> : <CandidatosCapacidad key={capacidad.id} capacidad={capacidad} />}
+          <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">{experiencia === 'guiado' ? 'Ficha técnica de tu herramienta: qué recibe, qué entrega y sus pruebas. Para usarla no hace falta nada de esto: tócala en Mis herramientas y el chat te pide los datos.' : 'Revisa tus candidatos y reportes guardados. Desde cada candidato puedes probar una implementación, habilitar una versión probada y usarla con datos nuevos. Cada acción requiere tu revisión.'}</p>
+          {experiencia === 'guiado' ? <PrepararHerramientaGuiada key={capacidad.id} capacidad={capacidad} definition={{name:capacidad.name,description:capacidad.description,category:capacidad.category,input_type:capacidad.input_type,output_type:capacidad.output_type,input_schema:capacidad.input_schema,output_schema:capacidad.output_schema,parameter_schema:capacidad.config.definition.parameter_schema,required_permissions:capacidad.permissions||[],resources:capacidad.config.definition.resources||[],constraints:capacidad.config.definition.constraints||[],examples:capacidad.config.definition.examples||[]}} onRetomar={()=>onCambiarSeccion?.(`inicio/herramienta/${capacidad.id}`)}/> : <CandidatosCapacidad key={capacidad.id} capacidad={capacidad} />}
         </> : <p className="rounded-xl border border-slate-200 p-4 text-sm text-slate-700">{propia ? 'Para preparar otra implementación necesitas una definición estructurada privada.' : 'Consulta arriba si el autor ha publicado una versión ejecutable. Una definición pública por sí sola no permite ejecutar código.'}</p>}
-        <button type="button" onClick={() => onCambiarSeccion?.('workflows')} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Abrir constructor de workflows</button>
+        {!guiado && <button type="button" onClick={() => onCambiarSeccion?.('workflows')} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Abrir constructor de workflows</button>}
       </>}
   </div>;
 }

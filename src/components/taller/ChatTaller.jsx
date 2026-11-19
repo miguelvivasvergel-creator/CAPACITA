@@ -5,6 +5,7 @@ import { ajustarOpciones, interpretarObjetivo, investigar } from '../../services
 import { ajusteDirecto, opcionesEditables } from './ajustes';
 import { guardarWorkflow } from '../../services/workflows';
 import { camposChat } from '../../utils/formularioDatos';
+import { etiquetaLegible } from '../../utils/etiquetas';
 import { infoTipo, leerArchivo, urlDatos } from '../../utils/archivos';
 import FabricaHerramienta from './FabricaHerramienta';
 import ResultadoDatos from '../common/ResultadoDatos';
@@ -24,6 +25,36 @@ const SUGERENCIAS = [
 ];
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
 const activo = (status) => ['queued', 'running'].includes(status);
+// El «Acepto» de Gemini se recuerda por cuenta en este navegador (se puede retirar desde la
+// bienvenida). Sin almacenamiento disponible se vuelve a pedir: nunca se da por aceptado.
+const CLAVE_GEMINI = (id) => `capacita:consentimiento-gemini:${id || 'anonimo'}`;
+function leerConsentimiento(id) {
+  try { return localStorage.getItem(CLAVE_GEMINI(id)) === 'si'; } catch { return false; }
+}
+function recordarConsentimiento(id, valor) {
+  try { if (valor) localStorage.setItem(CLAVE_GEMINI(id), 'si'); else localStorage.removeItem(CLAVE_GEMINI(id)); } catch { /* vale solo en esta pestaña */ }
+}
+// Herramientas del catálogo que se parecen a lo pedido (palabras en común con su nombre y
+// descripción), para ofrecer usarlas sin IA. Solo las que el chat puede ejecutar directo.
+const VACIAS = new Set(['para', 'como', 'quiero', 'necesito', 'hazme', 'dame', 'favor', 'este', 'esta', 'esto', 'todo', 'toda',
+  'todos', 'desde', 'sobre', 'tiene', 'puedo', 'puede', 'cada', 'entre', 'hacer', 'herramienta', 'algo', 'otra', 'otro']);
+const palabrasDe = (texto) => new Set(String(texto).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  .split(/[^a-z0-9]+/).filter((palabra) => palabra.length > 3 && !VACIAS.has(palabra)));
+function herramientasParecidas(items, objetivo) {
+  // «(Adjunté un Excel como entrada.)» lo agrega el chat: no cuenta como parte del pedido.
+  const pedido = palabrasDe(objetivo.replace(/\n\(Adjunté [^)]*\)\s*$/, ''));
+  if (!pedido.size) return [];
+  const vistas = new Set();
+  return items.map((item) => {
+    const propias = palabrasDe(`${item.name} ${item.description || ''}`.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' '));
+    const comunes = [...pedido].filter((palabra) => propias.has(palabra)).length;
+    return { item, puntos: comunes / pedido.size, comunes };
+  }).filter(({ item, comunes, puntos }) => comunes >= 2 && puntos >= 0.4 && solucionDeVersion(item))
+    .sort((a, b) => b.puntos - a.puntos || String(b.item.created_at || '').localeCompare(String(a.item.created_at || '')))
+    .filter(({ item }) => !vistas.has(item.capability_id) && vistas.add(item.capability_id))
+    .slice(0, 3).map(({ item }) => item);
+}
+
 // Respuestas para saltar un archivo opcional (logo, plantilla…).
 const SALTAR = /^\s*(no|nop|sin|ninguno|omitir|saltar|no tengo|despu[eé]s|as[ií] est[aá] bien)/i;
 
@@ -35,9 +66,12 @@ const SALTAR = /^\s*(no|nop|sin|ninguno|omitir|saltar|no tengo|despu[eé]s|as[
 export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState('');
-  const [consentimiento, setConsentimiento] = useState(false);
+  const [consentimiento, setConsentimiento] = useState(() => leerConsentimiento(usuario?.id));
   // Copia inmediata del consentimiento: las acciones que siguen al «Acepto» corren antes del render.
-  const consentido = useRef(false);
+  const consentido = useRef(consentimiento);
+  function aceptarGemini(valor) {
+    consentido.current = valor; setConsentimiento(valor); recordarConsentimiento(usuario?.id, valor);
+  }
   const [ocupado, setOcupado] = useState(false);
   const [fase, setFase] = useState('');
   const [conversacion, setConversacion] = useState(null); // { objetivo, aclaraciones, ruta, metaDefinir }
@@ -58,6 +92,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const ajustador = useRef(null);
   // «Créalas todas»: herramientas que faltan por crear, una tras otra, en modo automático.
   const cola = useRef([]), automatico = useRef(false);
+  // Versiones creadas en esta necesidad: al rearmar el plan se ofrecen siempre al planner y,
+  // si aun así no las combina, se usan directamente en vez de diseñar un duplicado.
+  const recienCreadas = useRef([]);
   // Para ajustar un resultado: contratos de las versiones del plan y el último archivo usado.
   const opcionesPlan = useRef([]), ultimoArchivo = useRef(null);
   const registrarAjustador = useCallback((fn, previo) => {
@@ -72,19 +109,22 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
 
   // Opciones (contratos) de las versiones de una solución abierta desde el menú, para poder
   // ajustarla escribiendo. Sin Gemini: solo el catálogo autorizado de versiones.
-  async function cargarOpcionesDe(definicion) {
-    const faltan = new Set(definicion.nodes.map((nodo) => nodo.version_id));
+  // Versiones habilitadas (con sus contratos) a partir de sus ids, desde el catálogo autorizado.
+  async function buscarVersiones(ids) {
+    const faltan = new Set(ids);
     const encontradas = [];
     let cursor = null;
-    try {
-      for (let pagina = 0; pagina < 3 && faltan.size; pagina++) {
-        const page = await api(`/workflows/available-versions?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
-        for (const item of page.items) if (faltan.delete(item.id)) encontradas.push(item);
-        cursor = page.next_cursor;
-        if (!cursor) break;
-      }
-    } catch { /* sin opciones: ajustarPlan lo explica si la persona intenta ajustar */ }
-    opcionesPlan.current = encontradas;
+    for (let pagina = 0; pagina < 3 && faltan.size; pagina++) {
+      const page = await api(`/workflows/available-versions?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+      for (const item of page.items) if (faltan.delete(item.id)) encontradas.push(item);
+      cursor = page.next_cursor;
+      if (!cursor) break;
+    }
+    return encontradas;
+  }
+  async function cargarOpcionesDe(definicion) {
+    // Sin opciones: ajustarPlan lo explica si la persona intenta ajustar.
+    opcionesPlan.current = await buscarVersiones(definicion.nodes.map((nodo) => nodo.version_id)).catch(() => []);
   }
 
   // Desde Soluciones o Herramientas: abrir una solución guardada o dejar escrito un pedido.
@@ -126,13 +166,16 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       const version = await versionLista(capacidadId);
       const definicion = version && solucionDeVersion(version);
       if (!definicion) {
-        agregar({ de: 'capacita', tipo: 'texto', texto: 'Esta herramienta todavía no está lista para usar (le falta superar sus pruebas). Cuéntame qué necesitas y la preparo contigo 👇' });
+        agregar({ de: 'capacita', tipo: 'texto', texto: version
+          ? 'Esta herramienta no entrega un resultado que el chat pueda mostrarte, así que no puedo usarla desde aquí. Cuéntame qué necesitas y busco o creo una que sí sirva 👇'
+          : 'Esta herramienta todavía no tiene una versión probada que se pueda usar. Cuéntame qué necesitas y busco o creo una que sí funcione 👇' });
         return;
       }
       opcionesPlan.current = [version];
       const guardada = await solucionGuardadaDe(version.id).catch(() => null);
+      const ajena = version.owner_id && usuario?.id && version.owner_id !== usuario.id;
       abrirSolucion(guardada?.definition || definicion, guardada,
-        `Abrí tu herramienta «${version.name}». No necesito la IA para usarla: te pido los datos y la ejecuto 👇`);
+        `Abrí ${ajena ? 'la herramienta de la comunidad' : 'tu herramienta'} «${version.name}». No necesito la IA para usarla: te pido los datos y la ejecuto 👇`);
     } catch (cause) {
       agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Puedes describir tu necesidad aquí.` });
     } finally { setOcupado(false); setFase(''); }
@@ -266,40 +309,47 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     pedirSiguiente(estado);
   }
 
-  function mostrarDefinicion(value, objetivoDefinido) {
+  // mejorando: nombre de la herramienta que se está mejorando. La versión mejorada conserva ese
+  // nombre para que «Mis herramientas» las agrupe como versiones de la misma.
+  function mostrarDefinicion(value, objetivoDefinido, mejorando) {
     const interpretation = value.interpretation;
     if (value.research) agregar({ de: 'capacita', tipo: 'investigacion', investigacion: value.research });
     if (interpretation?.explanation) agregar({ de: 'capacita', tipo: 'texto', texto: interpretation.explanation });
-    if (interpretation?.decision === 'clarify') {
+    const aclarar = interpretation?.decision === 'clarify';
+    if (aclarar) {
       setPendientes(interpretation.questions); agregar({ de: 'capacita', tipo: 'preguntas', preguntas: interpretation.questions });
     } else if (value.definition) {
-      setCreando(value.definition.name); setEstadoCreacion(''); setPlan(null);
-      agregar({ de: 'capacita', tipo: 'crear', definicion: value.definition, automatica: automatico.current });
+      const definicion = mejorando ? { ...value.definition, name: mejorando } : value.definition;
+      setCreando(definicion.name); setEstadoCreacion(''); setPlan(null);
+      agregar({ de: 'capacita', tipo: 'crear', definicion, automatica: automatico.current });
     } else {
       agregar({ de: 'capacita', tipo: 'bloqueado' });
       falloEnCola();
     }
-    setConversacion((old) => ({ ...old, ruta: 'definir', metaDefinir: objetivoDefinido }));
+    // La mejora sigue solo mientras se responden sus preguntas; si ya se mostró o se bloqueó,
+    // lo siguiente (otra herramienta, rearmar el plan) no debe heredar su nombre.
+    setConversacion((old) => ({ ...old, ruta: 'definir', metaDefinir: objetivoDefinido, ...(aclarar ? {} : { mejorando: undefined }) }));
   }
 
-  // Tras consultar al planner, la IA pide 30 s de turno: espera una vez y reintenta el diseño.
+  // Si la IA aún no da turno tras el planner (5 s entre llamadas), espera una vez y reintenta.
   async function disenarTrasPlan(objetivo, aclaraciones, signal, investigacion) {
     for (let intento = 0; ; intento += 1) {
       try { return await interpretarObjetivo(objetivo, aclaraciones, true, signal, investigacion); } catch (cause) {
-        if (cause.status !== 429 || intento >= 1 || signal.aborted) throw cause;
-        setFase('⏳ Esperando turno con la IA (unos 30 segundos)…');
-        await new Promise((resolve) => { setTimeout(resolve, 31000); });
+        if (cause.status !== 429 || intento >= 1 || signal.aborted || (cause.retryAfter || 0) > 15) throw cause;
+        setFase('⏳ Esperando turno con la IA (unos segundos)…');
+        await new Promise((resolve) => { setTimeout(resolve, ((cause.retryAfter || 5) + 1) * 1000); });
         if (signal.aborted) throw cause;
         setFase('Con lo que investigué, diseño una herramienta nueva…');
       }
     }
   }
 
-  // Lo primero ante una necesidad nueva: buscar en internet cómo se hace bien, antes de hacer
-  // nada. Una vez por conversación; las aclaraciones y herramientas que falten lo reutilizan.
+  // Antes de diseñar algo nuevo: buscar en internet cómo se hace bien. Una vez por
+  // conversación; las aclaraciones y herramientas que falten lo reutilizan. Si tus herramientas
+  // ya lo resuelven no se busca: usarlas no es hacer algo nuevo y la búsqueda tarda y gasta cuota.
   async function investigarPrimero(estado, signal) {
     if (estado.investigacion !== undefined) return estado.investigacion;
-    setFase('🔎 Antes de empezar, investigo en internet cómo se hace bien…');
+    setFase('🔎 Antes de crearla, investigo en internet cómo se hace bien…');
     let resultado = null;
     try { resultado = await investigar(estado.objetivo.slice(0, 2000), signal); } catch (cause) { if (signal.aborted) throw cause; }
     if (signal.aborted) return null;
@@ -316,36 +366,63 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     if (completo.length > 2000) { agregar({ de: 'capacita', tipo: 'error', texto: 'Tu necesidad y respuestas superan 2.000 caracteres. Resúmelas un poco y vuelve a escribir.' }); return; }
     const controller = new AbortController(); peticion.current?.abort(); peticion.current = controller;
     setOcupado(true); setPendientes([]);
-    try {
+    // Diseñar una herramienta nueva: primero se investiga (una vez) y luego se diseña con eso.
+    // conEspera: justo después del planner la IA puede pedir unos segundos de turno.
+    const disenar = async (meta, texto, conEspera = false) => {
       const investigacion = await investigarPrimero(estado, controller.signal);
       if (controller.signal.aborted) return;
+      setFase(texto);
+      const value = conEspera ? await disenarTrasPlan(meta, aclaraciones, controller.signal, investigacion)
+        : await interpretarObjetivo(meta, aclaraciones, true, controller.signal, investigacion);
+      if (!controller.signal.aborted) mostrarDefinicion(value, meta, estado.mejorando);
+    };
+    try {
       if (ruta === 'definir') {
-        setFase('Con lo que investigué, diseño la herramienta que falta…');
-        const value = await interpretarObjetivo(metaDefinir || objetivo, aclaraciones, true, controller.signal, investigacion);
-        if (!controller.signal.aborted) mostrarDefinicion(value, metaDefinir || objetivo);
+        await disenar(metaDefinir || objetivo, 'Con lo que investigué, diseño la herramienta…');
         return;
       }
       setFase('Buscando en tus herramientas y en las de la comunidad…');
       const opciones = await buscarOpcionesPlan(completo, controller.signal);
-      opcionesPlan.current = opciones.items; // contratos de cada versión, para ajustar después
       if (controller.signal.aborted) return;
-      if (!opciones.items.length) {
-        setFase('No encontré herramientas para esto. Con lo que investigué, diseño una nueva…');
-        const value = await interpretarObjetivo(objetivo, aclaraciones, true, controller.signal, investigacion);
-        if (!controller.signal.aborted) mostrarDefinicion(value, objetivo);
+      // La búsqueda por texto no siempre encuentra lo que se acaba de crear: se agrega primero.
+      let items = opciones.items;
+      const faltantes = recienCreadas.current.filter((id) => !items.some((item) => item.id === id));
+      if (faltantes.length) items = [...await buscarVersiones(faltantes).catch(() => []), ...items];
+      if (controller.signal.aborted) return;
+      opcionesPlan.current = items; // contratos de cada versión, para ajustar después
+      // Si el planner no logra usar lo recién creado, se usa directo: diseñar otra sería un duplicado.
+      const usarRecienCreada = () => {
+        const version = items.find((item) => recienCreadas.current.includes(item.id));
+        const definicion = version && solucionDeVersion(version);
+        if (!definicion) return false;
+        opcionesPlan.current = [version];
+        abrirSolucion(definicion, null, `Uso «${version.name}», la herramienta que acabamos de crear. Te pido los datos 👇`);
+        return true;
+      };
+      if (soloCatalogo(estado) && !recienCreadas.current.length) {
+        // Reutilizar sin IA: si hay herramientas que encajan con lo que escribió, se ofrecen.
+        const atajos = herramientasParecidas(items, objetivo);
+        if (atajos.length) { agregar({ de: 'capacita', tipo: 'atajo', atajos, estado }); return; }
+      }
+      // Lo que sigue (planner, investigación, diseño) sí usa la IA: se pide el «Acepto».
+      if (!consentimiento && !consentido.current) {
+        agregar({ de: 'capacita', tipo: 'consentimiento', estado: { ...estado, saltarAtajo: true } });
         return;
       }
-      setFase(`Encontré ${opciones.items.length} herramienta${opciones.items.length === 1 ? '' : 's'} posibles. Armando tu proceso…`);
+      if (!items.length) {
+        await disenar(objetivo, 'No tenías herramientas para esto. Con lo que investigué, diseño una nueva…');
+        return;
+      }
+      setFase(`Encontré ${items.length} herramienta${items.length === 1 ? '' : 's'} posibles. Armando tu proceso…`);
       let proposal;
       try {
-        ({ proposal } = await proponerPlan(completo, opciones.items.slice(0, 12), controller.signal));
+        ({ proposal } = await proponerPlan(completo, items.slice(0, 12), controller.signal));
       } catch (cause) {
         // Si no logra combinar bien tus herramientas (contratos que no encajan), diseña una nueva
         // en vez de dejarte con un error. Cuota, permisos y cancelación sí se informan.
         if (controller.signal.aborted || cause.status !== 502) throw cause;
-        setFase('No logré combinar tus herramientas. Con lo que investigué, diseño una nueva…');
-        const value = await disenarTrasPlan(objetivo, aclaraciones, controller.signal, investigacion);
-        if (!controller.signal.aborted) mostrarDefinicion(value, objetivo);
+        if (usarRecienCreada()) return;
+        await disenar(objetivo, 'No logré combinar tus herramientas. Con lo que investigué, diseño una nueva…', true);
         return;
       }
       if (controller.signal.aborted) return;
@@ -361,20 +438,25 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       } else {
         // El planner a veces marca "blocked" cuando solo falta una herramienta. El
         // diseñador tiene sus propios controles y bloquea si de verdad hace falta algo externo.
-        setFase('Ninguna de tus herramientas sirve para esto. Con lo que investigué, diseño una nueva…');
-        const value = await disenarTrasPlan(objetivo, aclaraciones, controller.signal, investigacion);
-        if (!controller.signal.aborted) mostrarDefinicion(value, objetivo);
+        if (usarRecienCreada()) return;
+        await disenar(objetivo, 'Ninguna de tus herramientas sirve para esto. Con lo que investigué, diseño una nueva…', true);
       }
     } catch (cause) {
-      if (!controller.signal.aborted) { agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Tu conversación sigue aquí; puedes volver a intentarlo.` }); falloEnCola(); }
+      if (!controller.signal.aborted) {
+        agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Tu conversación sigue aquí; puedes volver a intentarlo.` }); falloEnCola();
+        setConversacion((old) => (old ? { ...old, mejorando: undefined } : old));
+      }
     } finally {
       if (!controller.signal.aborted) { setOcupado(false); setFase(''); }
     }
   }
 
+  // Buscar en el catálogo no usa la IA: el primer paso de una necesidad nueva corre sin el
+  // «Acepto» y, si una herramienta tuya ya sirve, se ofrece antes de gastar IA.
+  const soloCatalogo = (estado) => estado.ruta === 'buscar' && !estado.aclaraciones.length && !estado.saltarAtajo;
   function continuar(estado) {
     setConversacion(estado);
-    if (!consentimiento && !consentido.current) { agregar({ de: 'capacita', tipo: 'consentimiento', estado }); return; }
+    if (!soloCatalogo(estado) && !consentimiento && !consentido.current) { agregar({ de: 'capacita', tipo: 'consentimiento', estado }); return; }
     resolver(estado);
   }
 
@@ -410,7 +492,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
 
   function nuevaNecesidad(valor, mostrar = true) {
     if (mostrar) agregar({ de: 'tu', tipo: 'texto', texto: valor });
-    nuevoTaller();
+    nuevoTaller(); recienCreadas.current = [];
     // Solo se cuenta el tipo de archivo adjunto, nunca su contenido.
     const tipoAdjunto = !adjunto ? '' : adjunto.type.startsWith('image/') ? 'una foto' : adjunto.name.toLowerCase().endsWith('.pdf') ? 'un PDF'
       : adjunto.name.toLowerCase().endsWith('.docx') ? 'un documento Word' : adjunto.name.toLowerCase().endsWith('.xlsx') ? 'un Excel' : 'un archivo';
@@ -437,7 +519,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const meta = `Preparar únicamente esta herramienta faltante: ${item}. Contexto de la necesidad: ${conversacion.objetivo}`.slice(0, 2000);
     agregar({ de: 'tu', tipo: 'texto', texto: `Crea la herramienta: ${item}` });
     setCreando(item);
-    continuar({ ...conversacion, aclaraciones: [], ruta: 'definir', metaDefinir: meta });
+    continuar({ ...conversacion, aclaraciones: [], ruta: 'definir', metaDefinir: meta, mejorando: undefined });
   }
 
   // La persona no quiere solo otros valores: pide que la herramienta haga algo más.
@@ -453,7 +535,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       for (const [nombre, spec] of Object.entries(opcion.parameter_schema.properties)) {
         const clave = `${nodo.id}__${nombre}`;
         origen[clave] = [nodo.id, nombre];
-        properties[clave] = { ...spec, title: graduables.length > 1 ? `${spec.title || nombre} (${nodo.label})` : spec.title || nombre.replaceAll('_', ' ') };
+        properties[clave] = { ...spec, title: graduables.length > 1 ? `${spec.title || nombre} (${nodo.label})` : spec.title || etiquetaLegible(nombre) };
         if (opcion.parameter_schema.required?.includes(nombre)) required.push(clave);
         if (nodo.parameters?.[nombre] !== undefined) actuales[clave] = nodo.parameters[nombre];
       }
@@ -473,7 +555,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         if (respuesta.decision === 'new') { setOcupado(false); setFase(''); nuevaNecesidad(valor, false); return; }
         nuevos = respuesta.parameters; explicacion = respuesta.explanation;
       } catch (cause) {
-        agregar({ de: 'capacita', tipo: 'error', texto: cause.status === 429 ? 'Vas muy rápido 🙂. Espera unos segundos y vuelve a escribirlo.' : cause.message });
+        agregar({ de: 'capacita', tipo: 'error', texto: cause.status === 429 && (cause.retryAfter || 0) <= 15 ? 'Vas muy rápido 🙂. Espera unos segundos y vuelve a escribirlo.' : cause.message });
         return;
       } finally { setOcupado(false); setFase(''); }
     }
@@ -497,10 +579,11 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const opciones = Object.keys(definicion.parameter_schema?.properties || {}).join(', ') || 'ninguna';
     const meta = `Versión mejorada de la herramienta «${definicion.name}»: ${definicion.description} Opciones actuales: ${opciones}. Además debe: ${pedido}. Conserva lo que ya hace y deja graduable lo nuevo.`.slice(0, 2000);
     setCreando(definicion.name);
-    continuar({ ...(conversacion || { objetivo: meta }), aclaraciones: [], ruta: 'definir', metaDefinir: meta });
+    continuar({ ...(conversacion || { objetivo: meta }), aclaraciones: [], ruta: 'definir', metaDefinir: meta, mejorando: definicion.name });
   }
 
   function herramientaLista(version, terminada) {
+    if (version?.id && !recienCreadas.current.includes(version.id)) recienCreadas.current = [...recienCreadas.current, version.id];
     if (automatico.current) {
       if (cola.current.length) {
         const siguiente = cola.current.shift();
@@ -514,11 +597,14 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     if (terminada && !conversacion?.metaDefinir?.startsWith('Preparar únicamente')) {
       // El taller la sigue mostrando, ya en verde, hasta la siguiente necesidad.
       setEstadoCreacion('completed');
+      // El archivo ya se usó en la vista previa: una necesidad nueva no debe heredarlo en
+      // silencio (ni decirle a la IA «adjunté una foto»). Queda como último archivo para ajustes.
+      if (adjunto) { ultimoArchivo.current = adjunto; setAdjunto(null); }
       agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! 🎉 Descarga el resultado desde la tarjeta. Para usarla otra vez con otro archivo, búscala en «Herramientas» y toca «Usar ahora»: no hará falta esperar a la IA.' });
       return;
     }
     agregar({ de: 'capacita', tipo: 'texto', texto: '¡La herramienta nueva quedó probada y lista! Vuelvo a armar tu solución con ella…' });
-    const estado = { ...conversacion, ruta: 'buscar', metaDefinir: null };
+    const estado = { ...conversacion, ruta: 'buscar', metaDefinir: null, mejorando: undefined };
     setCreando(''); setEstadoCreacion(''); continuar(estado);
   }
 
@@ -540,13 +626,25 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       case 'consentimiento': return <div className={tarjeta}>
         <p className="font-semibold">Antes de empezar</p>
         <p className="mt-1 text-sm text-slate-600">Para entender tu necesidad usaré la IA de Google Gemini. Le enviaré lo que escribas en esta conversación y los nombres y contratos de las herramientas que encuentre (incluidas tus privadas). Nunca tus datos de ejecución ni código. Para diseñar herramientas nuevas también puede buscar en Google cómo se hace bien la tarea (solo con lo que escribas; nunca tus archivos). Evita escribir datos sensibles: el nivel gratuito puede usar el contenido para mejorar sus productos.</p>
-        <button type="button" disabled={consentimiento || ocupado} onClick={() => { consentido.current = true; setConsentimiento(true); if (mensaje.alAceptar) mensaje.alAceptar(); else resolver(mensaje.estado); }} className="mt-3 min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{consentimiento ? 'Aceptado' : 'Acepto, continuar'}</button>
+        <button type="button" disabled={consentimiento || ocupado} onClick={() => { aceptarGemini(true); if (mensaje.alAceptar) mensaje.alAceptar(); else resolver(mensaje.estado); }} className="mt-3 min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{consentimiento ? 'Aceptado' : 'Acepto, continuar'}</button>
       </div>;
       case 'investigacion': return <TarjetaInvestigacion investigacion={mensaje.investigacion} clase={tarjeta} />;
       case 'preguntas': return <div className={tarjeta}>
         <p className="font-semibold">Necesito aclarar algo</p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{mensaje.preguntas.map((pregunta, index) => <li key={index} className="break-words">{pregunta}</li>)}</ul>
         <p className="mt-2 text-xs text-slate-500">Respóndeme abajo en un solo mensaje.</p>
+      </div>;
+      case 'atajo': return <div className={tarjeta}>
+        <p className="font-semibold">🧰 Ya tienes algo que puede servir</p>
+        <p className="mt-1 text-sm text-slate-600">Lo encontré en tus herramientas y las de la comunidad. Usarla no necesita la IA ni esperar: te pido los datos y la ejecuto.</p>
+        <ul className="mt-3 space-y-2">{mensaje.atajos.map((item) => <li key={item.id} className="rounded-xl bg-emerald-50 p-3">
+          <p className="break-words text-sm font-semibold">{item.name}</p>
+          {item.description && <p className="mt-1 break-words text-xs text-slate-600">{item.description}</p>}
+          <button type="button" disabled={ocupado} onClick={() => { agregar({ de: 'tu', tipo: 'texto', texto: `Usa «${item.name}»` }); abrirHerramienta(item.capability_id); }} className="mt-2 min-h-11 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Usar esta, sin IA</button>
+        </li>)}</ul>
+        <div className="mt-3 border-t border-slate-200 pt-3">
+          <button type="button" disabled={ocupado} onClick={() => { agregar({ de: 'tu', tipo: 'texto', texto: 'Ninguna me sirve: quiero algo nuevo' }); continuar({ ...mensaje.estado, saltarAtajo: true }); }} className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50">Ninguna me sirve: armar algo nuevo con la IA</button>
+        </div>
       </div>;
       case 'faltan': return <div className={tarjeta}>
         <p className="font-semibold">🛠️ Me falta una herramienta para resolverlo</p>
@@ -595,6 +693,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
           <p className="text-sm font-semibold text-blue-700">Hola, {usuario?.name?.split(' ')[0] || 'bienvenida'} 👋</p>
           <h1>¿Qué necesitas resolver hoy?</h1>
           <p>Cuéntamelo con tus palabras. Busco las herramientas que ya existen, creo las que falten y te muestro el proceso armándose a la derecha.</p>
+          {consentimiento && <p className="mt-2 text-xs text-slate-500">Ya aceptaste que use Gemini de Google para entender tus pedidos (nunca tus archivos). <button type="button" className="font-semibold text-blue-700 underline" onClick={() => aceptarGemini(false)}>Retirar mi permiso</button></p>}
           <div className="mt-4 flex flex-col gap-2">{SUGERENCIAS.map((sugerencia) => <button key={sugerencia.texto} type="button" className="taller-sugerencia" onClick={() => {
             setTexto(sugerencia.texto);
             if (sugerencia.archivo && !adjunto) selector.current?.click(); else entrada.current?.focus();

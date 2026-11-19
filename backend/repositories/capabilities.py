@@ -54,6 +54,18 @@ class CapabilityRepository:
         rows = await self._read(filters)
         return {"items": rows[:limit], "next_cursor": rows[limit - 1]["id"] if len(rows) > limit else None}
 
+    async def visible_ids(self, capability_ids) -> set[str]:
+        """Cuáles de esas capacidades ve el usuario, en una sola consulta (pasa por visible_to)."""
+        ids = sorted({str(UUID(str(identity))) for identity in capability_ids})
+        visible = set()
+        # Lotes de 100 para no alargar demasiado la URL de PostgREST.
+        for start in range(0, len(ids), 100):
+            chunk = ids[start:start + 100]
+            rows = await self._read({"id": f"in.({','.join(chunk)})", "select": "id,owner_id,visibility",
+                                     "limit": str(len(chunk))})
+            visible.update(str(row["id"]) for row in rows)
+        return visible
+
     async def get(self, capability_id: UUID) -> dict:
         rows = await self._read({"id": f"eq.{capability_id}", "limit": "1"})
         if not rows:

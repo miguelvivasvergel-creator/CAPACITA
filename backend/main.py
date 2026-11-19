@@ -24,6 +24,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # El chat lee cuánto esperar ante un 429 (turno corto o tope por hora).
+    expose_headers=["Retry-After"],
 )
 
 # Inclusión de las rutas bajo el prefijo configurado (/api)

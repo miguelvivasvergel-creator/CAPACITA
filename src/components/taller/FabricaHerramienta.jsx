@@ -7,6 +7,8 @@ import { deshabilitarVersion, habilitarVersion } from '../../services/versiones'
 import { observacionPruebas, pruebaReparable, casosDesdeEjemplos } from './fabrica';
 import VistaPrevia from './VistaPrevia';
 import CompartirHerramienta from './CompartirHerramienta';
+import { guardarWorkflow } from '../../services/workflows';
+import { solucionDeVersion } from './solucionDirecta';
 
 const MAX_CORRECCIONES = 2;
 const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50';
@@ -29,6 +31,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
   const [bitacora, setBitacora] = useState([]);
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState(null); // { candidato, build }
+  const [guardadoAviso, setGuardadoAviso] = useState(false); // «Me gusta» sin poder guardar las opciones
   const capacidad = useRef(null), control = useRef(null), avisar = useRef(onEstado), final = useRef(null);
   // El trabajo dura minutos: los avisos al chat usan siempre su versión más reciente.
   const lista = useRef(onLista), fallo = useRef(onFallo), arrancada = useRef(false);
@@ -56,13 +59,14 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
   const anotar = (icono, texto, tono = 'activo') => setBitacora((old) => [...old.map((item) => item.tono === 'activo' ? { ...item, tono: 'ok' } : item), { icono, texto, tono }]);
   const estado = (valor) => avisar.current?.(valor);
 
-  // Gemini comparte un turno de 30 s entre generar y corregir: espera y reintenta dos veces.
+  // Gemini comparte un turno corto (5 s) entre diseñar, generar y corregir: espera y reintenta
+  // dos veces. Si se agotó el tope por hora (espera larga) no reintenta: el mensaje lo explica.
   async function conTurno(trabajo, signal) {
     for (let intento = 0; ; intento++) {
       try { return await trabajo(); } catch (cause) {
-        if (cause.status !== 429 || intento >= 2) throw cause;
-        anotar('⏳', 'Esperando turno con la IA (unos 30 segundos)…');
-        await espera(31000, signal);
+        if (cause.status !== 429 || intento >= 2 || (cause.retryAfter || 0) > 15) throw cause;
+        anotar('⏳', 'Esperando turno con la IA (unos segundos)…');
+        await espera(((cause.retryAfter || 5) + 1) * 1000, signal);
       }
     }
   }
@@ -137,8 +141,18 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
     }
   }
 
-  async function guardar() {
-    setFase('activa'); estado('completed'); lista.current?.(resultado.version, true);
+  // «Me gusta»: además de quedar activa, se guarda como solución de un paso con las opciones
+  // que la persona dejó (color, estilo…). «Usar ahora» en Herramientas la encuentra y la usa
+  // así, y esa solución guardada es lo que marca la herramienta como aprobada («✓ Lista»).
+  async function guardar(valores) {
+    setFase('activa'); estado('completed'); setError('');
+    const spec = resultado.candidato.manifest.definition;
+    // Opciones (parámetros) y textos opcionales que dejó; los archivos (logo) no se guardan.
+    const solucion = solucionDeVersion({ id: resultado.version.id, name: spec.name, input_schema: spec.input_schema,
+      output_schema: spec.output_schema, parameter_schema: spec.parameter_schema }, valores?.parametro, valores?.entrada);
+    // Si no se pudo guardar, se guarda al usarla por primera vez: no bloquea el «Me gusta».
+    if (solucion) await guardarWorkflow(solucion).catch(() => setGuardadoAviso(true));
+    lista.current?.(resultado.version, true);
   }
 
   async function descartar() {
@@ -146,7 +160,11 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
     try {
       await deshabilitarVersion(resultado.version.id);
       setFase('descartada'); estado('skipped');
-    } catch (cause) { setError(`${cause.message} La herramienta sigue en tus herramientas privadas; puedes desactivarla desde ahí.`); }
+      return true;
+    } catch (cause) {
+      setError(`${cause.message} Sigue activa en prueba; vuelve a tocar «Descartar» para intentarlo otra vez.`);
+      return false;
+    }
   }
 
   const ejemplos = definition.examples || [];
@@ -180,6 +198,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
       <p className="basis-full text-xs text-slate-500">También puedes describir tu necesidad de otra forma en el chat.</p>
     </div>}
     {fase === 'activa' && <p className="mt-3 text-sm font-semibold text-emerald-700">✅ Guardada en tus herramientas privadas.</p>}
+    {fase === 'activa' && guardadoAviso && <p role="status" className="mt-1 text-xs text-amber-800">No pude guardar las opciones que elegiste; la primera vez que la uses saldrá con las de siempre y quedará guardada.</p>}
     {fase === 'activa' && resultado?.version && <CompartirHerramienta version={resultado.version} />}
     <div ref={final} />
   </div>;

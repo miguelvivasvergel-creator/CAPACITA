@@ -1,3 +1,4 @@
+import { etiquetaLegible } from './etiquetas';
 // Un objeto sin additionalProperties (como los que escribe el planner) se acepta: el
 // formulario solo llena los campos declarados y el backend valida con el esquema real.
 export function admiteFormulario(schema, depth = 0) {
@@ -15,7 +16,7 @@ export function datosIniciales(schema, depth = 0) {
   if (schema?.type === 'boolean') return false;
   return undefined;
 }
-export function nombreCampo(name, schema) { return schema.title || name.replaceAll('_', ' '); }
+export function nombreCampo(name, schema) { return schema.title || etiquetaLegible(name); }
 
 // Datos que el chat sabe pedir como mensajes, uno por uno: textos, números y archivos.
 // Devuelve los campos obligatorios en orden (archivos primero) y al final los archivos
@@ -35,7 +36,7 @@ export function camposChat(schema) {
     const descripcion = spec.description && spec.description.length <= 80 && !(archivo && tecnica) ? spec.description.replace(/\.$/, '') : '';
     // Un archivo opcional (logo, fondo, plantilla) se nombra por su campo, no como «Tu foto».
     return { nombre, tipo: spec.type, archivo, opcional,
-      etiqueta: spec.title || descripcion || (archivo && !opcional ? NOMBRE_ARCHIVO(archivo) : nombre.replaceAll('_', ' ')) };
+      etiqueta: spec.title || descripcion || (archivo && !opcional ? NOMBRE_ARCHIVO(archivo) : etiquetaLegible(nombre)) };
   };
   const obligatorios = propiedades.filter(([nombre]) => schema.required?.includes(nombre)).map((entrada) => campo(entrada));
   // Archivos opcionales al final: el chat los ofrece y la persona puede responder «no».

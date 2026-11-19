@@ -4,6 +4,67 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 18/11/2026 (noche): arreglos de UX tras la revisión a fondo
+
+Sin commit todavía, en `integracion/Fahida-bloque-6`:
+- «Me gusta, guardarla» guarda una solución de un paso con las opciones elegidas (color,
+  estilo…); «Usar ahora» la reutiliza así. Solo esa solución marca una herramienta «✓ Lista»;
+  las que superaron pruebas sin aprobación salen como «Probada, sin tu visto bueno».
+- «Mis herramientas» agrupa por nombre (las versiones mejoradas conservan el nombre original)
+  y pliega las «Sin terminar» en un apartado aparte; ya no salta al cargar.
+- Comunidad (guiado): «Usar en el chat» directo; «Clonar» solo en modo desarrollador.
+- La búsqueda en internet solo ocurre al diseñar una herramienta nueva, no antes del catálogo.
+- El «Acepto» de Gemini se recuerda por cuenta en este navegador, con «Retirar mi permiso».
+- Turno entre llamadas de generación/corrección: 30 s → 5 s (sigue uno a la vez por persona).
+
+Segunda revisión (misma noche), también sin commit:
+- Límite de la IA: mensajes distintos para turno corto, pedido en curso y tope por hora, con
+  `Retry-After` (expuesto por CORS); el chat solo reintenta si la espera es ≤ 15 s.
+- `available-versions` comprueba la visibilidad en una consulta (`visible_ids`, con
+  `visible_to`) en vez de una por versión; «Mis herramientas» se muestra sin esperar etiquetas
+  y permite ver todas las versiones con el mismo nombre.
+- «Me gusta» guarda también los textos opcionales como valores fijos del paso (nunca archivos)
+  y avisa si no pudo guardar; se pueden usar herramientas sin entradas obligatorias.
+- Buscar (guiado) abre el chat; el nombre «mejorando» ya no se hereda; «Descartar» se puede
+  reintentar si falla; textos neutros para herramientas de la comunidad.
+- Tercera revisión: el chat guiado sigue montado (oculto) al cambiar de sección, así que ya no
+  se pierde la conversación ni se corta una herramienta a medio crear; se reinicia solo al abrir
+  una herramienta, solución o pedido, al cambiar de cuenta o de modo. Tras «Me gusta», el
+  archivo adjunto ya no se hereda en silencio en la siguiente necesidad.
+- «Mis resultados»: los intentos de la vista previa (ejecuciones sin `workflow_id`) van en un
+  apartado plegado; la lista pide 100 y ordena por fecha (la API pagina por id, sin migración).
+- Al rearmar el plan tras «Créala», la herramienta recién creada se ofrece siempre al planner y,
+  si no la combina, se usa directa (antes diseñaba un duplicado). Comunidad (guiado) distingue
+  las públicas sin versión ejecutable: «Pedir una así en el chat».
+
+Probado en el navegador el 18/11/2026 (cuenta de prueba, guiado): «Mis herramientas» aparece al
+instante con etiquetas y versiones agrupadas; «Usar ahora» sin IA ejecuta y la conversación sigue
+al ir a Resultados y volver; Buscar abre el chat; crear «invertir_orden_palabras» (investigación
+web solo al diseñar, 1 corrección automática, vista previa, «Me gusta» con «Todo mayúsculas»)
+quedó «✓ Lista» y al reutilizarla devolvió «TRES DOS UNO»; Resultados ordenado; permiso de
+Gemini recordado. Se detuvo Oracle XE para liberar memoria (encender: `Start-Service
+OracleServiceXE, OracleOraDB18Home1TNSListener` como administrador).
+Corregido después (verificado en el navegador salvo lo marcado): el diseñador solo pide estilo,
+colores, textos visibles y secciones cuando la salida es un archivo visual; con salida de texto
+o datos, de 1 a 4 parámetros que cambien el resultado (no probado aún con Gemini real). Las
+etiquetas recuperan tildes y ñ (`src/utils/etiquetas.js`: «Tamaño fuente», «Todo mayúsculas»);
+«Probándola con estos datos…» cuando no hay archivo; Mis herramientas muestra primero las más
+recientes; Buscar (guiado) habla de herramientas, oculta filtros técnicos y marca «Lista para
+usar» o «Solo la idea, sin versión probada». El 502 de la consola era `planner/propose` tras
+crear la herramienta, ya cubierto por el arreglo del duplicado.
+Reutilizar sin IA (verificado): una necesidad nueva escrita en el chat busca primero en el
+catálogo (sin Gemini ni «Acepto»); si hay herramientas ejecutables con palabras en común
+(≥2 y ≥40 % del pedido), la tarjeta «Ya tienes algo que puede servir» ofrece hasta 3 para usar
+directo; «Ninguna me sirve» sigue con el planner y pide el «Acepto». En la prueba solo se llamó
+a `planner/options`.
+Sin verificar con una segunda cuenta: usar la herramienta pública ejecutable de otra persona.
+- Sin cambio a propósito: lo creado con «Créalas todas» queda «Probada» hasta que la persona
+  la apruebe, porque no pasó por vista previa.
+
+Verificado: lint, build y 190/192 pruebas backend (5 nuevas en
+`test_limits_and_visibility.py`; las 2 de `test_planner_api` fallan igual en el commit
+anterior: Supabase 503). No verificado en el navegador.
+
 ### Fahida — 18/11/2026: herramientas personalizables e investigación web
 
 Implementado en `integracion/Fahida-bloque-6`:
