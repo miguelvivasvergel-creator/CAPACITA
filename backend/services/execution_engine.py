@@ -12,10 +12,11 @@ from connectors.base import PROFILE as CONNECTOR_PROFILE
 IMAGES = {
     "gvisor-python-stdlib-v1": "python@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b",
     "gvisor-python-toolbox-v1": "sha256:b114eaf63095892781835ee9ee6eedd20d5d3bc6f47e80a380c944c4d7e4bf65",
+    "gvisor-python-toolbox-v2": "sha256:056d17e5ca36a529c78ebf8896779f245c43e6fb314bd8a14ef2367653589d83",
 }
 # Perfil con que se prueban las herramientas nuevas; cada versión se ejecuta con el
-# perfil de su prueba (las antiguas siguen en stdlib).
-PROFILE = "gvisor-python-toolbox-v1"
+# perfil de su prueba (las antiguas siguen en stdlib o toolbox-v1).
+PROFILE = "gvisor-python-toolbox-v2"
 IMAGE = IMAGES[PROFILE]
 # Copia de sandbox_runner.PROFILE_LIMITS; el mismo test exige igualdad.
 PROFILE_LIMITS = {
@@ -24,6 +25,9 @@ PROFILE_LIMITS = {
                                 "temporary_bytes": 16777216, "network": "none", "uid": 65534},
     # Documentos e imágenes: importar lxml/reportlab/Pillow bajo gVisor necesita más margen.
     "gvisor-python-toolbox-v1": {"timeout_seconds": 30, "output_bytes": 4194304, "memory_bytes": 536870912,
+                                 "cpus": 1.0, "guest_processes": 8, "host_tasks": 64,
+                                 "temporary_bytes": 16777216, "network": "none", "uid": 65534},
+    "gvisor-python-toolbox-v2": {"timeout_seconds": 60, "output_bytes": 4194304, "memory_bytes": 1073741824,
                                  "cpus": 1.0, "guest_processes": 8, "host_tasks": 64,
                                  "temporary_bytes": 16777216, "network": "none", "uid": 65534},
 }

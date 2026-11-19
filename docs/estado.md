@@ -4,6 +4,24 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 20/11/2026: fase 4 caja de herramientas v2 — verificada
+
+- Perfil nuevo `gvisor-python-toolbox-v2` (imagen `sha256:056d17e5…89d83`, `scripts/sandbox/
+  Dockerfile.toolbox2`, construida con `build_toolbox_image_wsl.sh v2`): v1 + pandas, numpy,
+  matplotlib, Tesseract (spa/eng), OpenCV y `capacita_fondo` (quitar fondo con onnxruntime +
+  u2netp local). Límites v2: 1 GB y 60 s; red cerrada. Las versiones v1/stdlib siguen con su imagen.
+- Probado en gVisor: importar `rembg` pasa de 60 s (numba/scipy) → prohibido en la fábrica;
+  `capacita_fondo.quitar_fondo` tarda ~4 s (66 % de la foto transparente). OCR leyó exacto
+  «Factura 2026 Total 125000»; pandas + matplotlib generan el gráfico. MPLCONFIGDIR=/tmp/mpl
+  (si no, matplotlib mezcla avisos en la salida y rompe el JSON).
+- Fábrica: módulos permitidos y recetas en el prompt; el diseñador ya no trata OCR/Tesseract/OpenCV
+  como recursos externos (los bloqueaba). `db/18_toolbox_v2.sql` aplicado por Fahida.
+- Gemini real: «Quítale el fondo a la foto de mi producto y déjalo sobre un fondo blanco» pasó al
+  primer intento en v2 (2 llamadas, 17 s).
+Verificado: suite 236/238 (las 2 de siempre). Falta reiniciar el trabajador para que las
+herramientas nuevas se prueben con v2 desde la app.
+
+
 ### Fahida — 20/11/2026: fase 5 asistentes recurrentes — verificada
 
 Último commit: `391b044` (fase 3), etiqueta `respaldo/antes-fase-4`.

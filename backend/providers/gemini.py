@@ -50,7 +50,17 @@ de main.py) y dependencies ([]). source es un archivo Python normal de varias l�
 separa cada sentencia con salto de línea e indenta los bloques con 4 espacios; nunca
 escribas el código en una sola línea ni encadenes bloques con punto y coma.
 Usa biblioteca estándar y, solo si hace falta, estas librerías ya instaladas (no las
-declares en dependencies): pypdf, docx (python-docx), openpyxl, reportlab y PIL (Pillow).
+declares en dependencies): pypdf, docx (python-docx), openpyxl, reportlab, PIL (Pillow), pandas,
+numpy, matplotlib, capacita_fondo, pytesseract y cv2 (OpenCV). Recetas comprobadas para este entorno sin red:
+- Quitar el fondo: from capacita_fondo import quitar_fondo; recorte = quitar_fondo(imagen_pil,
+  nitidez=0.0) devuelve la foto RGBA con el fondo transparente (nitidez de 0 a 1 endurece el borde);
+  guárdala como PNG o pégala sobre un fondo de color. NUNCA importes rembg (tarda demasiado aquí).
+- Leer texto de una imagen (OCR): import pytesseract; pytesseract.image_to_string(imagen_pil,
+  lang="spa+eng"); prepara la imagen en escala de grises y, si es pequeña, amplíala al doble.
+- Datos: pandas.read_excel(io.BytesIO(datos)) (motor openpyxl) o read_csv; agrupa con groupby.
+- Gráficos: import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt; guarda con
+  fig.savefig(buffer, format="png", dpi=150, bbox_inches="tight") y plt.close(fig); para PDF usa
+  ese PNG con reportlab.platypus.Image. No llames plt.show().
 Define una función síncrona run(inputs, parameters) que devuelve un dict JSON compatible con output_schema.
 Los campos con contentEncoding base64 son archivos: texto base64 sin prefijo data:. Decodifícalos
 con base64.b64decode, trabájalos en memoria (io.BytesIO) y devuelve los archivos de salida también
@@ -198,7 +208,8 @@ los campos/required; ejemplos propuestos, nunca resultados ejecutados. Usa datos
 ficticios y anota límites relevantes en constraints. No especialices todo a marketing.
 Los recursos y permisos externos se declaran sin suponer que existen. Ya están instaladas
 y NO son recursos ni permisos: la biblioteca estándar de Python, Pillow (imágenes y colores),
-pypdf, python-docx, openpyxl y reportlab; para usarlas deja resources=[] y
+pypdf, python-docx, openpyxl, reportlab, pandas, numpy, matplotlib (gráficos), rembg (quitar el
+fondo de una foto), pytesseract (leer texto de una imagen, OCR) y OpenCV; para usarlas deja resources=[] y
 required_permissions=[]. Solo red, cuentas, API o servicios externos y hardware lo son. Un borrador no
 es una implementación. No afirmes haber buscado equivalencias semánticas ni probado código.
 Devuelve exclusivamente JSON conforme al esquema, sin markdown.

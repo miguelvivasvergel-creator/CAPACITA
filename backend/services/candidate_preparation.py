@@ -11,9 +11,13 @@ from schemas.candidates import CandidateManifest, PythonSourceProposal
 from schemas.definitions import CapabilityDefinition
 from services.contract_validation import validate_definition
 
-# Lo que existe en la imagen del sandbox (perfil toolbox): biblioteca estándar de
-# Python 3.12 + scripts/sandbox/Dockerfile.toolbox. Falla rápido sin gastar sandbox.
-TOOLBOX_MODULES = frozenset({"pypdf", "docx", "openpyxl", "reportlab", "PIL"})
+# Lo que existe en la imagen del sandbox con que se prueban las herramientas nuevas (perfil
+# toolbox-v2): biblioteca estándar de Python 3.12 + scripts/sandbox/Dockerfile.toolbox2.
+# Falla rápido sin gastar sandbox.
+# rembg está en la imagen solo para descargar su modelo: importarlo bajo gVisor pasa de 60 s.
+# Quitar el fondo se hace con capacita_fondo (scripts/sandbox/capacita_fondo.py, ~6 s).
+TOOLBOX_MODULES = frozenset({"pypdf", "docx", "openpyxl", "reportlab", "PIL",
+                             "pandas", "numpy", "matplotlib", "capacita_fondo", "pytesseract", "cv2"})
 AVAILABLE_MODULES = frozenset(sys.stdlib_module_names) | TOOLBOX_MODULES
 
 

@@ -20,11 +20,13 @@ STOP_WORDS = set("quiero necesito favor ayuda hacer crear capacidad para desde s
 # Gemini a veces las declara como recurso y eso bloqueaba herramientas que sí se pueden crear.
 LIBRERIA_INSTALADA = re.compile(
     r"pillow|\bpil\b|pypdf|python-docx|openpyxl|reportlab"
-    r"|(librer[ií]a|biblioteca|paquete)s?\b.*\b(est[aá]ndar|im[aá]gen|color|pdf|word|excel|hoja|documento)",
+    # Caja de herramientas v2 (fase 4): datos, gráficos, quitar fondo y OCR locales.
+    r"|pandas|numpy|matplotlib|rembg|pytesseract|tesseract|opencv|\bocr\b"
+    r"|(librer[ií]a|biblioteca|paquete)s?\b.*\b(est[aá]ndar|im[aá]gen|color|pdf|word|excel|hoja|documento|gr[aá]fic)",
     re.IGNORECASE)
 EXTERNO = re.compile(
     r"\bred\b|internet|\bapi\b|cuenta|servicio|credencial|token|clave|hardware|c[aá]mara|micr[oó]fono"
-    r"|nube|https?:|correo|e-?mail|base de datos|conector|ocr|tesseract|opencv|ffmpeg",
+    r"|nube|https?:|correo|e-?mail|base de datos|conector|ffmpeg",
     re.IGNORECASE)
 
 

@@ -73,4 +73,9 @@ class ToolboxImportTests(unittest.TestCase):
         from services.candidate_preparation import unavailable_imports
         allowed = "import json, io\nfrom pypdf import PdfReader\nimport docx\nfrom PIL import Image\nimport openpyxl\nfrom reportlab.pdfgen import canvas"
         self.assertEqual(unavailable_imports(ast.parse(allowed)), [])
-        self.assertEqual(unavailable_imports(ast.parse("import requests\nfrom numpy import array\nfrom . import x")), [".", "numpy", "requests"])
+        # Caja v2 (fase 4): pandas, numpy, matplotlib, rembg, pytesseract y OpenCV ya están instaladas.
+        v2 = "import pandas as pd\nfrom numpy import array\nimport matplotlib.pyplot as plt\nfrom capacita_fondo import quitar_fondo\nimport pytesseract\nimport cv2"
+        self.assertEqual(unavailable_imports(ast.parse(v2)), [])
+        # Red, librerías no instaladas, rembg (pasa de 60 s en gVisor) e imports relativos siguen fuera.
+        self.assertEqual(unavailable_imports(ast.parse("import requests\nimport torch\nimport rembg\nfrom . import x")),
+                         [".", "rembg", "requests", "torch"])
