@@ -8,7 +8,7 @@ import Inicio from './pages/Inicio';
 import InicioGuiado from './pages/InicioGuiado';
 import SolucionesGuiadas from './pages/SolucionesGuiadas';
 import ResultadosGuiados from './pages/ResultadosGuiados';
-import HerramientasGuiadas from './pages/HerramientasGuiadas';
+import BibliotecaGuiada from './pages/BibliotecaGuiada';
 import { leerExperiencia, guardarExperiencia } from './utils/experiencia';
 import Capacidades from './pages/Capacidades/Capacidades';
 import Workflows from './pages/Workflows';
@@ -65,7 +65,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    const titles = { inicio: 'Inicio', capacidades: experiencia === 'guiado' ? 'Herramientas' : 'Capacidades', workflows: experiencia === 'guiado' ? 'Soluciones' : 'Workflows', historial: experiencia === 'guiado' ? 'Mis resultados' : 'Mis ejecuciones',
+    const titles = { inicio: 'Inicio', capacidades: experiencia === 'guiado' ? 'Mi biblioteca' : 'Capacidades', workflows: experiencia === 'guiado' ? 'Mi biblioteca' : 'Workflows', historial: experiencia === 'guiado' ? 'Mis resultados' : 'Mis ejecuciones',
       comunidad: 'Comunidad', configuracion: 'Configuración', perfil: 'Perfil',
       ejecutar: 'Capacidad', buscar: 'Buscar' };
     const title = titles[vista.split('/')[0]];
@@ -291,8 +291,12 @@ export default function App() {
         {seccion === 'inicio' && experiencia !== 'guiado' && (
           <Inicio key={`${usuarioActual.id}:${parametros[0] || 'inicio'}`} initialMode={parametros[0]} usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />
         )}
-        {seccion === 'capacidades' && (experiencia === 'guiado' ? <HerramientasGuiadas key={usuarioActual.id} onCambiarSeccion={handleCambiarSeccion}/> : <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />)}
-        {seccion === 'workflows' && (experiencia === 'guiado' ? <SolucionesGuiadas key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} onCambiarSeccion={handleCambiarSeccion}/> : <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} _usuario={usuarioActual} />)}
+        {/* Modo guiado: herramientas y soluciones viven juntas en «Mi biblioteca»; el detalle de una
+            solución guardada (#workflows/<id>) sigue abriendo su propia vista. */}
+        {seccion === 'capacidades' && (experiencia === 'guiado' ? <BibliotecaGuiada key={usuarioActual.id} onCambiarSeccion={handleCambiarSeccion}/> : <Capacidades onAbrirCapacidad={(capacidad) => handleCambiarSeccion(`ejecutar/capability/${capacidad.id}`)} />)}
+        {seccion === 'workflows' && (experiencia === 'guiado'
+          ? (parametros[0] ? <SolucionesGuiadas key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} onCambiarSeccion={handleCambiarSeccion}/> : <BibliotecaGuiada key={`${usuarioActual.id}:combinadas`} filtroInicial="combinadas" onCambiarSeccion={handleCambiarSeccion}/>)
+          : <Workflows key={`${usuarioActual.id}:${vista}`} workflowId={parametros[0]} _usuario={usuarioActual} />)}
         {seccion === 'historial' && (experiencia === 'guiado' ? <ResultadosGuiados key={`${usuarioActual.id}:${vista}`} runId={parametros[0]} onCambiarSeccion={handleCambiarSeccion}/> : <Historial key={`${usuarioActual.id}:${vista}`} runId={parametros[0]} onCambiarSeccion={handleCambiarSeccion} />)}
         {seccion === 'comunidad' && <Comunidad key={usuarioActual.id} experiencia={experiencia} _usuario={usuarioActual} onCambiarSeccion={handleCambiarSeccion} />}
         {seccion === 'configuracion' && (

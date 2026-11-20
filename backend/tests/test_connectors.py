@@ -329,10 +329,12 @@ class AIConnectorTests(unittest.TestCase):
         from connectors import sending_content
         ia = [c for c in CONNECTORS if c.credential == "gemini"]
         self.assertEqual({c.key for c in ia}, {"resumir_texto", "traducir_texto", "redactar_texto", "leer_texto_foto",
-                                              "extraer_datos_foto", "tarea_texto"})
-        # Todo lo que envía contenido a un tercero exige «Acepto»: la IA y la acción de Telegram.
+                                              "extraer_datos_foto", "tarea_texto", "componer_texto"})
+        # Todo lo que envía contenido a un tercero exige «Acepto»: la IA, las acciones (Telegram, Google)
+        # y los conectores de la biblioteca que reciben tu texto completo (ortografía y traducción).
         self.assertEqual({c.key for c in CONNECTORS if c.sends_content},
-                         {c.key for c in ia} | {"enviar_telegram", "enviar_correo", "guardar_drive", "agendar_evento"})
+                         {c.key for c in ia} | {"enviar_telegram", "enviar_correo", "guardar_drive", "agendar_evento",
+                                                "corregir_ortografia", "traducir_frase"})
         for connector in ia:
             self.assertEqual((connector.credential, connector.hosts), ("gemini", ["generativelanguage.googleapis.com"]))
             self.assertTrue(connector.definition["description"].startswith("Conector de IA (Google Gemini): "))
@@ -401,6 +403,50 @@ class AIConnectorTests(unittest.TestCase):
         self.assertEqual(reporte["detail"], "respuesta_muy_larga")
         _, reporte, _ = ejecutar_ia("tarea_texto@1", {"texto": "x", "instruccion": "y"}, {}, gemini({"otro": 1}))
         self.assertEqual(reporte["error"], "connector_invalid_response")
+
+
+    def test_componer_junta_varios_datos_de_cualquier_tipo(self):
+        vistas = []
+        lugares = [{"nombre": "Droguería La Rebaja", "distancia_m": 120}]
+        estado, reporte, salida = ejecutar_ia("componer_texto@1", {
+            "instruccion": "Arma un itinerario de 3 días", "dato_1": "Viernes soleado, 31 °C.",
+            "dato_3": lugares, "dato_2": ""}, {}, gemini({"resultado": "## Día 1"}, vistas))
+        self.assertEqual((estado, salida), ("completed", {"resultado": "## Día 1"}), reporte)
+        texto = json.loads(vistas[0].content)["contents"][0]["parts"][0]["text"]
+        self.assertIn("DATO 1:\nViernes soleado", texto)
+        self.assertIn("Droguería La Rebaja", texto)  # la lista llega como JSON legible
+        self.assertNotIn("DATO 2", texto)  # los vacíos no se envían
+        _, reporte, _ = ejecutar_ia("componer_texto@1", {"instruccion": "x"}, {}, gemini({"resultado": "y"}))
+        self.assertEqual((reporte["error"], reporte["detail"]), ("connector_input", "dato_1"))
+
+
+class FechasTests(unittest.TestCase):
+    def test_fechas_como_las_escribe_una_persona(self):
+        from datetime import date
+        from connectors.fechas import leer_fecha, leer_hora
+        hoy = date(2026, 11, 20)  # viernes
+        casos = {"2026-11-27": date(2026, 11, 27), "27/11/2026": date(2026, 11, 27),
+                 "27 de noviembre": date(2026, 11, 27), "el próximo viernes": date(2026, 11, 27),
+                 "sábado": date(2026, 11, 21), "mañana": date(2026, 11, 21), "pasado mañana": date(2026, 11, 22),
+                 "hoy": hoy, "5 de enero": date(2027, 1, 5), "2026-11-27T09:00": date(2026, 11, 27),
+                 "el viernes en la mañana": date(2026, 11, 27), "31/02/2026": None, "pronto": None}
+        for texto, esperado in casos.items():
+            self.assertEqual(leer_fecha(texto, hoy), esperado, texto)
+        for texto, esperado in {"17:30": "17:30", "5:30 p. m.": "17:30", "5 pm": "17:00", "17h": "17:00",
+                                "9.15": "09:15", "12 am": "00:00", "25:00": None, "tarde": None}.items():
+            self.assertEqual(leer_hora(texto), esperado, texto)
+
+
+class TextoComoArchivoTests(unittest.TestCase):
+    def test_texto_en_archivo_se_suma_al_mensaje(self):
+        import base64
+        from connectors.telegram import texto_como_archivo
+        itinerario = "## Día 1\n- Ciudad amurallada"
+        self.assertEqual(texto_como_archivo("Tu viaje", itinerario), ("Tu viaje\n\n" + itinerario, None))
+        self.assertEqual(texto_como_archivo(itinerario, itinerario), (itinerario, None))
+        self.assertEqual(texto_como_archivo("", itinerario), (itinerario, None))
+        pdf = base64.b64encode(b"%PDF-1.4 x").decode()
+        self.assertEqual(texto_como_archivo("Tu informe", pdf), ("Tu informe", pdf))
 
 
 class ComposableVersionTests(unittest.TestCase):
@@ -608,7 +654,8 @@ class GoogleConnectorTests(unittest.TestCase):
         evento = json.loads(vistas[0].content)
         self.assertEqual((evento["start"]["dateTime"], evento["end"]["dateTime"], evento["start"]["timeZone"]),
                          ("2026-11-24T09:00:00", "2026-11-24T09:30:00", "America/Bogota"))
-        estado, reporte, _ = ejecutar_google("agendar_evento@1", {"titulo": "x", "fecha": "24/11/2026"}, CONECTADA, [])
+        # «24/11/2026» ahora se entiende; lo que no es una fecha sigue rechazado.
+        estado, reporte, _ = ejecutar_google("agendar_evento@1", {"titulo": "x", "fecha": "cuando pueda"}, CONECTADA, [])
         self.assertEqual(reporte["detail"], "fecha")
 
     def test_worker_detects_google_steps(self):

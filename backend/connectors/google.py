@@ -1,24 +1,25 @@
 """Acciones en la cuenta de Google de la propia persona (fase 6): correo, Drive y Calendar.
 
 El token de acceso lo pone el trabajador en el contexto y el runtime se lo entrega SOLO al broker
-(cabecera Authorization); este código no lo ve. El correo va únicamente a la dirección conectada
-(google_email del contexto), nunca a una dirección que llegue como entrada: un proceso no puede
-escribirle a otra persona en nombre de quien lo ejecuta.
+(cabecera Authorization); este código no lo ve. La versión 1 del correo va únicamente a la dirección
+conectada (google_email del contexto). La versión 2 también puede ir a la dirección que la persona
+escribió: su entrada «para» es solo_persona, así que nunca sale de otro paso (una página, un Excel o
+la IA), y la persona la ve en el plan antes de su «Acepto». El formato sale de connectors/formato.py.
 """
 import base64
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from email.message import EmailMessage
 import json
 import re
 import secrets
 
 from connectors.base import Connector, ConnectorInputError
-from connectors.telegram import archivo_de, en_lineas
-import html
+from connectors.formato import correo_html, documento_html, elegir_estilo, texto_plano
+from connectors.telegram import archivo_de, texto_como_archivo
+from connectors.fechas import leer_fecha, leer_hora
 from services.connector_broker import ConnectorFailure
 
 HOSTS = ["gmail.googleapis.com", "www.googleapis.com"]
-FECHA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 HORA = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 TEXTO = {"type": "string"}
 ARCHIVO = {"type": "string", "title": "Archivo", "contentEncoding": "base64"}
@@ -34,40 +35,42 @@ def nombre_de(inputs, extension):
     return f"{base}.{extension}"
 
 
-def html_correo(asunto, mensaje, adjunto=False):
-    """Plantilla sencilla y limpia (estilos en línea, como exigen los clientes de correo). Todo escapado."""
-    parrafos = "".join(
-        '<p style="margin:0 0 12px;line-height:1.55">' + "<br>".join(html.escape(linea) for linea in en_lineas(bloque)) + "</p>"
-        for bloque in re.split(r"\n\s*\n", mensaje) if bloque.strip())
-    nota = ('<p style="margin:16px 0 0;padding:10px 12px;background:#eff6ff;border-radius:10px;color:#1e40af;font-size:13px">'
-            "Va adjunto el archivo que generó tu proceso.</p>") if adjunto else ""
-    return ('<!doctype html><html><body style="margin:0;background:#f1f5f9;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f172a">'
-            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">'
-            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;'
-            'border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">'
-            '<tr><td style="background:#1d4ed8;padding:16px 24px;color:#ffffff;font-size:17px;font-weight:700;letter-spacing:.2px">Capacita</td></tr>'
-            f'<tr><td style="padding:24px"><h1 style="margin:0 0 16px;font-size:20px;line-height:1.3">{html.escape(asunto)}</h1>{parrafos}{nota}</td></tr>'
-            '<tr><td style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">'
-            "Te lo envió Capacita a tu propio correo porque lo aprobaste en un proceso.</td></tr>"
-            "</table></td></tr></table></body></html>")
+CORREO_VALIDO = re.compile(r"^[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,24}$")
+
+
+def destinatario(valor):
+    """Una sola dirección bien escrita (sin comas, espacios ni saltos que agreguen copias), o None."""
+    texto = str(valor or "").strip()
+    if not texto:
+        return None
+    if len(texto) > 254 or not CORREO_VALIDO.match(texto):
+        raise ConnectorInputError("para")
+    return texto
 
 
 def enviar_correo(http, inputs, parameters, context):
-    para = context.get("google_email")
-    if not para or "@" not in str(para):
+    """Versión 1: solo a la propia persona. Versión 2: también a la dirección que ella escribió
+    (entrada «para», que workflow_validation solo acepta como valor fijo o dato de la persona)."""
+    propio = context.get("google_email")
+    if not propio or "@" not in str(propio):
         raise ConnectorInputError("google_no_vinculado")
+    para = destinatario(inputs.get("para")) or str(propio)
+    a_otra = para.lower() != str(propio).lower()
     asunto = limpio(inputs.get("asunto"), 200) or "Resultado de Capacita"
-    mensaje = str(inputs.get("mensaje") or "").strip()
-    archivo = inputs.get("archivo")
+    mensaje, archivo = texto_como_archivo(str(inputs.get("mensaje") or "").strip(), inputs.get("archivo"))
     if not mensaje and not archivo:
         raise ConnectorInputError("mensaje")
     if len(mensaje) > 50000:
         raise ConnectorInputError("mensaje_muy_largo")
     correo = EmailMessage()
     correo["To"], correo["Subject"] = para, asunto
-    cuerpo = mensaje or "Te envío el archivo que pediste en Capacita."
-    correo.set_content("\n".join(en_lineas(cuerpo)) + "\n\n—\nEnviado por Capacita a tu propio correo.")
-    correo.add_alternative(html_correo(asunto, cuerpo, adjunto=bool(archivo)), subtype="html")
+    cuerpo = mensaje or ("Te envío el archivo adjunto." if a_otra else "Te envío el archivo que pediste en Capacita.")
+    # El estilo sale del contenido (o del que se pidió): académico sobrio, promoción con color…
+    estilo = elegir_estilo(asunto, cuerpo, parameters.get("estilo"))
+    pie = f"Enviado por {propio} con Capacita." if a_otra else "Enviado por Capacita a tu propio correo."
+    correo.set_content(texto_plano(cuerpo) + "\n\n—\n" + pie)
+    correo.add_alternative(correo_html(asunto, cuerpo, estilo=estilo, adjunto=bool(archivo),
+                                       remitente=str(propio) if a_otra else None), subtype="html")
     if archivo:
         datos, tipo, extension = archivo_de(archivo)
         principal, secundario = tipo.split("/", 1)
@@ -76,8 +79,10 @@ def enviar_correo(http, inputs, parameters, context):
                           {"raw": base64.urlsafe_b64encode(correo.as_bytes()).decode()})
     if not isinstance(data, dict) or not data.get("id"):
         raise ConnectorFailure("invalid_response")
-    return {"enviado": True, "resumen": f"Listo: te envié el correo «{asunto}» a {para}"
-                                        + (" con el archivo adjunto." if archivo else ".")}
+    adjunto = " con el archivo adjunto." if archivo else "."
+    if a_otra:
+        return {"enviado": True, "resumen": f"Listo: envié el correo «{asunto}» desde tu Gmail a {para}{adjunto}"}
+    return {"enviado": True, "resumen": f"Listo: te envié el correo «{asunto}» a {para}{adjunto}"}
 
 
 def guardar_drive(http, inputs, parameters, context):
@@ -91,12 +96,14 @@ def guardar_drive(http, inputs, parameters, context):
         metadatos = {"name": nombre}
     except ConnectorInputError:
         # Un plan puede conectar aquí un texto (la promoción que redactó la IA) en vez de un
-        # archivo: se guarda como documento de Google Docs, que Drive crea a partir de texto plano.
+        # archivo: se guarda como documento de Google Docs, que Drive crea a partir de HTML con
+        # títulos, negritas, listas y tablas, y con el estilo que corresponde al contenido.
         texto = inputs["archivo"]
         if not isinstance(texto, str) or not texto.strip() or len(texto) > 1_000_000:
             raise
-        datos, tipo = texto.encode("utf-8"), "text/plain; charset=UTF-8"
         nombre = nombre_de(inputs, "txt")[:-4]
+        documento = documento_html(nombre, texto, elegir_estilo(nombre, texto))
+        datos, tipo = documento.encode("utf-8"), "text/html; charset=UTF-8"
         metadatos = {"name": nombre, "mimeType": "application/vnd.google-apps.document"}
     limite = "capacita" + secrets.token_hex(8)
     cuerpo = (f"--{limite}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"
@@ -117,15 +124,17 @@ def agendar_evento(http, inputs, parameters, context):
     titulo = limpio(inputs.get("titulo"), 200)
     if not titulo:
         raise ConnectorInputError("titulo")
-    texto_fecha = str(inputs.get("fecha") or "").strip()
-    if not FECHA.match(texto_fecha):
+    # Acepta la fecha como la escribe una persona o la IA («27/11/2026», «27 de noviembre», «el
+    # viernes»), no solo AAAA-MM-DD: con el itinerario de viaje fallaba con «revisa la fecha».
+    dia = leer_fecha(inputs.get("fecha") or "")
+    if dia is None:
         raise ConnectorInputError("fecha")
-    try:
-        dia = date.fromisoformat(texto_fecha)
-    except ValueError:
-        raise ConnectorInputError("fecha") from None
+    texto_fecha = dia.isoformat()
     hora = str(inputs.get("hora") or "").strip()
-    evento = {"summary": titulo, "description": str(inputs.get("descripcion") or "")[:8000]}
+    if hora:
+        hora = leer_hora(hora) or hora
+    # El calendario no muestra formato: la descripción va sin marcas (**, ##) pero con sus viñetas.
+    evento = {"summary": titulo, "description": texto_plano(str(inputs.get("descripcion") or ""))[:8000]}
     if hora:
         if not HORA.match(hora):
             raise ConnectorInputError("hora")
@@ -146,15 +155,17 @@ def agendar_evento(http, inputs, parameters, context):
     return {"enlace": str(data.get("htmlLink") or ""), "resumen": f"Listo: agendé «{titulo}» {cuando} en tu Google Calendar."}
 
 
-def accion(*, key, provider, name, description, input_schema, output_schema, example_inputs, run):
-    return Connector(key=key, version=1, provider=provider, provider_url="https://developers.google.com/workspace",
+def accion(*, key, provider, name, description, input_schema, output_schema, example_inputs, run, version=1,
+           parametros=None, example_parameters=None, constraints=None, solo_persona=()):
+    return Connector(key=key, version=version, provider=provider, provider_url="https://developers.google.com/workspace",
                      hosts=HOSTS, name=name, description=f"Conector de acción ({provider}): " + description,
                      category="comunicacion", input_type="texto", output_type="texto", input_schema=input_schema,
-                     parameter_schema={"type": "object", "properties": {}, "additionalProperties": False},
-                     output_schema=output_schema, example_inputs=example_inputs, example_parameters={},
-                     constraints=["Solo actúa en TU cuenta de Google conectada en Capacita → Configuración.",
-                                  f"{provider} recibe el contenido de este paso."],
-                     run=run, max_requests=1, credential="google", sends_content=True, needs=("google_email",))
+                     parameter_schema={"type": "object", "properties": parametros or {}, "additionalProperties": False},
+                     output_schema=output_schema, example_inputs=example_inputs, example_parameters=example_parameters or {},
+                     constraints=constraints or ["Solo actúa en TU cuenta de Google conectada en Capacita → Configuración.",
+                                                 f"{provider} recibe el contenido de este paso."],
+                     run=run, max_requests=1, credential="google", sends_content=True, needs=("google_email",),
+                     solo_persona=solo_persona)
 
 
 def objeto(propiedades, requeridos):
@@ -197,4 +208,31 @@ CALENDARIO = accion(
     output_schema=objeto({"enlace": {**TEXTO, "title": "Enlace"}, "resumen": {**TEXTO, "title": "Resumen"}}, ["enlace", "resumen"]),
     example_inputs={"titulo": "Revisar inventario", "fecha": "2026-11-24", "hora": "09:00"}, run=agendar_evento)
 
-GOOGLE = [CORREO, DRIVE, CALENDARIO]
+# Versión 2 del correo: misma acción, pero puede ir a la dirección que la persona escribió y elige
+# el estilo según el contenido (o el que se pida). La versión 1 sigue para lo ya guardado con ella.
+CORREO_V2 = accion(
+    key="enviar_correo", version=2, provider="Gmail", name="Enviar por correo",
+    description="envía desde TU Gmail conectado un correo con buen formato (títulos, listas, tablas y un estilo "
+                "según el contenido: sobrio si es académico, con color si es una promoción) y, si quieres, un "
+                "archivo adjunto. Llega a tu propio correo o, si escribes en tu pedido la dirección de otra "
+                "persona (un cliente, tu profesor), a esa dirección.",
+    input_schema=objeto({"asunto": {**TEXTO, "title": "Asunto"}, "mensaje": {**TEXTO, "title": "Mensaje"},
+                         "para": {**TEXTO, "title": "Para", "description": "Correo de otra persona, tal como lo "
+                                  "escribiste (opcional; si no, te llega a ti)"},
+                         "archivo": {**ARCHIVO, "description": "Archivo adjunto (opcional)"},
+                         "nombre_archivo": {**TEXTO, "title": "Nombre del archivo", "description": "Sin extensión (opcional)"}},
+                        ["asunto", "mensaje"]),
+    parametros={"estilo": {"type": "string", "title": "Estilo", "enum": ["automático", "académico", "formal",
+                                                                          "promocional", "sencillo"],
+                           "default": "automático",
+                           "description": "Cómo se ve el correo; «automático» lo elige según el contenido"}},
+    example_parameters={"estilo": "automático"},
+    output_schema=objeto({"enviado": {"type": "boolean", "title": "Enviado"}, "resumen": {**TEXTO, "title": "Resumen"}},
+                         ["enviado", "resumen"]),
+    constraints=["Sale desde TU cuenta de Google conectada en Capacita → Configuración.",
+                 "Solo va a otra persona si tú escribiste su correo; nunca a una dirección que venga de otro paso.",
+                 "Gmail recibe el contenido de este paso."],
+    example_inputs={"asunto": "Tu informe semanal", "mensaje": "## Resumen\n- Ventas: **+12 %**"},
+    run=enviar_correo, solo_persona=("para",))
+
+GOOGLE = [CORREO, CORREO_V2, DRIVE, CALENDARIO]

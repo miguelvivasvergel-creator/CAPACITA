@@ -22,8 +22,30 @@ const SUGERENCIAS = [
   { de: 'Excel', a: 'Gráfico', texto: 'Haz un gráfico con los datos de mi Excel de ventas', tono: 'indigo' },
   { de: 'Clima', a: 'Telegram', texto: 'Mándame a Telegram el clima de mañana en mi ciudad', tono: 'cian' },
 ];
+// Saludos y «¿qué puedes hacer?» se responden aquí, sin IA ni búsqueda en internet: antes
+// pasaban por la investigación y Gemini contestaba «soy un modelo de lenguaje de Google».
+const SALUDO = /^(hola+|holi|buenas( tardes| noches)?|buenos dias|hey|que tal|saludos)\b[\s,.!¡¿?]*/;
+const PREGUNTA_GENERAL = /(que (puedes|sabes|podes) hacer|que haces|quien eres|que eres|como funcionas|como funciona( esto)?|para que sirves|en que me (puedes )?ayudar|que me ofreces|^ayuda$)/;
+function esPreguntaGeneral(valor) {
+  const plano = valor.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[¿?¡!.]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const resto = plano.replace(SALUDO, '').trim();
+  return resto.length < 4 || (plano.length <= 90 && PREGUNTA_GENERAL.test(resto));
+}
+const PUEDO = [
+  { icono: 'globo', titulo: 'Consultar datos', texto: 'clima y lluvia, festivos, dólar y monedas, más de 30 fuentes abiertas.' },
+  { icono: 'chispa', titulo: 'Escribir con IA', texto: 'promociones, resúmenes, traducciones; leer fotos y facturas.' },
+  { icono: 'herramienta', titulo: 'Crear herramientas', texto: 'quitar fondos, gráficos de tu Excel, PDF y Word; se prueban aisladas.' },
+  { icono: 'enviar', titulo: 'Enviarte el resultado', texto: 'a tu Telegram, tu correo, tu Drive o tu calendario, con tu aprobación.' },
+  { icono: 'reloj', titulo: 'Hacerlo solo', texto: 'repite una solución cada día o cada semana a la hora que digas.' },
+];
+const EJEMPLOS_PRESENTACION = [
+  'Revisa el pronóstico de lluvia de Valledupar esta semana, escribe una promoción para mi restaurante y mándamela por Telegram',
+  'Lee la foto de esta factura y resúmeme proveedor, fecha y total',
+];
 import TarjetaPlan from './TarjetaPlan';
 import TarjetaInvestigacion from './TarjetaInvestigacion';
+import TextoConFormato from '../common/TextoConFormato';
+import { limpiarMensaje } from '../../utils/textoFormato';
 import { solucionDeVersion, solucionGuardadaDe, versionLista } from './solucionDirecta';
 
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
@@ -87,6 +109,14 @@ const DATO = {
   mensaje: 'el mensaje (está vacío)', mensaje_muy_largo: 'el mensaje (máximo 12.000 caracteres)',
   archivo: 'el archivo (no se pudo leer o pesa más de 4,5 MB)', titulo: 'el título', hora: 'la hora (HH:MM)',
   duracion_minutos: 'la duración (de 5 a 1440 minutos)',
+  // Biblioteca de APIs abiertas
+  tema: 'el tema (escríbelo de forma más corta)', busqueda: 'lo que buscas', palabra: 'la palabra (solo letras)',
+  idioma: 'el idioma', cantidad: 'cuántos resultados (de 1 a 10)', relacion: 'qué tipo de palabras buscar',
+  de: 'el idioma de origen', a: 'el idioma de destino (debe ser distinto al de origen)', lugar: 'el lugar (no lo encontré en el mapa)',
+  magnitud_minima: 'la magnitud (de 0 a 10)', que: 'qué lugar buscar cerca', radio_metros: 'el radio (de 200 a 3.000 metros)',
+  indicador: 'el indicador', monedas: 'las criptomonedas (por ejemplo: bitcoin, ethereum)', producto: 'el producto o código de barras',
+  medicamento: 'el medicamento (nombre genérico en inglés, por ejemplo ibuprofen)', plato: 'el plato', artista: 'el artista',
+  equipo: 'el equipo',
 };
 // Respuestas de la IA que no dependen de un dato concreto.
 const DETALLES_IA = {
@@ -94,6 +124,7 @@ const DETALLES_IA = {
   respuesta_muy_larga: 'La respuesta de la IA salía demasiado larga. Prueba con un texto más corto',
   telegram_no_vinculado: 'Primero conecta tu Telegram en Configuración (sección «Telegram») y vuelve a ejecutarlo',
   google_no_vinculado: 'Primero conecta tu cuenta de Google en Configuración (sección «Google») y vuelve a ejecutarlo',
+  cupo_traduccion: 'Se acabó el cupo gratuito de traducción de hoy. Pídele la traducción a la IA o inténtalo mañana',
 };
 const ERRORES = {
   connector_provider_unavailable: 'El servicio externo no respondió. Intenta de nuevo en unos minutos',
@@ -280,7 +311,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const actual = solucion.current;
     if (actual.definicion !== plan) solucion.current = { definicion: plan, guardada: null, incierta: false, base: null };
     if (solucion.current.guardada) return solucion.current.guardada;
-    if (solucion.current.incierta) throw new Error('No pudimos confirmar si la solución se guardó. Revísala en Soluciones antes de crear otra copia.');
+    if (solucion.current.incierta) throw new Error('No pudimos confirmar si la solución se guardó. Revísala en Mi biblioteca antes de crear otra copia.');
     try {
       // Una solución ajustada («ponle 50 %») actualiza la guardada en vez de duplicarla.
       solucion.current.guardada = await guardarWorkflow(plan, solucion.current.base || undefined);
@@ -445,7 +476,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         return;
       }
       setFase('Buscando en tus herramientas y en las de la comunidad…');
-      const opciones = await buscarOpcionesPlan(completo, controller.signal);
+      const opciones = await buscarOpcionesPlan(completo, controller.signal, 'text', true);
       if (controller.signal.aborted) return;
       // La búsqueda por texto no siempre encuentra lo que se acaba de crear: se agrega primero.
       let items = opciones.items;
@@ -476,16 +507,17 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         await disenar(objetivo, 'No tenías herramientas para esto. Con lo que investigué, diseño una nueva…');
         return;
       }
-      setFase(`Encontré ${items.length} herramienta${items.length === 1 ? '' : 's'} posibles. Armando tu proceso…`);
+      setFase(`Reviso ${items.length} pieza${items.length === 1 ? '' : 's'} disponibles, elijo las que sirven y armo tu proceso…`);
       let proposal;
       try {
-        ({ proposal } = await proponerPlan(completo, items.slice(0, 12), controller.signal));
+        ({ proposal } = await proponerPlan(completo, items.slice(0, 100), controller.signal, 'text', true));
       } catch (cause) {
-        // Si no logra combinar bien tus herramientas (contratos que no encajan), diseña una nueva
-        // en vez de dejarte con un error. Cuota, permisos y cancelación sí se informan.
+        // El plan no pasó la revisión ni con los reintentos del backend. Antes se saltaba a diseñar
+        // una herramienta nueva, que no puede enviar ni consultar servicios y terminaba en «Aquí me
+        // detengo». Ahora se ofrece reintentar (suele salir) o, si la persona quiere, diseñar una.
         if (controller.signal.aborted || cause.status !== 502) throw cause;
         if (usarRecienCreada()) return;
-        await disenar(objetivo, 'No logré combinar tus herramientas. Con lo que investigué, diseño una nueva…', true);
+        agregar({ de: 'capacita', tipo: 'planFallo', estado });
         return;
       }
       if (controller.signal.aborted) return;
@@ -506,7 +538,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       }
     } catch (cause) {
       if (!controller.signal.aborted) {
-        agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Tu conversación sigue aquí; puedes volver a intentarlo.` }); falloEnCola();
+        // Reintentar reenvía el MISMO pedido (antes, escribir «intenta de nuevo» se tomaba como un pedido nuevo).
+        agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Tu conversación sigue aquí.`, reintentar: estado }); falloEnCola();
         setConversacion((old) => (old ? { ...old, mejorando: undefined } : old));
       }
     } finally {
@@ -541,6 +574,11 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       const ajustar = ajustador.current; setTexto('');
       // Si el intento anterior aún corre, el texto vuelve al cuadro para no perderlo.
       ajustar(valor).then((resultado) => { if (resultado === 'nuevo') nuevaNecesidad(valor); else if (resultado === 'ocupado') setTexto((actual) => actual || valor); });
+      return;
+    }
+    if (!pendientes.length && esPreguntaGeneral(valor)) {
+      agregar({ de: 'tu', tipo: 'texto', texto: valor }); setTexto('');
+      agregar({ de: 'capacita', tipo: 'presentacion' });
       return;
     }
     if (!pendientes.length && valor.length < 10) { agregar({ de: 'capacita', tipo: 'texto', texto: 'Cuéntame un poco más: qué datos tienes y qué resultado buscas.' }); return; }
@@ -663,7 +701,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       // El archivo ya se usó en la vista previa: una necesidad nueva no debe heredarlo en
       // silencio (ni decirle a la IA «adjunté una foto»). Queda como último archivo para ajustes.
       if (adjunto) { ultimoArchivo.current = adjunto; setAdjunto(null); }
-      agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! Descarga el resultado desde la tarjeta. Para usarla otra vez con otro archivo, búscala en «Herramientas» y toca «Usar ahora»: no hará falta esperar a la IA.' });
+      agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! Descarga el resultado desde la tarjeta. Para usarla otra vez con otro archivo, búscala en «Mi biblioteca» y tócala: no hará falta esperar a la IA.' });
       return;
     }
     agregar({ de: 'capacita', tipo: 'texto', texto: '¡La herramienta nueva quedó probada y lista! Vuelvo a armar tu solución con ella…' });
@@ -683,9 +721,38 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     }
     const tarjeta = 'taller-tarjeta';
     switch (mensaje.tipo) {
-      case 'texto': return <p className="taller-burbuja max-w-[92%] whitespace-pre-wrap break-words px-4 py-2.5 text-sm">{mensaje.texto}</p>;
-      case 'error': return <p role="alert" className="max-w-[90%] break-words rounded-2xl bg-red-50 px-4 py-2.5 text-sm text-red-800">{mensaje.texto}</p>;
-      case 'bloqueado': return <p className="max-w-[90%] rounded-2xl bg-amber-50 px-4 py-2.5 text-sm text-amber-900">Para esto falta un recurso o permiso que Capacita todavía no tiene. No he creado ni ejecutado nada; puedes reformular tu necesidad.</p>;
+      // Lo que dice Capacita (o la IA) se muestra con formato (títulos, viñetas, negrita), siempre como
+      // texto, y sin los identificadores internos que la IA copia del catálogo.
+      case 'texto': return <div className="taller-burbuja max-w-[92%] px-4 py-2.5 text-sm"><TextoConFormato texto={limpiarMensaje(mensaje.texto)} /></div>;
+      case 'presentacion': return <div className={tarjeta}>
+        <p className="font-semibold">Hola, soy Capacita</p>
+        <p className="mt-1 text-sm text-slate-600">Me cuentas qué necesitas y armo una solución con herramientas que se combinan. Puedo:</p>
+        <ul className="mt-3 space-y-2">{PUEDO.map((item) => <li key={item.titulo} className="flex gap-2 text-sm">
+          <Icono nombre={item.icono} className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
+          <span><span className="font-semibold">{item.titulo}:</span> {item.texto}</span>
+        </li>)}</ul>
+        <p className="mt-3 text-xs text-slate-500">Prueba con uno de estos (se escribe abajo y lo revisas antes de enviar):</p>
+        <div className="mt-2 flex flex-wrap gap-2">{EJEMPLOS_PRESENTACION.map((ejemplo) => <button key={ejemplo} type="button" disabled={ocupado}
+          onClick={() => { setTexto(ejemplo); entrada.current?.focus(); }}
+          className="min-h-11 rounded-xl bg-blue-50 px-3 py-2 text-left text-sm text-blue-900 hover:bg-blue-100 disabled:opacity-50">{ejemplo}</button>)}</div>
+      </div>;
+      case 'error': return <div role="alert" className="taller-aviso taller-aviso--error">
+        <p className="flex gap-2"><Icono nombre="x" className="mt-0.5 h-4 w-4 shrink-0" /><span>{limpiarMensaje(mensaje.texto)}</span></p>
+        {mensaje.reintentar && <button type="button" disabled={ocupado} onClick={() => resolver(mensaje.reintentar)}
+          className="mt-2 min-h-11 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-red-800 ring-1 ring-red-200 hover:bg-red-100 disabled:opacity-50">Reintentar el mismo pedido</button>}
+      </div>;
+      case 'planFallo': return <div className="taller-aviso taller-aviso--pausa">
+        <p className="flex gap-2 font-semibold"><Icono nombre="actualizar" className="mt-0.5 h-4 w-4 shrink-0" />No logré armar el proceso esta vez</p>
+        <p className="mt-1">La IA propuso un plan que no pasó la revisión de Capacita, así que no ejecuté nada. Con pedidos de muchos pasos pasa a veces y suele salir al reintentar.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" disabled={ocupado} onClick={() => resolver(mensaje.estado)} className="min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Reintentar el mismo pedido</button>
+          <button type="button" disabled={ocupado} onClick={() => continuar({ ...mensaje.estado, ruta: 'definir', metaDefinir: mensaje.estado.objetivo })} className="min-h-11 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50">Mejor crea una herramienta nueva</button>
+        </div>
+      </div>;
+      case 'bloqueado': return <div className="taller-aviso taller-aviso--pausa">
+        <p className="flex gap-2 font-semibold"><Icono nombre="candado" className="mt-0.5 h-4 w-4 shrink-0" />Aquí me detengo</p>
+        <p className="mt-1">Para esto falta un recurso o permiso que Capacita todavía no tiene. No creé ni ejecuté nada; puedes reformular tu necesidad.</p>
+      </div>;
       case 'consentimiento': return <div className={tarjeta}>
         <p className="font-semibold">Antes de empezar</p>
         <p className="mt-1 text-sm text-slate-600">Para entender tu necesidad usaré la IA de Google Gemini. Le enviaré lo que escribas en esta conversación y los nombres y contratos de las herramientas que encuentre (incluidas tus privadas). Nunca tus datos de ejecución ni código. Para diseñar herramientas nuevas también puede buscar en Google cómo se hace bien la tarea (solo con lo que escribas; nunca tus archivos). Evita escribir datos sensibles: el nivel gratuito puede usar el contenido para mejorar sus productos.</p>
@@ -694,7 +761,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       case 'investigacion': return <TarjetaInvestigacion investigacion={mensaje.investigacion} clase={tarjeta} />;
       case 'preguntas': return <div className={tarjeta}>
         <p className="font-semibold">Necesito aclarar algo</p>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{mensaje.preguntas.map((pregunta, index) => <li key={index} className="break-words">{pregunta}</li>)}</ul>
+        <ol className="mt-2 space-y-2 text-sm">{mensaje.preguntas.map((pregunta, index) => <li key={index} className="flex gap-2 break-words">
+          <span className="taller-numero" aria-hidden="true">{index + 1}</span><span>{limpiarMensaje(pregunta)}</span>
+        </li>)}</ol>
         <p className="mt-2 text-xs text-slate-500">Respóndeme abajo en un solo mensaje.</p>
       </div>;
       case 'atajo': return <div className={tarjeta}>
@@ -713,7 +782,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         <p className="font-semibold"><Icono nombre="herramienta" className="mr-1 inline h-4 w-4 align-[-3px]" />Me falta una herramienta para resolverlo</p>
         <p className="mt-1 text-sm text-slate-600">Puedo crearla, probarla en un entorno aislado y dejarla lista para ti. No estará disponible hasta superar las pruebas.</p>
         <ul className="mt-3 space-y-2">{mensaje.faltan.map((item, index) => <li key={index} className="rounded-xl bg-amber-50 p-3">
-          <p className="break-words text-sm">{item}</p>
+          <p className="break-words text-sm">{limpiarMensaje(item)}</p>
           <button type="button" disabled={ocupado} onClick={() => crearFaltante(item)} className="mt-2 min-h-11 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Créala</button>
         </li>)}</ul>
         {mensaje.faltan.length > 1 && <div className="mt-3 border-t border-slate-200 pt-3">

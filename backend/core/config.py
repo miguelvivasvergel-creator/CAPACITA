@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     GOOGLE_TOKEN_KEY: SecretStr = SecretStr("")
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/google/callback"
     FRONTEND_URL: str = "http://localhost:5173"
+    # Biblioteca de APIs: contacto público (web https o correo) que el broker añade al User-Agent.
+    # Algunos proveedores abiertos (Wikipedia) rechazan peticiones sin un contacto del responsable.
+    CONECTORES_CONTACTO: str = Field(default="", max_length=120,
+                                     pattern=r"^$|^https://[^\s()]{4,110}$|^[^\s@()]{1,60}@[^\s@()]{1,50}\.[A-Za-z]{2,}$")
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",

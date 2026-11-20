@@ -1,8 +1,10 @@
 import EncabezadoVista from '../components/common/EncabezadoVista';
 import Icono from '../components/common/Icono';
+import MiniCadena from '../components/common/MiniCadena';
 import { useEffect, useState } from 'react';
 import { listarCapacidades } from '../services/capacidades';
-import { estadoHerramientas } from '../components/taller/solucionDirecta';
+import { estadoHerramientas, mapaVersiones } from '../components/taller/solucionDirecta';
+import CompartirHerramienta from '../components/taller/CompartirHerramienta';
 
 const ORDEN = { lista: 0, probada: 1 };
 const ETIQUETA = { lista: 'Lista · Usar ahora', probada: 'Probada, sin tu visto bueno · Usar ahora', sin: 'Sin terminar · Crearla otra vez en el chat' };
@@ -33,7 +35,9 @@ const fecha = (valor) => {
   return dia && !Number.isNaN(dia.getTime()) ? dia.toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 };
 
-export default function HerramientasGuiadas({ onCambiarSeccion }) {
+// incrustada: sección de «Mi biblioteca» (sin encabezado ni botón propios). onPropias recibe los
+// ids de tus herramientas cargadas, para que la biblioteca no las repita como soluciones de 1 paso.
+export default function HerramientasGuiadas({ onCambiarSeccion, incrustada = false, onPropias }) {
   const [page, setPage] = useState({ items: [], next_cursor: null }), [error, setError] = useState(''), [busy, setBusy] = useState(true), [revision, setRevision] = useState(0);
   // undefined mientras se consulta; null si no se pudo saber (se abren igual: el chat avisa).
   const [estados, setEstados] = useState(undefined);
@@ -49,6 +53,16 @@ export default function HerramientasGuiadas({ onCambiarSeccion }) {
     estadoHerramientas().then((next) => { if (vivo) setEstados(next); }).catch(() => { if (vivo) setEstados(null); });
     return () => { vivo = false; };
   }, [revision]);
+  // Versión probada de cada herramienta: es la que se publica al compartirla con la comunidad.
+  const [versionDe, setVersionDe] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    mapaVersiones().then((mapas) => { if (vivo) setVersionDe(mapas.versionDe); }).catch(() => { if (vivo) setVersionDe(new Map()); });
+    return () => { vivo = false; };
+  }, [revision]);
+  useEffect(() => {
+    if (!busy && !error) onPropias?.(new Set(page.items.map((row) => row.id)));
+  }, [busy, error, page.items, onPropias]);
   async function more() {
     if (busy || !page.next_cursor) return;
     setBusy(true); setError('');
@@ -71,9 +85,12 @@ export default function HerramientasGuiadas({ onCambiarSeccion }) {
     : `inicio/usar/${encodeURIComponent(`Quiero usar mi herramienta «${row.name}»: ${row.description}`.slice(0, 1500))}`);
   const ficha = (row) => <button type="button" className="ml-2 mt-1 min-h-11 text-sm text-slate-600 underline" onClick={() => onCambiarSeccion?.(`ejecutar/capability/${row.id}`)}>Ficha técnica</button>;
   const item = (grupo) => <li key={grupo.row.id}>
-    <button type="button" className="guiado-item" onClick={() => abrir(grupo.row, grupo.estado)}><span className="guiado-item-icono"><Icono nombre="herramientas" /></span><span className="guiado-item-copy"><strong>{grupo.row.name}</strong><span>{grupo.row.description}</span>
-      <span>{etiqueta(grupo.estado)}{grupo.filas.length > 1 ? ` · abro la mejor de ${grupo.filas.length} versiones` : ''}</span></span><Icono nombre="flecha" className="guiado-item-flecha" /></button>
+    <button type="button" className="guiado-item" onClick={() => abrir(grupo.row, grupo.estado)}><span className="guiado-item-icono"><MiniCadena pasos={1} /></span><span className="guiado-item-copy"><strong>{grupo.row.name}</strong><span>{grupo.row.description}</span>
+      <span>Simple · {etiqueta(grupo.estado)}{grupo.filas.length > 1 ? ` · abro la mejor de ${grupo.filas.length} versiones` : ''}</span></span><Icono nombre="flecha" className="guiado-item-flecha" /></button>
     {ficha(grupo.row)}
+    {/* Solo una herramienta probada se puede compartir: los demás la usarán tal como pasó sus pruebas. */}
+    {grupo.estado !== 'sin' && versionDe?.get(grupo.row.id) && <div className="ml-2"><CompartirHerramienta capacidad={grupo.row}
+      version={{ id: versionDe.get(grupo.row.id), capability_id: grupo.row.id }} /></div>}
     {grupo.filas.length > 1 && <details className="ml-2 mt-1 text-sm">
       <summary className="min-h-11 cursor-pointer py-2 text-slate-600">Ver las {grupo.filas.length} versiones</summary>
       <ul className="space-y-2 pb-2">{grupo.filas.map(({ row, estado }) => <li key={row.id} className="rounded-lg border border-slate-200 bg-white p-2">
@@ -85,10 +102,11 @@ export default function HerramientasGuiadas({ onCambiarSeccion }) {
     </details>}
   </li>;
 
-  return <div className="vista-contenedor guiado-pagina space-y-5"><EncabezadoVista icono="herramientas" titulo="Mis herramientas" descripcion="Las herramientas que creaste en el chat. Toca una lista para usarla con tus datos, sin esperar a la IA." /><button type="button" className="vista-boton-primario" onClick={() => onCambiarSeccion?.('inicio')}>Crear una herramienta nueva</button>
+  return <div className={incrustada ? 'space-y-4' : 'vista-contenedor guiado-pagina space-y-5'}>
+    {!incrustada && <><EncabezadoVista icono="herramientas" titulo="Mis herramientas" descripcion="Las herramientas que creaste en el chat. Toca una lista para usarla con tus datos, sin esperar a la IA." /><button type="button" className="vista-boton-primario" onClick={() => onCambiarSeccion?.('inicio')}>Crear una herramienta nueva</button></>}
     {busy && !page.items.length && !error && <p role="status">Cargando herramientas…</p>}
     {error && <div role="alert" className="text-sm text-red-700"><p>{error}</p><button type="button" className="min-h-11 underline" onClick={() => { setError(''); setBusy(true); setEstados(undefined); setRevision((old) => old + 1); }}>Volver a consultar</button></div>}
-    {!busy && !error && !page.items.length && <p className="guiado-vacio">Todavía no tienes herramientas. Cuéntale al chat qué necesitas y la creamos juntos.</p>}
+    {!busy && !error && !page.items.length && <p className="guiado-vacio">Todavía no tienes herramientas simples. Cuéntale al chat qué necesitas y la creamos juntos.</p>}
     {!busy && !error && page.items.length > 0 && !usables.length && <p className="guiado-vacio">Ninguna está lista todavía. Pídele al chat la que necesitas y la creamos y probamos juntos.</p>}
     <ul className="guiado-lista">{usables.map(item)}</ul>
     {sinTerminar.length > 0 && <details className="rounded-xl border border-slate-200 bg-white p-3">

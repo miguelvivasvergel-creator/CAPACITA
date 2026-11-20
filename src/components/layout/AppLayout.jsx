@@ -16,7 +16,7 @@ export default function AppLayout({children,usuario,seccionActiva,onCambiarSecci
   const section=seccionActiva?.split('/')[0];
   // El chat + taller ocupa toda la altura disponible: sin pie de página que le robe espacio.
   const pantallaCompleta=experiencia==='guiado'&&section==='inicio';
-  const labels={inicio:experiencia==='guiado'?'Chat y taller':'Inicio',capacidades:experiencia==='guiado'?'Herramientas':'Capacidades',workflows:experiencia==='guiado'?'Soluciones':'Workflows',historial:'Resultados',comunidad:'Comunidad',buscar:'Buscar',perfil:'Perfil',configuracion:'Configuración',ejecutar:'Preparar herramienta'};
+  const labels={inicio:experiencia==='guiado'?'Chat y taller':'Inicio',capacidades:experiencia==='guiado'?'Mi biblioteca':'Capacidades',workflows:experiencia==='guiado'?'Mi biblioteca':'Workflows',historial:'Resultados',comunidad:'Comunidad',buscar:'Buscar',perfil:'Perfil',configuracion:'Configuración',ejecutar:'Preparar herramienta'};
   return <div className={`workspace-shell ${pantallaCompleta?'workspace-shell--lleno':''}`}>
     <FondoNodos/>
     <a className="workspace-skip" href="#contenido-principal">Ir al contenido</a>

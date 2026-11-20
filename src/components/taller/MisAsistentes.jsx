@@ -13,7 +13,8 @@ const ESTADO = { completed: 'Salió bien', failed: 'Falló', interrupted: 'Se in
 const fecha = (valor) => (valor ? new Date(valor).toLocaleString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—');
 
 /** «Mis asistentes»: soluciones que se ejecutan solas con horario (fase 5). */
-export default function MisAsistentes({ onCambiarSeccion }) {
+// mostrarVacio: en el filtro «Asistentes» de Mi biblioteca se explica cómo crear el primero.
+export default function MisAsistentes({ onCambiarSeccion, mostrarVacio = false }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState('');
@@ -28,7 +29,7 @@ export default function MisAsistentes({ onCambiarSeccion }) {
   }
 
   if (items === null && !error) return null;
-  if (items && !items.length && !error) return null;
+  if (items && !items.length && !error) return mostrarVacio ? <p className="guiado-vacio">Todavía no tienes asistentes. Ejecuta una solución en el chat y toca «Repetir automáticamente» para que trabaje sola con un horario.</p> : null;
   return <section aria-label="Mis asistentes" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
     <h2 className="font-sans text-base font-extrabold tracking-tight text-slate-900"><Icono nombre="actualizar" className="mr-1 inline h-4 w-4 align-[-3px]" />Mis asistentes</h2>
     <p className="mb-3 text-xs text-slate-500">Se ejecutan solos con el horario que elegiste, con los mismos datos que aprobaste. Máximo 5 activos.</p>

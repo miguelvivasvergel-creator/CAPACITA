@@ -34,7 +34,7 @@ function RepetirAutomatico({ obtenerGuardada, valores, nombre, requiereAcepto, a
     } catch (causa) { setError(causa.message); } finally { setOcupado(false); }
   }
 
-  if (creado) return <p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-900"><Icono nombre="actualizar" className="mr-1 inline h-4 w-4 align-[-3px]" />Asistente creado: {horarioEnPalabras(horario)}, con estos mismos datos. Lo ves y lo pausas en Soluciones → Mis asistentes.</p>;
+  if (creado) return <p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-900"><Icono nombre="actualizar" className="mr-1 inline h-4 w-4 align-[-3px]" />Asistente creado: {horarioEnPalabras(horario)}, con estos mismos datos. Lo ves y lo pausas en Mi biblioteca → Asistentes.</p>;
   if (!abierto) return <button type="button" onClick={() => setAbierto(true)} className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold"><Icono nombre="actualizar" className="mr-1 inline h-4 w-4 align-[-3px]" />Repetir automáticamente</button>;
   return <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
     <p className="font-semibold">¿Cada cuánto?</p>
@@ -113,6 +113,12 @@ export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupad
   // Acciones (Telegram, Google): envían el resultado fuera de Capacita; también exigen el «Acepto».
   const acciones = nombres(conectoresPlan.filter((item) => item.accion));
   const requiereAcepto = iaExterna.length > 0 || acciones.length > 0;
+  // Correos a otra persona: la dirección que ella escribió (valor fijo «para» del paso de correo).
+  const destinatarios = [...new Set(definition.nodes.filter((node) => conectores.get(node.version_id)?.accion)
+    .map((node) => node.values?.para).filter((para) => typeof para === 'string' && para.trim()).map((para) => para.trim()))];
+  const aceptoEnvios = destinatarios.length
+    ? `Acepto que este proceso envíe el resultado a mi ${acciones.join(', ')} y, desde mi Gmail, a ${destinatarios.join(', ')}. `
+    : `Acepto que este proceso envíe el resultado a mi ${acciones.join(', ')} (solo a mis propias cuentas conectadas, nunca a otras personas).`;
   const [aceptaIA, setAceptaIA] = useState(false);
 
   const ejecutar = (event) => {
@@ -143,8 +149,10 @@ export default function TarjetaPlan({ definition, datos, obtenerGuardada, ocupad
     {datosExternos.length > 0 && <p className="text-xs text-sky-800"><Icono nombre="globo" className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />Este proceso consulta {datosExternos.join(', ')}: solo recibe{datosExternos.length > 1 ? 'n' : ''} los datos de su{datosExternos.length > 1 ? 's' : ''} paso{datosExternos.length > 1 ? 's' : ''} (por ejemplo, la ciudad o la referencia), nunca tus archivos ni tu cuenta.</p>}
     {requiereAcepto && <label className="flex items-start gap-2 rounded-xl bg-violet-50 p-3 text-xs text-violet-900">
       <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={aceptaIA} disabled={busy} onChange={(event) => { setAceptaIA(event.target.checked); approval.current = null; key.current = null; }} />
-      <span>{iaExterna.length > 0 && `Acepto que los pasos de IA envíen a ${iaExterna.join(', ')} el contenido que reciben (tu texto o tu foto) para procesarlo. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles. La IA puede equivocarse; revisa el resultado. `}{acciones.length > 0 && `Acepto que este proceso envíe el resultado a mi ${acciones.join(', ')} (solo a mis propias cuentas conectadas, nunca a otras personas).`}</span>
+      <span>{iaExterna.length > 0 && `Acepto que los pasos de IA envíen a ${iaExterna.join(', ')} el contenido que reciben (tu texto o tu foto) para procesarlo. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles. La IA puede equivocarse; revisa el resultado. `}{acciones.length > 0 && aceptoEnvios}</span>
     </label>}
+    {destinatarios.length > 0 && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+      <Icono nombre="candado" className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />El correo saldrá de tu Gmail hacia <span className="font-semibold">{destinatarios.join(', ')}</span>. Revisa que la dirección esté bien escrita: es la que pusiste en tu pedido.</p>}
     <button type="submit" disabled={busy || ocupadoExterno || (requiereAcepto && !aceptaIA)} className={`${BOTON} bg-emerald-600 text-white`}>
       {busy ? 'Preparando…' : ejecutadas ? 'Ejecutar de nuevo' : 'Aprobar y ejecutar'}
     </button>

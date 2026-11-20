@@ -2,15 +2,15 @@
 
 El chat sale del contexto del trabajo (lo pone el trabajador con telegram_chat_for_job, SQL 16):
 nunca de una entrada, así que un proceso no puede escribirle a otra persona. El token del bot lo
-añade el broker en la ruta; aquí se escribe «/bot/…». Texto plano (sin parse_mode): lo que llega
-de otros pasos no puede inyectar formato ni enlaces ocultos.
+añade el broker en la ruta; aquí se escribe «/bot/…». HTML de Telegram con todo escapado y solo
+etiquetas propias (negrita, cursiva, cita): lo que llega de otros pasos no inyecta formato ni enlaces.
 """
 import base64
 import binascii
-import html
 import re
 
 from connectors.base import Connector, ConnectorInputError
+from connectors.formato import telegram_html, trozos as partir
 from services.connector_broker import ConnectorFailure
 
 HOST = "api.telegram.org"
@@ -40,23 +40,28 @@ def archivo_de(valor):
     return datos, "application/octet-stream", "bin"
 
 
-def en_lineas(texto):
-    """Un párrafo largo de un solo bloque (un resumen) se parte por oraciones; las viñetas se unifican."""
-    if "\n" not in texto and len(texto) > 140:
-        texto = re.sub(r"(?<=[a-záéíóúñ0-9)])\. (?=[A-ZÁÉÍÓÚÑ¿¡])", ".\n", texto)
-    lineas = []
-    for linea in texto.split("\n"):
-        limpia = linea.strip()
-        if limpia[:2] in ("- ", "* ", "• "):
-            limpia = "• " + limpia[2:].strip()
-        lineas.append(limpia)
-    return lineas
+def texto_como_archivo(mensaje, archivo):
+    """Un plan puede conectar un TEXTO (el itinerario que escribió la IA) a la entrada «archivo», que
+    espera un archivo real en base64. Antes fallaba con «revisa el archivo»; ahora ese texto se suma al
+    mensaje (si no es el mismo) y el envío sigue sin adjunto. Devuelve (mensaje, archivo)."""
+    if not isinstance(archivo, str) or not archivo.strip():
+        return mensaje, archivo
+    try:
+        base64.b64decode(archivo, validate=True)
+        return mensaje, archivo  # parece un archivo: archivo_de lo revisa
+    except (binascii.Error, ValueError):
+        pass
+    texto = archivo.strip()
+    if not mensaje or texto == mensaje or texto in mensaje:
+        return mensaje or texto, None
+    return (texto if mensaje in texto else f"{mensaje}\n\n{texto}"), None
 
 
 def formatear(texto, primero=True, ultimo=True):
-    """HTML de Telegram con TODO el contenido escapado: lo que llega de otros pasos no inyecta formato."""
+    """HTML de Telegram con TODO el contenido escapado: solo se agregan negritas, cursivas y frases
+    destacadas propias (connectors/formato.py); lo que llega de otros pasos no inyecta formato."""
     partes = ["<b>Capacita</b>"] if primero else []
-    partes.append("\n".join(html.escape(linea, quote=False) for linea in en_lineas(texto)))
+    partes.append(telegram_html(texto))
     if ultimo:
         partes.append("<i>Enviado por Capacita a tu chat.</i>")
     return "\n\n".join(partes)
@@ -71,10 +76,9 @@ def enviar(http, inputs, parameters, context):
     chat = context.get("telegram_chat_id")
     if not isinstance(chat, int) or isinstance(chat, bool):
         raise ConnectorInputError("telegram_no_vinculado")
-    mensaje = str(inputs.get("mensaje") or "").strip()
+    mensaje, archivo = texto_como_archivo(str(inputs.get("mensaje") or "").strip(), inputs.get("archivo"))
     if len(mensaje) > MAX_MENSAJE:
         raise ConnectorInputError("mensaje_muy_largo")
-    archivo = inputs.get("archivo")
     if not mensaje and not archivo:
         raise ConnectorInputError("mensaje")
     enviados, pendiente = 0, mensaje
@@ -88,7 +92,7 @@ def enviar(http, inputs, parameters, context):
                                     {"photo" if foto else "document": (f"{nombre}.{extension}", datos, tipo)}))
         enviados += 1
         pendiente = "" if leyenda else mensaje
-    trozos = [pendiente[i:i + TROZO] for i in range(0, len(pendiente), TROZO)]
+    trozos = partir(pendiente, TROZO)
     for indice, trozo in enumerate(trozos):
         texto = formatear(trozo, primero=indice == 0 and not archivo, ultimo=indice == len(trozos) - 1)
         respuesta_ok(http.post_json(API.format(metodo="sendMessage"),

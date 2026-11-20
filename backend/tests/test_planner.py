@@ -3,7 +3,7 @@ from copy import deepcopy
 import json
 from types import SimpleNamespace
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 from uuid import uuid4
 
 import httpx
@@ -40,6 +40,40 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
         with patch('services.planner_service.planner_options', AsyncMock(return_value=self.options)), \
              patch('services.planner_service.check_workflow', self.validate):
             return await propose_plan(self.request, self.catalog, self.provider, GenerationLimiter())
+
+    async def test_plan_outside_the_schema_is_retried_with_the_exact_error(self):
+        demasiados = {**self.definition, 'nodes': [{**self.definition['nodes'][0], 'id': f'p{n}'} for n in range(13)]}
+        self.provider.plan.side_effect = [
+            {'decision': 'compose', 'explanation': 'Trece pasos', 'definition': demasiados, 'questions': [], 'missing': []},
+            {'decision': 'compose', 'explanation': 'Ahora sí', 'definition': self.definition, 'questions': [], 'missing': []}]
+        result = await self.propose()
+        self.assertEqual(result['proposal']['explanation'], 'Ahora sí')
+        feedback = self.provider.plan.await_args_list[1].kwargs['feedback']
+        self.assertIn('Máximo 12 pasos', feedback)
+
+    async def test_auto_selects_pieces_first_and_creates_when_something_is_missing(self):
+        # Paso 1: la IA ve todo el catálogo y elige; al paso 2 (plan) solo llegan las elegidas, con sus usos.
+        otra = {'id': str(uuid4()), 'name': 'Otra herramienta', 'input_schema': {'type': 'object', 'properties': {}}}
+        self.options = {'items': [self.options['items'][0], otra], 'search_truncated': False}
+        self.request = PlannerRequest(objective='Limpiar texto y convertir a mayúsculas', auto=True, consent_to_provider=True,
+            version_ids=[row['id'] for row in self.options['items']],
+            version_hashes={row['id']: review_hash(row) for row in self.options['items']})
+        self.provider.select = AsyncMock(return_value={'piezas': [{'id': self.identity, 'usos': 1, 'para_que': 'limpiar'}], 'falta': ''})
+        result = await self.propose()
+        enviados = self.provider.plan.await_args.args[1]
+        self.assertEqual([row['id'] for row in enviados], [self.identity])
+        self.assertEqual((enviados[0]['usos'], enviados[0]['para_que']), (1, 'limpiar'))
+        self.assertEqual(len(self.provider.select.await_args.args[1]), 2)
+        self.assertEqual(result['proposal']['decision'], 'compose')
+        # Si el paso 1 no elige nada, el paso 2 decide con el respaldo (puede preguntar o proponer crear).
+        self.provider.plan.reset_mock()
+        self.provider.select = AsyncMock(return_value={'piezas': [], 'falta': 'No hay ninguna tarea'})
+        await self.propose()
+        self.assertEqual(len(self.provider.plan.await_args.args[1]), 2)
+        # Sin auto (modo desarrollador) se siguen eligiendo a mano y hasta 12.
+        with self.assertRaises(ValueError):
+            PlannerRequest(objective='Limpiar texto y convertir', consent_to_provider=True,
+                           version_ids=[uuid4() for _ in range(13)], version_hashes={uuid4(): 'a' * 64 for _ in range(13)})
 
     async def test_real_contract_validates_named_connections_without_saving(self):
         result = await self.propose()
@@ -237,7 +271,9 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             return httpx.Response(200, json={'candidates': [{'finishReason': 'STOP', 'content': {'parts': [{'text': json.dumps(proposal)}]}}]})
         provider = GeminiProvider(Settings(_env_file=None, GEMINI_API_KEY='fixture'), httpx.MockTransport(handler))
         await provider.plan(self.request.objective, self.options['items'])
-        self.assertEqual(sent, [{'objective': self.request.objective, 'versions': self.options['items']}])
+        # Además del objetivo y las versiones elegidas solo va la fecha de hoy (sin datos de la persona).
+        self.assertEqual(sent, [{'objective': self.request.objective, 'versions': self.options['items'], 'hoy': ANY}])
+        self.assertRegex(sent[0]['hoy'], r'^\d{4}-\d{2}-\d{2} \(')
 
     def test_api_requires_session_and_schema_rejects_execution_fields(self):
         app = FastAPI()

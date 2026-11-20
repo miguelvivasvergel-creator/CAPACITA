@@ -32,19 +32,46 @@ def _raices(texto):
     return {palabra[:6] for palabra in re.findall(r"[a-z]{4,}", plano)}
 
 
+# Raíces que aparecen en casi cualquier pedido o descripción y no dicen qué herramienta hace falta.
+GENERICAS = {"conect", "extern", "sirve", "para", "como", "desde", "esta", "este", "cada", "dias",
+             "segun", "cuanto", "convie", "corto", "revisa", "sobre", "todos", "todas", "tiene",
+             "puede", "hacer", "quier", "neces", "ayuda", "favor", "mismo", "entre", "otro", "otra"}
+MAX_CONECTORES = 9  # el chat manda a la IA solo las 12 primeras opciones: deja sitio a las propias
+
+
 def conectores_relacionados(objective):
-    """Capacidades de los conectores que comparten alguna palabra con el pedido («lluvia» → pronóstico,
-    «Telegram», «festivos», «calendario», «redacta»…). Son pocos y la búsqueda por las palabras más
-    largas no siempre los encontraba, así que un pedido de varias piezas quedaba sin combinar."""
-    pedido = _raices(objective) - {"conect", "extern", "sirve", "para", "como", "desde", "esta", "este"}
-    elegidos = {connector.key: str(connector.capability_id) for connector in BY_VERSION.values()
-                if pedido & _raices(f"{connector.definition['name']} {connector.definition['description']}")}
+    """Capacidades de conectores que comparten palabras con el pedido, de la más a la menos relevante
+    ({capability_id: puntaje}, ordenado). Con la biblioteca de APIs un pedido largo tocaba más de 20
+    conectores por palabras comunes («texto», «datos») y, como el chat solo manda 12, el correo podía
+    quedar fuera. Pesa más la palabra que está en el nombre y la que tienen pocos conectores; un envío
+    nombrado por la persona («Telegram», «correo», «Drive») entra siempre."""
+    pedido = _raices(objective) - GENERICAS
+    ultimos = {}
+    for connector in BY_VERSION.values():
+        if connector.key not in ultimos or connector.version > ultimos[connector.key].version:
+            ultimos[connector.key] = connector
+    textos = {key: (_raices(c.definition["name"]), _raices(c.definition["description"]))
+              for key, c in ultimos.items()}
+    frecuencia = {}
+    for nombre, descripcion in textos.values():
+        for raiz in nombre | descripcion:
+            frecuencia[raiz] = frecuencia.get(raiz, 0) + 1
+    puntajes = {}
+    for key, (nombre, descripcion) in textos.items():
+        en_nombre, en_descripcion = pedido & nombre, (pedido & descripcion) - nombre
+        if not en_nombre and not en_descripcion:
+            continue
+        puntaje = sum(3 / frecuencia[r] for r in en_nombre) + sum(1 / frecuencia[r] for r in en_descripcion)
+        puntajes[key] = puntaje + (100 if key in ACCIONES and en_nombre else 0)
     # Si hay que escribir con IA, va también «Pedirle algo a la IA sobre un texto»: es el que recibe
     # la orden de la persona Y los datos de otro paso (revision_logica lo exige en ese caso).
-    if elegidos.keys() & {"redactar_texto", "resumir_texto"}:
-        tarea = next(c for c in BY_VERSION.values() if c.key == "tarea_texto")
-        elegidos["tarea_texto"] = str(tarea.capability_id)
-    return set(elegidos.values())
+    # Y «Escribir con IA usando varios datos», que junta las salidas de varios pasos.
+    escribir = [puntajes[k] for k in ("redactar_texto", "resumir_texto") if k in puntajes]
+    for clave in ("tarea_texto", "componer_texto"):
+        if escribir and clave in ultimos:
+            puntajes[clave] = max(puntajes.get(clave, 0), max(escribir) + 0.01)
+    orden = sorted(puntajes, key=lambda k: -puntajes[k])[:MAX_CONECTORES]
+    return {str(ultimos[k].capability_id): puntajes[k] for k in orden}
 
 
 def revision_logica(definition):
@@ -63,17 +90,44 @@ def revision_logica(definition):
                     "y pierde lo que pidió la persona. Usa en su lugar «Pedirle algo a la IA sobre un texto»: "
                     "en values.instruccion escribe la orden completa del objetivo (qué escribir, para quién, "
                     "con qué tono y los datos del negocio que dio la persona) y conecta texto a esa salida.")
-        if (conector.key == "tarea_texto" and "instruccion" not in node.bindings
+        if (conector.key in {"tarea_texto", "componer_texto"} and "instruccion" not in node.bindings
                 and not str(node.values.get("instruccion") or "").strip()):
-            return (f"El paso «{node.id}» (Pedirle algo a la IA) no tiene instrucción: escribe en "
+            return (f"El paso «{node.id}» ({conector.definition['name']}) no tiene instrucción: escribe en "
                     "values.instruccion la orden completa del objetivo.")
+    # La fecha del calendario sale del pedido (la IA la calcula con «hoy»), no de un texto de otro
+    # paso: conectada al itinerario, el calendario no encontraba una fecha y fallaba.
+    for node in definition.nodes:
+        origen = node.bindings.get("fecha")
+        if (getattr(BY_VERSION.get(str(node.version_id)), "key", None) == "agendar_evento" and origen
+                and origen.source != "$input" and "fecha" not in origen.field.lower()):
+            return (f"El paso «{node.id}» (calendario) recibe la fecha de «{origen.source}.{origen.field}», que no "
+                    "es una fecha: calcúlala con hoy y escríbela AAAA-MM-DD en values.fecha.")
+    # Un texto conectado a «archivo» de Telegram o del correo (el itinerario de la IA) no es un archivo:
+    # va en «mensaje». Drive sí lo acepta (lo guarda como documento de Google Docs).
+    pasos = {node.id: node for node in definition.nodes}
+    for node in definition.nodes:
+        if getattr(BY_VERSION.get(str(node.version_id)), "key", None) not in {"enviar_telegram", "enviar_correo"}:
+            continue
+        origen = node.bindings.get("archivo")
+        fuente = origen and pasos.get(origen.source) and BY_VERSION.get(str(pasos[origen.source].version_id))
+        if fuente:
+            campo = fuente.definition["output_schema"].get("properties", {}).get(origen.field, {})
+            if "contentEncoding" not in campo:
+                return (f"El paso «{node.id}» recibe en archivo un texto («{origen.source}.{origen.field}»), no un "
+                        "archivo: conéctalo a mensaje y deja archivo sin conectar (solo lleva PDF, fotos u otros "
+                        "archivos).")
     # Vale para cualquier proceso (conectores o herramientas propias): si hay envíos, todo lo que se
     # calcula debe llegar a otro paso; si no, se consulta para nada y el envío sale sin esos datos.
     usados = {b.source for node in definition.nodes for b in node.bindings.values()}
     tipo = {node.id: getattr(BY_VERSION.get(str(node.version_id)), "key", None) for node in definition.nodes}
     if any(tipo[node.id] in ACCIONES for node in definition.nodes):
-        suelto = next((node.id for node in definition.nodes
-                       if tipo[node.id] not in ACCIONES and node.id not in usados), None)
+        sueltos = [node.id for node in definition.nodes if tipo[node.id] not in ACCIONES and node.id not in usados]
+        suelto = sueltos[0] if sueltos else None
+        if len(sueltos) > 1:
+            return (f"Los pasos {', '.join('«' + s + '»' for s in sueltos)} producen datos que no llegan a ningún "
+                    "paso. Para juntarlos usa «Escribir con IA usando varios datos»: la orden completa en "
+                    "values.instruccion y cada salida en su propio dato_1, dato_2… (puede ser el resumen o la lista "
+                    "de filas); después conecta su resultado a los envíos.")
         if suelto:
             ciega = next((node.id for node in definition.nodes if tipo[node.id] in ESCRIBEN
                           and not any(b.source != "$input" for b in node.bindings.values())), None)
@@ -86,7 +140,25 @@ def revision_logica(definition):
     return None
 
 
-ESCRIBEN = {"redactar_texto", "tarea_texto", "resumir_texto", "traducir_texto"}
+def destinatarios_no_escritos(definition, objective):
+    """Quita el destinatario (y toda entrada solo_persona) que no esté escrito tal cual en el pedido:
+    la IA no decide a quién le escribe la persona, solo copia la dirección que ella dio. Devuelve lo
+    quitado para avisarle."""
+    escrito, quitados = str(objective or "").lower(), []
+    for node in definition.nodes:
+        for campo in getattr(BY_VERSION.get(str(node.version_id)), "solo_persona", ()):
+            valor = node.values.get(campo)
+            if valor is None:
+                continue
+            if not isinstance(valor, str) or not valor.strip() or valor.strip().lower() not in escrito:
+                node.values.pop(campo)
+                quitados.append(str(valor))
+            else:
+                node.values[campo] = valor.strip()
+    return quitados
+
+
+ESCRIBEN = {"redactar_texto", "tarea_texto", "resumir_texto", "traducir_texto", "componer_texto"}
 ACCIONES = {"enviar_telegram", "enviar_correo", "guardar_drive", "agendar_evento"}
 
 
@@ -104,7 +176,10 @@ def arrange_definition(definition, order):
     return definition.model_copy(update={"nodes": [positioned[node.id] for node in definition.nodes]})
 
 
-async def planner_options(objective, catalog, mode='text'):
+async def planner_options(objective, catalog, mode='text', completo=False):
+    """Versiones que la IA puede usar. Sin completo: las que encontró la búsqueda y los conectores
+    relacionados con el pedido. Con completo (chat): además TODOS los conectores, para que la IA
+    elija en el paso 1 (elegir_piezas) en vez de depender de un buscador por palabras."""
     if mode == 'semantic':
         result = await search_authorized(SearchRequest(query=objective[:200], mode='semantic', kind='capabilities', limit=20), catalog)
         matches = result['capabilities']['items']
@@ -113,7 +188,10 @@ async def planner_options(objective, catalog, mode='text'):
         matches, truncated = await search_catalog(search_terms(objective), catalog)
     truncated = truncated or len(matches) > 20
     matches = matches[:20]
-    allowed = {row["id"] for row in matches} | conectores_relacionados(objective)
+    relevancia = conectores_relacionados(objective)
+    allowed = {row["id"] for row in matches} | set(relevancia)
+    if completo:
+        allowed |= {str(connector.capability_id) for connector in BY_VERSION.values()}
     shared = SharedExecutionRepository(catalog)
     options, cursor = [], None
     conectores = {}  # capability_id → (orden, opción) de la versión más nueva
@@ -122,21 +200,26 @@ async def planner_options(objective, catalog, mode='text'):
         for version in page["items"]:
             if version["status"] != "enabled" or version["capability_id"] not in allowed:
                 continue
+            # De un conector solo se ofrece su versión más nueva (las viejas siguen sirviendo a las
+            # soluciones guardadas, pero a la IA la confundirían como duplicados). Su visibilidad se
+            # comprueba después, en una sola consulta para todos: una por conector eran ~60 viajes.
+            if version.get('contract_only') and version.get('profile') == CONNECTOR_PROFILE:
+                option = {key: version[key] for key in ('id', 'capability_id', 'name', 'description')}
+                option.update(publication_id=version.get('publication_id'), license=version.get('license'),
+                              profile=version.get('profile'))
+                option.update(version['contracts'], visibility='public')
+                registrado = BY_VERSION.get(str(version['id']))
+                orden = (registrado.version if registrado else 0, str(version.get('created_at')))
+                previa = conectores.get(version['capability_id'])
+                if previa is None or orden > previa[0]:
+                    conectores[version['capability_id']] = (orden, option)
+                continue
             capability = await catalog.get(UUID(version["capability_id"]))
             if version.get('contract_only'):
                 option = {key: version[key] for key in ('id', 'capability_id', 'name', 'description')}
                 option.update(publication_id=version.get('publication_id'), license=version.get('license'),
                               profile=version.get('profile'))
                 option.update(version['contracts'], visibility=capability['visibility'])
-                # De un conector solo se ofrece su versión más nueva (las viejas siguen sirviendo a
-                # las soluciones guardadas, pero a la IA la confundirían como duplicados).
-                if version.get('profile') == CONNECTOR_PROFILE:
-                    registrado = BY_VERSION.get(str(version['id']))
-                    orden = (registrado.version if registrado else 0, str(version.get('created_at')))
-                    previa = conectores.get(version['capability_id'])
-                    if previa is None or orden > previa[0]:
-                        conectores[version['capability_id']] = (orden, option)
-                    continue
                 options.append(option | {'review_hash': review_hash(option)})
                 continue
             row = await CandidateRepository(catalog).get(UUID(version["candidate_id"]))
@@ -157,17 +240,118 @@ async def planner_options(objective, catalog, mode='text'):
         cursor = page["next_cursor"]
         if not cursor:
             break
-    # Primero los conectores: el chat envía a la IA solo las primeras opciones.
-    options[:0] = [option | {'review_hash': review_hash(option)} for _, option in conectores.values()]
-    bounded_json(options, 131072)
+    if conectores:
+        # visible_to también para los conectores (son públicos), en una sola consulta.
+        visibles = await catalog.visible_ids(conectores)
+        conectores = {cid: valor for cid, valor in conectores.items() if str(cid) in visibles}
+    # Primero los conectores, del más al menos relevante: sin auto, el chat envía solo las primeras.
+    ordenados = sorted(conectores.items(), key=lambda par: -relevancia.get(par[0], 0))
+    options[:0] = [option | {'review_hash': review_hash(option)} for _, (_, option) in ordenados]
+    bounded_json(options, 262144 if completo else 131072)
     return {"items": options, "next_cursor": None, "search_kind": mode,
             "search_truncated": bool(cursor) or truncated}
+
+
+def _campos(schema):
+    return list((schema or {}).get("properties", {}))[:8]
+
+
+async def elegir_piezas(objective, options, provider):
+    """Paso 1: la IA ve el catálogo completo en versión corta (nombre, qué hace, qué recibe y qué
+    entrega) y elige qué piezas sirven y cuántas veces. Devuelve (opciones elegidas con sus usos,
+    usos por id, lo que falta). Si la selección falla, se sigue con las primeras 12 (respaldo)."""
+    respaldo = options[:12], {}, ""
+    if len(options) <= 1 or not hasattr(provider, "select"):
+        return respaldo
+    corto = [{"id": row["id"], "nombre": row.get("name", ""), "hace": str(row.get("description") or "")[:240],
+              "recibe": _campos(row.get("input_schema")), "entrega": _campos(row.get("output_schema")),
+              "tipo": "conector" if row.get("profile") == CONNECTOR_PROFILE else "herramienta"} for row in options]
+    try:
+        eleccion = await provider.select(objective, corto)
+    except HTTPException as exc:
+        # Sin cuota o con la clave/modelo mal configurados, el plan tampoco podría hacerse: se informa.
+        # Si Gemini solo estaba ocupado o respondió mal, se sigue con el respaldo y el plan lo intenta.
+        if exc.status_code == 429 or any(motivo in str(exc.detail) for motivo in ("cuota", "configuración", "GEMINI_API_KEY")):
+            raise
+        return respaldo
+    por_id = {row["id"]: row for row in options}
+    usos, para_que = {}, {}
+    for pieza in eleccion.get("piezas") or []:
+        if not isinstance(pieza, dict) or pieza.get("id") not in por_id:
+            continue
+        identidad, cantidad = pieza["id"], pieza.get("usos")
+        if not isinstance(cantidad, int) or isinstance(cantidad, bool):
+            cantidad = 1
+        usos[identidad] = max(1, min(12, usos.get(identidad, 0) + cantidad))
+        para_que[identidad] = str(pieza.get("para_que") or "")[:300]
+    falta = str(eleccion.get("falta") or "").strip()[:1000]
+    if not usos:
+        # Sin piezas (un pedido que no es una tarea, como «intenta de nuevo», o algo que no se
+        # entendió): decide el paso 2 con el respaldo, que puede preguntar (clarify) o proponer crear.
+        return respaldo
+    agregar_componer(usos, para_que, por_id)
+    elegidas = [por_id[identidad] | {"usos": usos[identidad], "para_que": para_que[identidad]}
+                for identidad in list(usos)[:12]]
+    return elegidas, {row["id"]: row["usos"] for row in elegidas}, falta
+
+
+def agregar_componer(usos, para_que, por_id):
+    """Regla por estructura (no por palabras): si la IA eligió escribir con IA y hay dos o más piezas
+    que consultan datos, «Pedirle algo» o «Redactar» solo reciben UN dato y el resto se perdería
+    (pasó con el itinerario de viaje: clima + atardecer + aire + festivos + dólar + lugares). Se
+    agrega «Escribir con IA usando varios datos» para que el paso 2 pueda juntarlos."""
+    clave = lambda identidad: getattr(BY_VERSION.get(identidad), "key", None)
+    elegidas = [clave(identidad) for identidad in usos]
+    if "componer_texto" in elegidas or not set(elegidas) & ESCRIBEN:
+        return
+    datos = sum(usos[identidad] for identidad in usos
+                if identidad in BY_VERSION and clave(identidad) not in ESCRIBEN | ACCIONES
+                and not BY_VERSION[identidad].sends_content)
+    componer = next((identidad for identidad in por_id if clave(identidad) == "componer_texto"), None)
+    if datos < 2 or not componer:
+        return
+    # Reemplaza (no suma) al «Pedirle algo» o «Redactar» de un solo uso: el plan tiene máximo 12 pasos
+    # y con el viaje la IA ya había elegido 12; uno más hacía inválido el plan.
+    sobra = next((identidad for identidad in usos if clave(identidad) in {"tarea_texto", "redactar_texto"}
+                  and usos[identidad] == 1), None)
+    if sobra:
+        usos.pop(sobra)
+        para_que.pop(sobra, None)
+    usos[componer] = 1
+    para_que[componer] = "Juntar en un solo texto los datos de los otros pasos"
+
+
+def errores_del_plan(error):
+    """Los errores de esquema del plan en frases cortas para devolvérselos a la IA."""
+    frases = []
+    for detalle in error.errors()[:6]:
+        lugar = ".".join(str(parte) for parte in detalle.get("loc", ()))
+        frases.append(f"{lugar}: {detalle.get('msg', '')}")
+    texto = "; ".join(frases)
+    if "nodes" in texto and "at most 12" in texto:
+        texto += (". Máximo 12 pasos: quita consultas redundantes (por ejemplo, si ya conviertes el monto no hace "
+                  "falta otro paso de TRM) o junta los textos en un solo paso de IA.")
+    return texto[:1500]
+
+
+def usos_incompletos(definition, usos, options):
+    """Piezas que el paso 1 eligió N veces y el plan usa menos: el error para que la IA lo corrija."""
+    conteo = {}
+    for node in definition.nodes:
+        conteo[str(node.version_id)] = conteo.get(str(node.version_id), 0) + 1
+    nombres = {row["id"]: row.get("name", "una pieza") for row in options}
+    faltan = [f"«{nombres.get(identidad, identidad)}» debía usarse {cantidad} veces y aparece {conteo.get(identidad, 0)}"
+              for identidad, cantidad in usos.items() if conteo.get(identidad, 0) < cantidad]
+    if not faltan:
+        return None
+    return ("El plan no cubre todo el pedido: " + "; ".join(faltan) + ". Agrega los pasos que faltan, cada uno "
+            "con su propio id y conectado a lo que le corresponde (por ejemplo, cada traducción a su correo).")
 
 
 async def propose_plan(request, catalog, provider, limits=limiter):
     if not request.consent_to_provider:
         raise HTTPException(422, "Autoriza enviar el objetivo y los nombres, descripciones y contratos seleccionados a Gemini")
-    available = await planner_options(request.objective, catalog, mode=request.mode)
+    available = await planner_options(request.objective, catalog, mode=request.mode, completo=request.auto)
     selected = set(map(str, request.version_ids))
     options = [row for row in available["items"] if row["id"] in selected]
     if len(options) != len(selected):
@@ -176,24 +360,40 @@ async def propose_plan(request, catalog, provider, limits=limiter):
     if any(reviewed[row["id"]] != review_hash(row) for row in options):
         raise HTTPException(409, "Los contratos o metadatos seleccionados cambiaron; vuelve a buscar y revisa antes de autorizar")
     options = [{key: value for key, value in row.items() if key != "review_hash"} for row in options]
-    bounded_json({"objective": request.objective, "versions": options}, 65536)
-    validation, feedback = None, None
+    validation, feedback, usos = None, None, {}
     # Gemini a veces conecta mal los puertos: se le devuelve el error exacto y se reintenta una
     # vez, dentro del mismo turno del limitador (un pedido de la persona = un intento).
     limits.start(catalog.user_id)
     try:
+        if request.auto:
+            # Paso 1: la IA elige entre TODO lo disponible qué piezas sirven y cuántas veces.
+            options, usos, _ = await elegir_piezas(request.objective, options, provider)
+            selected = {row["id"] for row in options}
+        bounded_json({"objective": request.objective, "versions": options}, 65536)
         for attempt in range(3):
             try:
                 raw = await (provider.plan(request.objective, options, feedback=feedback) if feedback
                              else provider.plan(request.objective, options))
                 proposal = PlannerProposal.model_validate(raw)
-            except ValidationError:
+            except ValidationError as error:
+                # Antes se cortaba aquí sin reintentar (un plan de 13 pasos terminaba en la fábrica).
+                if attempt < 2:
+                    feedback = "El plan no cumple el formato: " + errores_del_plan(error)
+                    continue
                 raise HTTPException(502, "La IA devolvió un plan inválido; no se guardó ni ejecutó") from None
             if not proposal.definition:
                 break
-            if any(str(node.version_id) not in selected for node in proposal.definition.nodes):
+            ajenas = {str(node.version_id) for node in proposal.definition.nodes} - selected
+            if ajenas:
+                if attempt < 2:
+                    feedback = ("Usaste version_id que no están en versions: " + ", ".join(sorted(ajenas))[:400]
+                                + ". Usa solo los id de versions.")
+                    continue
                 raise HTTPException(502, "La propuesta incluye una versión no seleccionada; no se guardó")
-            logica = revision_logica(proposal.definition)
+            if destinatarios_no_escritos(proposal.definition, request.objective):
+                aviso = "No vi esa dirección de correo escrita en tu pedido, así que el correo te llega a ti. "
+                proposal.explanation = (aviso + proposal.explanation)[:1200]
+            logica = revision_logica(proposal.definition) or usos_incompletos(proposal.definition, usos, options)
             if logica and attempt < 2:
                 feedback = logica
                 continue

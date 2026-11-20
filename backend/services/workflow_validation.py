@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from fastapi import HTTPException
 from jsonschema import Draft202012Validator
 
-from connectors import PROFILE as CONNECTOR_PROFILE, from_manifest
+from connectors import BY_VERSION, PROFILE as CONNECTOR_PROFILE, from_manifest
 from schemas.workflows import WorkflowDefinition
 from services.build_validation import validate_manifest
 from services.contract_validation import DATA_BYTES, validate_schema
@@ -18,8 +18,8 @@ def compatible(source, target):
         return True
     if source is False or target is False or source is True:
         return False
-    if not target:
-        return True
+    if not target or set(target) <= {"title", "description"}:
+        return True  # sin reglas (solo título o descripción): acepta cualquier valor
     source_type, target_type = source.get("type"), target.get("type")
     if source_type != target_type and not (source_type == "integer" and target_type == "number"):
         return False
@@ -80,13 +80,18 @@ def compile_workflow(raw, versions, inputs=None):
     nodes = {node.id: node for node in definition.nodes}
     if len(nodes) != len(definition.nodes):
         raise HTTPException(422, "Cada paso necesita un identificador distinto")
-    manifests, dependencies = {}, {}
+    manifests, dependencies, solo_persona = {}, {}, {}
     for node in definition.nodes:
         version = versions.get(str(node.version_id))
         if not version:
             raise HTTPException(404, "Versión no encontrada")
         if version["status"] != "enabled":
             raise HTTPException(409, "Una versión del proceso está deshabilitada")
+        # Por el id fijo del conector revisado: vale igual si la versión llega con su manifiesto o
+        # solo con sus contratos (publicación).
+        registrado = BY_VERSION.get(str(node.version_id))
+        if registrado is not None:
+            solo_persona[node.id] = set(registrado.solo_persona)
         if version.get('profile') == CONNECTOR_PROFILE and not version.get('contract_only'):
             # En el trabajador llega el manifiesto guardado: debe ser el del registro revisado.
             connector = from_manifest(version.get('manifest'), version.get('artifact_hash'))
@@ -148,6 +153,11 @@ def compile_workflow(raw, versions, inputs=None):
         if not node.bindings and not Draft202012Validator(schema).is_valid(node.values):
             raise HTTPException(422, "Las entradas fijas no cumplen el contrato completo")
         for field, binding in node.bindings.items():
+            # Un destinatario (u otra entrada solo de la persona) nunca sale de otro paso: una página,
+            # un Excel o la IA no pueden decidir a quién le escribe la persona.
+            if field in solo_persona.get(node.id, ()) and binding.source != "$input":
+                raise HTTPException(422, f"En el paso {node.id}, «{field}» solo puede ser un dato que escribe la "
+                                         "persona (valor fijo o dato suyo), no la salida de otro paso")
             if not compatible(port_schema(binding), schema.get("properties", {}).get(field, {})):
                 raise HTTPException(422, f"En el paso {node.id}, «{field}» no acepta lo que entrega "
                                          f"«{binding.source}.{binding.field}» (tipos incompatibles)")

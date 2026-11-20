@@ -109,6 +109,21 @@ export async function estadoHerramientas() {
   return estados;
 }
 
+/**
+ * Mapas de versiones ejecutables: capacidadDe (versión → herramienta) y versionDe (herramienta →
+ * su primera versión probada). Mi biblioteca los usa para no repetir una herramienta simple como
+ * «solución de 1 paso» y para saber qué versión publicar al compartir.
+ */
+export async function mapaVersiones() {
+  const capacidadDe = new Map(), versionDe = new Map();
+  await recorrer('/workflows/available-versions', (item) => {
+    capacidadDe.set(item.id, item.capability_id);
+    if (!versionDe.has(item.capability_id)) versionDe.set(item.capability_id, item.id);
+    return false;
+  });
+  return { capacidadDe, versionDe };
+}
+
 /** Nombres para la lista de resultados: { versión → herramienta, solución → nombre }. */
 export async function nombresDeResultados() {
   const nombres = new Map();

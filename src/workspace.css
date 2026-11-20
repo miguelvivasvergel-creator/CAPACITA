@@ -210,6 +210,17 @@
 .taller-burbuja-tu { border-radius:18px 18px 6px 18px; background:var(--grad-boton); color:#fff; line-height:1.6; box-shadow:0 8px 18px -8px #2563eb73; }
 .taller-tarjeta { position:relative; width:100%; padding:16px; border:1px solid #e3eaf7; border-radius:20px; background:#fff; box-shadow:0 10px 28px -18px #1e3a8a40; overflow-wrap:anywhere; }
 .taller-tarjeta::before { content:''; position:absolute; top:18px; left:-1px; width:3px; height:20px; border-radius:0 3px 3px 0; background:var(--grad-marca); }
+/* Mensajes con formato: títulos, listas y tablas dentro de la burbuja; avisos y tarjetas del chat. */
+.taller-burbuja h4, .taller-burbuja h5 { color:#0f172a; }
+.taller-burbuja h4:first-child, .taller-burbuja h5:first-child { padding-top:0; }
+.taller-burbuja li::marker { color:#3b82f6; }
+.taller-aviso { max-width:90%; padding:12px 16px; border-radius:18px 18px 18px 6px; font-size:.875rem; line-height:1.55; overflow-wrap:anywhere; }
+.taller-aviso--error { border:1px solid #fecaca; background:#fef2f2; color:#991b1b; }
+.taller-aviso--pausa { border:1px solid #fde68a; background:#fffbeb; color:#78350f; }
+.taller-numero { display:inline-flex; flex-shrink:0; align-items:center; justify-content:center; width:22px; height:22px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:.75rem; font-weight:700; }
+.taller-icono-redondo { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:10px; background:#eff6ff; color:#1d4ed8; }
+.taller-investigacion { position:relative; }
+.taller-investigacion.is-recortada { max-height:13rem; overflow:hidden; -webkit-mask-image:linear-gradient(#000 70%, transparent); mask-image:linear-gradient(#000 70%, transparent); }
 .taller-chat .bg-blue-700 { background-image:var(--grad-boton); box-shadow:0 6px 14px -6px #2563eb80; transition:box-shadow .2s,transform .15s; }
 .taller-chat button.bg-blue-700:hover:not(:disabled) { box-shadow:0 10px 20px -6px #2563eb8c; }
 .taller-chat button:active:not(:disabled) { transform:scale(.99); }
@@ -371,4 +382,62 @@
 @media (prefers-reduced-motion:reduce) {
   .vista-encabezado-nodos path,.vista-encabezado-nodos circle { animation:none; }
   .workspace-main :where(button,a).bg-white:where(.border):hover:not(:disabled),.guiado-item:hover .guiado-item-flecha { transform:none; }
+}
+
+/* ===== Mi biblioteca: herramientas simples, combinadas y asistentes en un solo lugar ===== */
+.mini-cadena { width:30px; height:30px; }
+.guiado-item-icono .mini-cadena { width:34px; height:34px; }
+.guiado-item-icono:has(.mini-cadena)::after { display:none; }
+.biblioteca-barra { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+.biblioteca-filtros { display:flex; flex-wrap:wrap; gap:6px; padding:4px; border:1px solid #e2e9f5; border-radius:16px; background:#ffffffc7; }
+.biblioteca-filtros button { display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:6px 14px 6px 8px; border-radius:12px; font-size:13px; font-weight:600; color:#64748b; transition:color .2s,background .2s,box-shadow .2s; }
+.biblioteca-filtros button .mini-cadena { width:24px; height:24px; }
+.biblioteca-filtros button svg:not(.mini-cadena) { margin-left:4px; }
+.biblioteca-filtros button:hover { color:#2563eb; }
+.biblioteca-filtros button[aria-pressed=true] { color:#1d4ed8; background:#fff; box-shadow:0 2px 8px #182b4d14,0 0 0 1px #dbeafe; }
+.biblioteca-seccion { display:grid; gap:12px; }
+.biblioteca-seccion > h2 { display:flex; align-items:center; gap:12px; }
+.biblioteca-seccion-icono { display:grid; width:40px; height:40px; flex-shrink:0; place-items:center; border:1px solid #dbeafe; border-radius:13px; background:linear-gradient(135deg,#eff6ff,#ecfeff); }
+.biblioteca-seccion > h2 strong { display:block; font-family:var(--fuente-titulos); font-size:17px; font-weight:800; letter-spacing:-.3px; color:#0f172a; }
+.biblioteca-seccion > h2 strong + span { display:block; margin-top:2px; font-size:12px; font-weight:500; color:#64748b; }
+@media (max-width:767px) {
+  .nav-enlaces { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); }
+  .biblioteca-barra { align-items:stretch; }
+  .biblioteca-filtros { width:100%; }
+  .biblioteca-filtros button { flex:1; justify-content:center; padding:6px 8px; font-size:12px; }
+  .biblioteca-barra .vista-boton-primario { width:100%; }
+}
+
+/* ===== Compartir con la comunidad y página Comunidad ===== */
+.compartir-boton { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:8px 14px; border:1px solid #dbeafe; border-radius:999px; background:#fffffff2; font-size:13px; font-weight:600; color:#1d4ed8; box-shadow:0 1px 3px #2563eb14; transition:transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s,border-color .2s; }
+.compartir-boton:hover:not(:disabled) { transform:translateY(-1px); border-color:#93c5fd; box-shadow:0 10px 20px -8px #2563eb2e; }
+.compartir-boton:disabled { opacity:.6; }
+.compartir-panel { display:grid; gap:12px; margin-top:8px; padding:16px; border:1px solid #dbeafe; border-radius:20px; background:radial-gradient(ellipse at 0% 0%,#eef4ff,transparent 60%),#fff; box-shadow:0 10px 28px -18px #1e3a8a40; }
+.compartir-titulo { display:flex; align-items:center; gap:8px; font-family:var(--fuente-titulos); font-size:15px; font-weight:800; color:#0f172a; }
+.compartir-titulo svg { color:#2563eb; }
+.compartir-recorrido { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; }
+.compartir-recorrido li { position:relative; display:flex; min-width:0; flex-direction:column; align-items:center; gap:4px; text-align:center; }
+.compartir-recorrido li:not(:last-child)::after { content:''; position:absolute; top:14px; left:calc(50% + 18px); right:calc(-50% + 18px); border-top:2px dashed #c7d5f0; }
+.compartir-recorrido li.is-activo:not(:last-child)::after { border-top-style:solid; border-color:#93c5fd; }
+.compartir-nodo { position:relative; z-index:1; display:grid; width:28px; height:28px; place-items:center; border:2px solid #cfdbf2; border-radius:50%; background:#fff; color:#94a3b8; }
+.compartir-recorrido li.is-activo .compartir-nodo { border-color:#3b82f6; color:#2563eb; box-shadow:0 0 0 4px #dbeafe; }
+.compartir-recorrido strong { font-size:12px; font-weight:700; color:#0f172a; }
+.compartir-recorrido li > span:last-child { font-size:11px; line-height:1.4; color:#64748b; }
+.compartir-ficha { padding:14px; border:1.5px dashed #c7d5f0; border-radius:16px; background:#ffffffd9; }
+.compartir-ficha-etiqueta { margin-bottom:10px; font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:#2563eb; }
+.compartir-ficha-icono { display:grid; width:40px; height:40px; flex-shrink:0; place-items:center; border:1px solid #dbeafe; border-radius:12px; background:linear-gradient(135deg,#eff6ff,#ecfeff); }
+.compartir-privado { display:grid; gap:6px; padding:10px 12px; border-radius:14px; background:#f8fafc; }
+.compartir-privado li { display:flex; align-items:center; gap:8px; font-size:12px; color:#475569; }
+.compartir-privado svg { flex-shrink:0; color:#8b5cf6; }
+.comunidad-como { display:grid; gap:12px; margin-top:4px; padding:18px; border:1px solid #e3eaf7; border-radius:22px; background:radial-gradient(ellipse at 100% 0%,#ecfeffcc,transparent 55%),#ffffffeb; box-shadow:0 10px 30px -20px #1e3a8a40; }
+.comunidad-como-pie { text-align:center; font-size:12px; color:#64748b; }
+.comunidad-como-pie button { font-weight:700; color:#2563eb; text-decoration:underline; }
+.comunidad-icono { display:grid; width:40px; height:40px; place-items:center; border:1px solid #dbeafe; border-radius:12px; background:linear-gradient(135deg,#eff6ff,#ecfeff); }
+.comunidad-origen { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; background:#f1f5f9; font-size:11px; font-weight:600; color:#475569; }
+.comunidad-origen::before { content:''; width:7px; height:7px; border-radius:50%; background:#06b6d4; box-shadow:0 0 0 3px #cffafe; }
+.comunidad-origen.is-oficial { background:#eef2ff; color:#4338ca; }
+.comunidad-origen.is-oficial::before { background:#6366f1; box-shadow:0 0 0 3px #e0e7ff; }
+@media (max-width:767px) {
+  .compartir-recorrido li > span:last-child { display:none; }
+  .comunidad-como { padding:14px; }
 }

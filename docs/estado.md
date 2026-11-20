@@ -4,6 +4,118 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 20/11/2026: juntar varios datos en una sola IA y chat más legible (sin commit)
+
+- **Causa del fallo del itinerario Valledupar → Cartagena:** cada entrada de un paso recibe UNA sola
+  salida; para juntar clima + atardecer + aire + festivos + dólar + farmacias + cajeros no había pieza
+  y la IA respondió que faltaba una versión, luego la fábrica bloqueó por «conectores externos».
+- **Pieza nueva `componer_texto@1`** («Escribir con IA usando varios datos», `connectors/ia.py`):
+  `instruccion` + `dato_1…dato_8` sin tipo (texto, lista o tabla de cualquier paso; listas como JSON
+  legible, vacíos no se envían). `compatible()` acepta cualquier salida en un campo que solo tiene
+  título/descripción. `db/15` regenerado (59 conectores).
+- **Planner, por estructura y no por palabras:** si el paso 1 elige escribir con IA y hay 2+ consultas
+  de datos, se agrega `componer_texto` (`agregar_componer`); `revision_logica` pide componer cuando
+  quedan 2+ pasos sueltos y exige instrucción también en componer. Instrucciones de Gemini (select y
+  plan) explican cuándo usarla; convertir un monto usa la pieza de monedas (la IA no multiplica).
+- **Chat:** los mensajes de Capacita se muestran con formato (`TextoConFormato`) y sin identificadores
+  internos ni prefijos de contrato (`limpiarMensaje`): el «(e2c5be52-…)» que copiaba la IA. Tarjeta de
+  investigación con formato, recorte «Ver todo» y fuentes como etiquetas; avisos de error/bloqueo y
+  preguntas numeradas con estilo propio.
+- **Validación:** 280 pruebas backend OK (incluye el plan de 12 pasos del viaje validado con el
+  compilador real), lint y build OK. **Sin probar con Gemini real ni en el navegador.**
+- **Segunda prueba (mismo día):** el chat saltó directo a la fábrica («Aquí me detengo») sin explicación
+  del planner, o sea un 502. Causas corregidas: (1) `agregar_componer` sumaba un paso 13 cuando la IA ya
+  había elegido 12; ahora reemplaza al «Pedirle algo»/«Redactar» de un uso; (2) un plan fuera del
+  esquema (13 pasos) o con una versión no elegida cortaba sin reintento; ahora se devuelve el error a
+  la IA (`errores_del_plan`, hasta 3 intentos) y `GeminiProvider.plan` entrega el JSON para validarlo;
+  (3) en el chat un 502 del planner ya no abre la fábrica: tarjeta «No logré armar el proceso» con
+  «Reintentar» y, aparte, «Mejor crea una herramienta nueva». 282 pruebas OK, lint y build OK.
+- **Tercera prueba:** el plan ya se armó y corrió; falló «Enviar por Telegram» con «revisa el archivo»:
+  la IA conectó el itinerario (texto) a `archivo`. Arreglo: `texto_como_archivo` (Telegram y Gmail) suma
+  ese texto al mensaje y envía sin adjunto (Drive ya lo guardaba como documento); `revision_logica`
+  devuelve el error a la IA si conecta texto a `archivo` de Telegram/correo; instrucción del plan
+  aclarada. Sin cambios de contrato: no hace falta volver a correr db/15 por esto. 283 pruebas OK.
+- **Cuarta prueba:** pasó Telegram; falló «Agendar en Google Calendar» con «revisa la fecha» (exigía
+  AAAA-MM-DD exacto y la IA no sabía qué día es hoy). Arreglo: `connectors/fechas.py` (`leer_fecha`:
+  ISO, DD/MM/AAAA, «27 de noviembre», día de la semana, mañana/hoy; `leer_hora`: «5:30 p. m.», «17h»),
+  usado por el calendario; `GeminiProvider.plan` envía `hoy` (fecha de Colombia) y pide escribir la
+  fecha calculada en values; `revision_logica` rechaza la fecha conectada a un texto de otro paso. Sin
+  cambio de contrato (no requiere db/15). 285 pruebas OK, lint y build OK.
+- **Pendiente:** volver a correr `db/15_conectores_iniciales.sql` en Supabase (agrega `componer_texto@1`),
+  reiniciar backend y trabajador, y repetir el prompt del viaje. La carta multilingüe que la primera vez
+  salió sin envíos no se reprodujo; si se repite, guardar el texto de la respuesta para diagnosticarla.
+
+### Fahida — 20/11/2026: formato según el contenido y correo a la dirección que escribe la persona (sin commit)
+
+- **Formato** (`backend/connectors/formato.py`): la IA ya puede estructurar con un formato mínimo
+  (`## `, `**`, `- `, `1. `, `> `, tablas). Se interpreta escapando todo (nunca pasa HTML ni enlaces
+  del contenido). El estilo depende del contenido: académico (serifa, sin colores), formal,
+  promocional (cálido, tarjetas por sección) o general (identidad Capacita). Se aplica al correo,
+  a Telegram (negrita, cita, troceo por líneas para no romper etiquetas), a Drive (el texto se sube
+  como HTML y Docs lo convierte con títulos y tablas) y al calendario (texto sin marcas). En la app,
+  `TextoConFormato.jsx` lo muestra con elementos de React (nunca HTML).
+- **Correo a otra persona:** `enviar_correo@2` («Enviar por correo») con entrada opcional `para` y
+  parámetro `estilo`. Reglas: `para` es `solo_persona` (`workflow_validation` rechaza que salga de
+  otro paso); el planner la quita si no está escrita tal cual en el pedido; una sola dirección
+  válida; la tarjeta muestra el destinatario en el «Acepto». Al cliente le llega sin la cabecera de
+  Capacita, con pie «Enviado por <correo> con Capacita». La v1 sigue solo a la propia persona.
+- **La IA elige las piezas (dos pasos), sin parches por palabras:** antes un buscador por palabras
+  pasaba solo 9–12 piezas y la IA no veía las demás («Redactar» quedó fuera en la carta traducida y
+  propuso fabricar una herramienta). Ahora, en el chat (`auto`): paso 1 `GeminiProvider.select` ve
+  el catálogo COMPLETO en versión corta (nombre, qué hace, qué recibe y entrega; ~17 KB) y devuelve
+  piezas + cuántas veces + qué falta; paso 2 arma el plan solo con esas (≤12), con `usos`/`para_que`.
+  `usos_incompletos` devuelve el error a la IA si un plan usa una pieza menos veces de lo elegido.
+  Si el paso 1 falla o Gemini está ocupado, respaldo: las primeras 12 por relevancia; sin cuota o con
+  mala configuración se informa. Sin piezas elegidas decide el paso 2 (clarify/create). `planner_options(completo=True)` trae todos los
+  conectores con una sola consulta de visibilidad. Modo desarrollador sin cambios (elige a mano, ≤12).
+  Se quitó el parche por palabras (carta/idiomas/@). Cuesta una llamada corta más a Gemini por plan.
+  En el chat, un error de Gemini trae el botón «Reintentar el mismo pedido» (escribir «intenta de
+  nuevo» se tomaba como un pedido nuevo y la IA respondía que no había tarea).
+- **Validación:** 275 pruebas backend OK (formato, destinatario y selección en dos pasos), lint y build OK.
+  **Sin probar con Gemini real.**
+  Correos de muestra revisados en el navegador. **Sin probar con Gmail real.**
+- **Pendiente:** volver a correr `db/15_conectores_iniciales.sql` en Supabase (agrega `enviar_correo@2`),
+  reiniciar backend y trabajador, y probar: plan de Sabor Vallenato a tu correo y un pedido con
+  «envíaselo a <correo>».
+
+### Fahida — 20/11/2026: el correo quedaba fuera del plan, saludo y envíos a terceros (sin commit)
+
+Prueba de Fahida con el prompt del restaurante (clima → IA → Telegram + correo + Drive) terminó en
+«no hay ningún conector de acción para enviar correos» y luego en la fábrica bloqueada. Causa: con
+la biblioteca de APIs, `conectores_relacionados` tocaba 24 conectores por palabras comunes («para»,
+«texto», «datos»…) en un orden cualquiera y el chat manda a la IA solo las 12 primeras: «Enviarme por
+correo» quedó fuera. Arreglo: puntaje por relevancia (palabra en el nombre ×3, dividida por cuántos
+conectores la tienen, raíces genéricas fuera), un envío nombrado por la persona entra siempre y
+primero, tope de 9 conectores (sitio para las herramientas propias) y `planner_options` los ordena así.
+Otros tres arreglos de la misma transcripción: (1) «hola, ¿qué puedes hacer?» se responde en el chat
+con una tarjeta de presentación sin IA ni búsqueda (antes Gemini decía «soy un modelo de Google»);
+(2) `interpret` reintenta una vez si Gemini devuelve JSON que no cumple el esquema; (3) el planner,
+si piden enviar a otra persona (correo de un cliente), no copia esa dirección en ningún paso ni en la
+IA y avisa que el envío llega a la propia persona para reenviarlo.
+Verificado: 257 pruebas backend (1 nueva con el prompt real), lint y build. Falta reiniciar el
+backend y repetir el prompt en la app.
+
+### Fahida — 20/11/2026: biblioteca de APIs, Mi biblioteca y compartir (sin commit; tras 25deb61)
+
+Biblioteca de APIs abiertas (`connectors/biblioteca_*.py`, 35 conectores sin clave, mismo
+broker y patrón de conectores; entradas sin límites para encadenarse): saber (Wikipedia,
+OpenAlex, Open Library, PubMed, Europe PMC, diccionario, Datamuse, LanguageTool, MyMemory),
+mundo (USGS, NASA APOD con DEMO_KEY, ISS, lanzamientos, amanecer y aire Open-Meteo, Photon,
+Overpass, OpenSky, país y Banco Mundial vía Open-Meteo + World Bank, CoinGecko, catálogo
+datos.gov.co) y vida (Open Food Facts, openFDA, OMS GHO, TheMealDB, iTunes, MusicBrainz, Art
+Institute, Met v1.1, Openverse, Iconify, TheSportsDB, GDELT, Hacker News). Ortografía y
+traducción piden «Acepto» (envían el texto). 256 pruebas backend pasan (7 nuevas en
+test_biblioteca.py). Prueba real con ejemplos: todos responden salvo Wikipedia (exige contacto
+en User-Agent: nueva variable opcional CONECTORES_CONTACTO, vacía) y límites ocasionales de
+GDELT/Overpass. Fuera por exigir clave: Google Books, Semantic Scholar, REST Countries v5.
+db/15 regenerado (57 conectores): FALTA correrlo en Supabase para que aparezcan.
+Mi biblioteca (guiado): une herramientas y soluciones con filtros Todas/Simples/Combinadas/
+Asistentes, mini cadena de nodos por tarjeta y sin repetir herramientas guardadas como
+solución de 1 paso. Compartir desde cada herramienta probada (misma API B6) con recorrido,
+vista previa de la ficha y lo que nunca se comparte; Comunidad con «Oficial · proveedor» vs
+«De la comunidad». Lint y build pasan; falta revisión visual autenticada y publicación real
+entre dos cuentas.
+
 ### Fahida — 20/11/2026: identidad visual de nodos y flujo visible (sin commit)
 
 Solo capa visual; no cambia lógica, APIs, SQL ni backend. Estética del login en

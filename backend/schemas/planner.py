@@ -9,17 +9,25 @@ class PlannerSearch(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     objective: str = Field(min_length=10, max_length=2000)
     mode: Literal['text', 'semantic'] = 'text'
+    # Catálogo completo: todos los conectores (no solo los que comparten palabras con el pedido),
+    # para que la IA elija en el paso 1 (auto) qué piezas sirven.
+    completo: bool = False
 
 
 class PlannerRequest(PlannerSearch):
-    version_ids: list[UUID] = Field(min_length=1, max_length=12)
-    version_hashes: dict[UUID, Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]] = Field(min_length=1, max_length=12)
+    version_ids: list[UUID] = Field(min_length=1, max_length=100)
+    version_hashes: dict[UUID, Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]] = Field(min_length=1, max_length=100)
     consent_to_provider: bool = False
+    # auto: la IA elige entre todas las versiones enviadas (paso 1) y arma el plan solo con esas.
+    # Sin auto (modo desarrollador), la persona elige a mano y el límite sigue siendo 12.
+    auto: bool = False
 
     @model_validator(mode="after")
     def reviewed_selection(self):
         if len(set(self.version_ids)) != len(self.version_ids):
             raise ValueError("Selecciona cada versión una sola vez")
+        if not self.auto and len(self.version_ids) > 12:
+            raise ValueError("Selecciona hasta 12 versiones")
         if set(self.version_hashes) != set(self.version_ids):
             raise ValueError("Revisa los contratos de todas las versiones seleccionadas")
         return self

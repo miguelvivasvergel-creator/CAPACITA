@@ -1,5 +1,7 @@
 import { descargar, detectarTipo, infoTipo, tamano, urlDatos } from '../../utils/archivos';
 import Icono from './Icono';
+import TextoConFormato from './TextoConFormato';
+import { tieneFormato } from '../../utils/textoFormato';
 import { etiquetaLegible } from '../../utils/etiquetas';
 
 // Un archivo (base64) se muestra como vista previa o ficha con botón de descarga.
@@ -69,6 +71,7 @@ export default function ResultadoDatos({ value, nombre = 'resultado' }) {
   const media = detectarTipo(value);
   if (media) return <Archivo value={value} media={media} nombre={nombre} />;
   if (typeof value === 'string' && URL_WEB.test(value.trim())) return <Enlace url={value.trim()} />;
+  if (typeof value === 'string') return <TextoConFormato texto={value} />;
   if (typeof value !== 'object') return <p className="whitespace-pre-wrap break-words">{typeof value === 'boolean' ? value ? 'Sí' : 'No' : String(value)}</p>;
   if (Array.isArray(value)) {
     if (!value.length) return <p>Sin elementos.</p>;
@@ -80,6 +83,6 @@ export default function ResultadoDatos({ value, nombre = 'resultado' }) {
   // El resumen es la respuesta: va destacado y sin etiqueta; el resto, debajo, como detalle.
   return <dl className="min-w-0 space-y-3">{entradas.map(([key, item]) => /^resumen/i.test(key) && typeof item === 'string'
     ? <div key={key} className="min-w-0"><dt className="sr-only">{etiquetaLegible(key)}</dt>
-      <dd className="whitespace-pre-line break-words rounded-xl border border-slate-200 bg-white p-3 text-[15px] leading-relaxed text-slate-900 shadow-sm">{item}</dd></div>
+      <dd className="whitespace-pre-line break-words rounded-xl border border-slate-200 bg-white p-3 text-[15px] leading-relaxed text-slate-900 shadow-sm">{tieneFormato(item) ? <TextoConFormato texto={item} className="whitespace-normal" /> : item}</dd></div>
     : <div key={key} className="min-w-0"><dt className="break-words text-sm font-semibold text-slate-700">{etiquetaLegible(key)}</dt><dd className="mt-1 min-w-0"><ResultadoDatos value={item} nombre={key} /></dd></div>)}</dl>;
 }

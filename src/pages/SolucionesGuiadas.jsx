@@ -1,12 +1,26 @@
 import EncabezadoVista from '../components/common/EncabezadoVista';
 import Icono from '../components/common/Icono';
+import MiniCadena from '../components/common/MiniCadena';
+import { mapaVersiones } from '../components/taller/solucionDirecta';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import PlanGuiado from '../components/capabilities/PlanGuiado';
-import MisAsistentes from '../components/taller/MisAsistentes';
 
-export default function SolucionesGuiadas({ workflowId, onCambiarSeccion }) {
+// incrustada: sección de Mi biblioteca (sin encabezado ni botón propios). pasos: 'varios' muestra
+// las combinadas; 'uno', las de un solo paso que NO son herramientas tuyas (por ejemplo, una de la
+// comunidad que ya usaste). Las de un paso con herramienta tuya ya aparecen como «Simples».
+export default function SolucionesGuiadas({ workflowId, onCambiarSeccion, incrustada = false, pasos, propias }) {
   const [page,setPage]=useState({items:[],next_cursor:null});
+  const [capacidadDe,setCapacidadDe]=useState(null);
+  useEffect(()=>{
+    if(!pasos)return undefined;
+    let vivo=true;
+    mapaVersiones().then(mapas=>{if(vivo)setCapacidadDe(mapas.capacidadDe);}).catch(()=>{if(vivo)setCapacidadDe(new Map());});
+    return ()=>{vivo=false;};
+  },[pasos]);
+  const numero=row=>row.definition?.nodes?.length||0;
+  const deOtro=row=>propias!=null&&capacidadDe!=null&&!propias.has(capacidadDe.get(row.definition.nodes[0]?.version_id));
+  const visibles=pasos==='varios'?page.items.filter(row=>numero(row)>1):pasos==='uno'?page.items.filter(row=>numero(row)===1&&deOtro(row)):page.items;
   const [saved,setSaved]=useState(null);
   const [error,setError]=useState('');
   const [busy,setBusy]=useState(true);
@@ -22,13 +36,13 @@ export default function SolucionesGuiadas({ workflowId, onCambiarSeccion }) {
     try{const next=await api(`/workflows?limit=20&cursor=${encodeURIComponent(page.next_cursor)}`);setPage(old=>({...next,items:[...old.items,...next.items.filter(row=>!old.items.some(item=>item.id===row.id))]}));}
     catch(cause){setError(cause.message);}finally{setBusy(false);}
   }
-  return <div className="vista-contenedor guiado-pagina space-y-5"><EncabezadoVista icono="soluciones" titulo="Mis soluciones" descripcion="Soluciones privadas que puedes volver a usar con otros datos. Cada ejecución necesita tu confirmación."/>
-    {!workflowId && <MisAsistentes onCambiarSeccion={onCambiarSeccion} />}
-    <button type="button" className="vista-boton-primario" onClick={()=>onCambiarSeccion?.('inicio')}>Resolver otra necesidad</button>
-    {busy&&<p role="status">Cargando soluciones…</p>}{error&&<div role="alert" className="text-sm text-red-700"><p>{error}</p><button type="button" className="min-h-11 underline" onClick={()=>{setError('');setBusy(true);setRevision(old=>old+1);}}>Volver a consultar</button></div>}
+  return <div className={incrustada ? 'space-y-4' : 'vista-contenedor guiado-pagina space-y-5'}>
+    {!incrustada && <><EncabezadoVista icono="soluciones" etiqueta="Mi biblioteca" titulo="Solución combinada" descripcion="Varias herramientas conectadas en un proceso privado que puedes volver a usar con otros datos. Cada ejecución necesita tu confirmación."/>
+      <button type="button" className="vista-boton-primario" onClick={()=>onCambiarSeccion?.('capacidades')}><Icono nombre="flecha" className="h-4 w-4 rotate-180"/>Volver a Mi biblioteca</button></>}
+    {busy&&pasos!=='uno'&&<p role="status">Cargando soluciones…</p>}{error&&<div role="alert" className="text-sm text-red-700"><p>{error}</p><button type="button" className="min-h-11 underline" onClick={()=>{setError('');setBusy(true);setRevision(old=>old+1);}}>Volver a consultar</button></div>}
     {saved&&<PlanGuiado key={saved.id+':'+saved.revision} definition={saved.definition} initialSaved={saved} onCambiarSeccion={onCambiarSeccion}/>}
-    {!workflowId&&!busy&&!error&&!page.items.length&&<p className="guiado-vacio">Todavía no tienes soluciones guardadas. Describe tu necesidad para preparar la primera.</p>}
-    {!workflowId&&<ul className="guiado-lista">{page.items.map(row=><li key={row.id}><button type="button" className="guiado-item" onClick={()=>onCambiarSeccion?.(`inicio/solucion/${row.id}`)}><span className="guiado-item-icono"><Icono nombre="soluciones"/></span><span className="guiado-item-copy"><strong>{row.definition.name}</strong><span >{row.definition.nodes.length} pasos · Usar en el chat</span></span><Icono nombre="flecha" className="guiado-item-flecha"/></button></li>)}</ul>}
-    {page.next_cursor&&<button type="button" disabled={busy} className="vista-boton-primario" onClick={more}>Ver más soluciones</button>}
+    {!workflowId&&!busy&&!error&&!visibles.length&&pasos!=='uno'&&<p className="guiado-vacio">Todavía no tienes soluciones combinadas. Pide en el chat algo de varios pasos (por ejemplo «el clima de mañana y mándamelo a Telegram») y guárdalo.</p>}
+    {!workflowId&&<ul className="guiado-lista">{visibles.map(row=><li key={row.id}><button type="button" className="guiado-item" onClick={()=>onCambiarSeccion?.(`inicio/solucion/${row.id}`)}><span className="guiado-item-icono"><MiniCadena pasos={row.definition.nodes.length}/></span><span className="guiado-item-copy"><strong>{row.definition.name}</strong><span>{numero(row)===1?'Simple · de la comunidad o de Capacita · Usar en el chat':`Combinada · ${numero(row)} pasos conectados · Usar en el chat`}</span></span><Icono nombre="flecha" className="guiado-item-flecha"/></button></li>)}</ul>}
+    {page.next_cursor&&pasos!=='uno'&&<button type="button" disabled={busy} className="vista-boton-primario" onClick={more}>Ver más soluciones</button>}
   </div>;
 }

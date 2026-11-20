@@ -15,6 +15,16 @@ from urllib.parse import urlsplit
 import httpx
 
 USER_AGENT = "Capacita/0.1 (conector)"
+
+
+def agente():
+    """User-Agent con el contacto público del responsable si está configurado (lo piden Wikipedia y otros)."""
+    try:
+        from core.config import settings
+        contacto = settings.CONECTORES_CONTACTO
+    except Exception:  # configuración no disponible (por ejemplo, en pruebas aisladas)
+        contacto = ""
+    return f"Capacita/0.1 (conector; {contacto})" if contacto else USER_AGENT
 TIMEOUT_SECONDS = 45  # Crossref tarda a veces más de 12 s; la IA con una foto, hasta ~40 s
 MAX_RESPONSE_BYTES = 1_048_576
 MAX_REQUEST_BYTES = 6_000_000  # una foto de ~2,8 MB en base64 más instrucciones
@@ -87,7 +97,7 @@ class SafeHttp:
         self.remaining -= 1
         self.calls += 1
         public_host(parts.hostname, self.resolver)
-        headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+        headers = {"User-Agent": agente(), "Accept": "application/json"}
         if content is not None:
             headers["Content-Type"] = content_type
         # La credencial vale para un host o para varios (Google usa gmail.googleapis.com y www.googleapis.com).

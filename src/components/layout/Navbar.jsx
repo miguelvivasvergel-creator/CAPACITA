@@ -8,7 +8,13 @@ export default function Navbar({usuario,seccionActiva='inicio',onCambiarSeccion,
   const menuRef=useRef(null);
   const nombre=usuario?.name||'Usuario';
   const iniciales=nombre.split(' ').filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase();
-  const links=[{id:'inicio',nombre:'Inicio',icono:'inicio'},{id:'capacidades',nombre:experiencia==='guiado'?'Herramientas':'Capacidades',icono:'herramientas'},{id:'workflows',nombre:experiencia==='guiado'?'Soluciones':'Workflows',icono:'soluciones'},{id:'historial',nombre:experiencia==='guiado'?'Resultados':'Mis ejecuciones',icono:'resultados'},{id:'comunidad',nombre:'Comunidad',icono:'comunidad'}];
+  const guiado=experiencia==='guiado';
+  // Modo guiado: herramientas y soluciones viven juntas en «Mi biblioteca».
+  const links=guiado
+    ?[{id:'inicio',nombre:'Chat',icono:'chat'},{id:'capacidades',nombre:'Mi biblioteca',icono:'herramientas'},{id:'historial',nombre:'Resultados',icono:'resultados'},{id:'comunidad',nombre:'Comunidad',icono:'comunidad'}]
+    :[{id:'inicio',nombre:'Inicio',icono:'inicio'},{id:'capacidades',nombre:'Capacidades',icono:'herramientas'},{id:'workflows',nombre:'Workflows',icono:'soluciones'},{id:'historial',nombre:'Mis ejecuciones',icono:'resultados'},{id:'comunidad',nombre:'Comunidad',icono:'comunidad'}];
+  const base=seccionActiva.split('/')[0];
+  const activa=guiado&&base==='workflows'?'capacidades':base;
   useEffect(()=>{
     function outside(event){if(!menuRef.current?.contains(event.target))setMenuAbierto(false);}
     function escape(event){if(event.key==='Escape'&&menuRef.current?.contains(document.activeElement)){setMenuAbierto(false);menuRef.current.querySelector('[aria-expanded]')?.focus();}}
@@ -20,7 +26,7 @@ export default function Navbar({usuario,seccionActiva='inicio',onCambiarSeccion,
     <div className="nav-marca-row"><button type="button" className="nav-marca" title="Ir a Inicio" onClick={()=>go('inicio')}><Marca/></button><button type="button" className="nav-buscar-movil" aria-label="Buscar" onClick={()=>go('buscar')}><Icono nombre="buscar"/></button></div>
     <button type="button" className="nav-nuevo" aria-label="Crear" title="Describir una necesidad nueva" onClick={()=>go(experiencia==='guiado'?'inicio':'workflows')}><Icono nombre="mas"/><span>{experiencia==='guiado'?'Nueva necesidad':'Crear'}</span><Icono nombre="flecha" className="ml-auto h-4 w-4"/></button>
     <p className="nav-grupo">ESPACIO DE TRABAJO</p>
-    <nav className="nav-enlaces" aria-label="Principal">{links.map(link=><button type="button" key={link.id} aria-current={seccionActiva.split('/')[0]===link.id?'page':undefined} onClick={()=>go(link.id)} className={`nav-enlace ${seccionActiva.split('/')[0]===link.id?'is-active':''}`}><Icono nombre={link.icono}/><span>{link.nombre}</span></button>)}</nav>
+    <nav className="nav-enlaces" aria-label="Principal">{links.map(link=><button type="button" key={link.id} aria-current={activa===link.id?'page':undefined} onClick={()=>go(link.id)} className={`nav-enlace ${activa===link.id?'is-active':''}`}><Icono nombre={link.icono}/><span>{link.nombre}</span></button>)}</nav>
     <div className="nav-explorar"><p className="nav-grupo">DESCUBRIR</p><button type="button" className={`nav-enlace ${seccionActiva==='buscar'?'is-active':''}`} onClick={()=>go('buscar')}><Icono nombre="buscar"/><span>Buscar</span></button></div>
     <div className="nav-pie"><div className="nav-cuenta" ref={menuRef}>
       <button type="button" aria-label="Menú de usuario" aria-expanded={menuAbierto} onClick={()=>setMenuAbierto(value=>!value)} className="nav-cuenta-trigger">{usuario?.avatar_url&&failedAvatar!==usuario.avatar_url?<img src={usuario.avatar_url} width="36" height="36" alt="" onError={()=>setFailedAvatar(usuario.avatar_url)}/>:<span className="nav-avatar">{iniciales}</span>}<span className="nav-cuenta-nombre"><strong>{nombre}</strong><span>Mi cuenta</span></span><Icono nombre="chevron" className="nav-cuenta-chevron h-4 w-4"/></button>

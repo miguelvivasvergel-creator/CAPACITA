@@ -43,7 +43,8 @@ class Connector:
                  input_schema: dict, parameter_schema: dict, output_schema: dict,
                  example_inputs: dict, example_parameters: dict, constraints: list[str],
                  run: Callable[[Any, dict, dict], dict], max_requests: int = 3,
-                 credential: str | None = None, sends_content: bool = False, needs: tuple = ()):
+                 credential: str | None = None, sends_content: bool = False, needs: tuple = (),
+                 solo_persona: tuple = ()):
         self.key, self.version = key, version
         self.provider, self.provider_url, self.hosts = provider, provider_url, sorted(hosts)
         self.max_requests = max_requests
@@ -54,6 +55,10 @@ class Connector:
         # needs: datos del contexto del trabajo que pone el trabajador (por ejemplo, el chat de
         # Telegram del dueño). No entra al manifiesto y nunca viene de la persona ni de otro paso.
         self.needs = tuple(needs)
+        # solo_persona: entradas que solo puede dar la persona (valor fijo del plan que ella aprueba o
+        # dato que escribe al ejecutar), nunca la salida de otro paso: por ejemplo el destinatario de
+        # un correo, que no puede salir de una página web ni de un Excel. Lo exige workflow_validation.
+        self.solo_persona = tuple(solo_persona)
         self._run = run
         self.definition = {
             "name": name, "description": description, "category": category,

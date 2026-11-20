@@ -143,7 +143,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
   }
 
   // «Me gusta»: además de quedar activa, se guarda como solución de un paso con las opciones
-  // que la persona dejó (color, estilo…). «Usar ahora» en Herramientas la encuentra y la usa
+  // que la persona dejó (color, estilo…). Al tocarla en Mi biblioteca, el chat la encuentra y la usa
   // así, y esa solución guardada es lo que marca la herramienta como aprobada («Lista»).
   async function guardar(valores) {
     setFase('activa'); estado('completed'); setError('');
