@@ -13,6 +13,7 @@ CREATE TABLE capacita_execution.workflows (
 );
 CREATE INDEX private_workflows_owner ON capacita_execution.workflows(owner_id,id);
 CREATE TABLE capacita_execution.workflow_revisions (
+  
  workflow_id uuid NOT NULL REFERENCES capacita_execution.workflows(id),
  revision integer NOT NULL, definition jsonb NOT NULL, definition_hash text NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(workflow_id,revision)

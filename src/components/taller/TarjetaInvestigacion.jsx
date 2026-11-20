@@ -1,3 +1,4 @@
+import Icono from '../common/Icono';
 /**
  * Lo que la IA investigó en Google antes de diseñar una herramienta.
  *
@@ -9,7 +10,7 @@
 export default function TarjetaInvestigacion({ investigacion, clase }) {
   const { summary, sources = [], suggestions_html: sugerencias } = investigacion;
   return <div className={clase}>
-    <p className="font-semibold">🔎 Investigué cómo se hace bien</p>
+    <p className="font-semibold"><Icono nombre="buscar" className="mr-1 inline h-4 w-4 align-[-3px]" />Investigué cómo se hace bien</p>
     <p className="mt-1 text-xs text-slate-500">Lo investigué antes de empezar y lo uso para hacerlo bien. Búsqueda en Google con lo que escribiste; tus archivos no se enviaron.</p>
     {/* Las **negritas** del texto se muestran como negrita, siempre como texto (nunca HTML). */}
     <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-800">{summary.split('**').map((trozo, index) => index % 2 ? <strong key={index}>{trozo}</strong> : trozo)}</p>

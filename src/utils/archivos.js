@@ -6,11 +6,11 @@ const WORD = 'application/vnd.openxmlformats-officedocument.wordprocessingml.doc
 const EXCEL = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 export const TIPOS = {
-  [IMAGEN_JPEG]: { nombre: 'foto', ext: 'jpg', icono: '🖼️', acepta: 'image/*' },
-  [IMAGEN_PNG]: { nombre: 'imagen', ext: 'png', icono: '🖼️', acepta: 'image/*' },
-  [PDF]: { nombre: 'PDF', ext: 'pdf', icono: '📄', acepta: '.pdf,application/pdf' },
-  [WORD]: { nombre: 'Word', ext: 'docx', icono: '📝', acepta: '.docx' },
-  [EXCEL]: { nombre: 'Excel', ext: 'xlsx', icono: '📊', acepta: '.xlsx' },
+  [IMAGEN_JPEG]: { nombre: 'foto', ext: 'jpg', icono: 'foto', acepta: 'image/*' },
+  [IMAGEN_PNG]: { nombre: 'imagen', ext: 'png', icono: 'foto', acepta: 'image/*' },
+  [PDF]: { nombre: 'PDF', ext: 'pdf', icono: 'documento', acepta: '.pdf,application/pdf' },
+  [WORD]: { nombre: 'Word', ext: 'docx', icono: 'documento', acepta: '.docx' },
+  [EXCEL]: { nombre: 'Excel', ext: 'xlsx', icono: 'tabla', acepta: '.xlsx' },
 };
 // word2: versión nueva de documento.docx (cambios descritos en backend/providers/gemini.py) para
 // probar herramientas que comparan dos versiones.
@@ -20,7 +20,7 @@ const MAX_BYTES = 2_800_000;
 const LADO_MAX = 1600;
 
 export const esArchivo = (spec) => spec?.contentEncoding === 'base64';
-export const infoTipo = (media) => TIPOS[media] || { nombre: 'archivo', ext: 'bin', icono: '📎', acepta: '' };
+export const infoTipo = (media) => TIPOS[media] || { nombre: 'archivo', ext: 'bin', icono: 'clip', acepta: '' };
 
 function aBase64(buffer) {
   const bytes = new Uint8Array(buffer); let texto = '';

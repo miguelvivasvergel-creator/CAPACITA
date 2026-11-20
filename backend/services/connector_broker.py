@@ -64,6 +64,12 @@ class SafeHttp:
             raise ConnectorFailure("invalid_request")
         return self._request("POST", url, content=contenido)
 
+    def post_bytes(self, url, contenido, tipo):
+        """Cuerpo binario con su tipo (por ejemplo multipart/related para subir a Drive)."""
+        if not isinstance(contenido, (bytes, bytearray)) or len(contenido) > MAX_REQUEST_BYTES:
+            raise ConnectorFailure("invalid_request")
+        return self._request("POST", url, content=bytes(contenido), content_type=tipo)
+
     def post_form(self, url, data, files=None):
         """Formulario multipart (por ejemplo, un documento para Telegram). files: {campo: (nombre, bytes, tipo)}."""
         tamano = sum(len(str(valor)) for valor in data.values()) + sum(len(f[1]) for f in (files or {}).values())
@@ -71,7 +77,7 @@ class SafeHttp:
             raise ConnectorFailure("invalid_request")
         return self._request("POST", url, data=data, files=files)
 
-    def _request(self, method, url, params=None, content=None, data=None, files=None):
+    def _request(self, method, url, params=None, content=None, data=None, files=None, content_type="application/json"):
         parts = urlsplit(url)
         if parts.scheme != "https" or parts.hostname not in self.hosts or parts.port not in (None, 443) \
                 or parts.username or parts.password or parts.fragment:
@@ -83,8 +89,11 @@ class SafeHttp:
         public_host(parts.hostname, self.resolver)
         headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
         if content is not None:
-            headers["Content-Type"] = "application/json"
-        if self._auth and parts.hostname == self._auth[0]:
+            headers["Content-Type"] = content_type
+        # La credencial vale para un host o para varios (Google usa gmail.googleapis.com y www.googleapis.com).
+        hosts_auth = self._auth[0] if self._auth and isinstance(self._auth[0], (tuple, list, frozenset, set)) else \
+            ((self._auth[0],) if self._auth else ())
+        if self._auth and parts.hostname in hosts_auth:
             if self._auth[1] == TOKEN_EN_RUTA:
                 # Telegram lleva el token en la ruta: el conector escribe «/bot/…» y aquí se completa.
                 base = f"https://{parts.hostname}/bot/"

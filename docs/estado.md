@@ -4,6 +4,135 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 20/11/2026: identidad visual de nodos y flujo visible (sin commit)
+
+Solo capa visual; no cambia lógica, APIs, SQL ni backend. Estética del login en
+toda la app: red de nodos tenue + manchas de luz en el layout (`AppLayout`),
+`NetworkCanvas` con densidad/opacidad, pausa con pestaña oculta y respeto a
+«reducir movimiento». Chat + taller: bienvenida con degradado, cuatro ideas en
+píldoras «dato → herramienta» (solo rellenan el texto), avatar de marca,
+burbujas/tarjetas nuevas y compositor tipo píldora. Taller: ruta de 5 nodos
+(Pides → Entiendo → Armo → Revisas → Resultado) derivada del estado del chat,
+nodos con punto de estado, conexiones punteadas/sólidas y constelación vacía con
+leyenda. Chat a pantalla completa (sin pie). Lint y build pasan. Fahida aprobó
+el chat + taller y pidió extenderlo: `EncabezadoVista` con última palabra en
+degradado, icono-nodo y cadena de nodos decorativa; CSS compartido en
+`.workspace-main` (tarjetas de vidrio, botones azules con degradado, foco de
+campos del login, estados vacíos con nodos) para vistas guiadas y desarrollador.
+Comunidad/privacidad y nuevas APIs: solo propuesta, sin código.
+
+### Fahida — 19/11/2026: segunda revisión (sin commit)
+
+- Tarjeta del plan: antes de aprobar comprueba si el plan necesita Telegram o Google y si están
+  conectados (`/telegram/status`, `/google/status`); si falta, avisa y no ejecuta nada (antes salía
+  Telegram y fallaba el correo a mitad). Si la consulta falla, decide el trabajador como antes.
+- Texto del «Acepto» de acciones: «solo a mis propias cuentas conectadas» (decía «chat» también para
+  Gmail/Drive).
+- Trabajador: el mensaje de caída incluye el tipo de error (sin detalle ni credenciales).
+- Revisados sin cambios: Telegram (escapa HTML, trozos), atajo sin IA (detecta pedidos de varias piezas),
+  aclaraciones (llegan completas al planner).
+- Memoria del PC (~0,4 GB libres) tumba Vite dev, backend, trabajador y Docker de WSL: usar `vite preview`
+  (build) y, si Docker se cuelga, `wsl --shutdown` y `iniciar-demo.ps1` (dos veces si la 1.ª da el aviso
+  de systemd). `iniciar-demo.ps1` aún abre `npm run dev` si el 5173 está libre.
+Verificado: lint y build. No verificado en el navegador.
+
+
+### Fahida — 19/11/2026: revisión general de lógica y vistas (sin commit)
+
+Pedido de Fahida: que los arreglos valgan para cualquier proceso, no solo la promoción.
+- `revision_logica` (planner_service) es general: además de Redactar/tarea, si un proceso tiene envíos
+  (Telegram, correo, Drive, calendario) todo paso que calcula algo debe llegar a otro paso; se devuelve
+  la corrección a Gemini (hasta 3 intentos). 7 pruebas nuevas en `tests/test_revision_logica.py`.
+- Errores del validador de workflows con paso y campo exactos (Gemini corrige mejor al reintentar).
+- Diseñador: pregunta por el negocio/oferta si hace falta y nunca deja [corchetes] en la salida.
+- Resultados (`ResultadoDatos`): oculta campos vacíos; los enlaces (Drive, Calendar) son botones
+  «Abrir en …» con rel=noopener.
+- Tarjeta del plan: cada paso muestra de qué paso usa datos y sus textos fijos (instrucción de la IA,
+  ciudad, asunto) para revisar la lógica antes de aprobar.
+- `test_planner_api`: fija PUBLICATIONS_ENABLED=False (antes dependía del .env local): suite 249/249.
+Verificado: suite backend completa, lint y build. No verificado en el navegador.
+
+
+### Fahida — 19/11/2026: lógica de los planes con IA (sin commit)
+
+Fahida: a Telegram llegaba solo la lluvia (sin la promoción), nunca preguntaba por el negocio y el texto
+traía campos vacíos. Causas: el planner conectaba `clima.resumen` a las indicaciones de «Redactar» (la
+IA perdía la orden); «Redactar» dejaba [corchetes]; el prompt no pedía aclarar el negocio.
+Arreglos: prompt del planner (orden completa en «Pedirle algo a la IA» + texto ← datos, ejemplo, clarify
+si falta negocio/oferta); `revision_logica` en planner_service (Redactar con datos de otro paso, tarea
+sin instrucción, datos sueltos mientras la IA escribe a ciegas) → reintento con corrección (hasta 3
+intentos); `tarea_texto` se ofrece siempre junto a redactar/resumir; IA sin [corchetes] (solo código de
+ejecución: sin cambio de hashes ni SQL). Verificado con Gemini real: sin negocio → clarify con 2
+preguntas; con negocio → clima → tarea(instrucción completa, texto ← clima.resumen) → Telegram + correo
++ Drive, validado al primer intento. 86 pruebas OK. Frontend servido con `vite preview` (build) por la
+poca memoria. No verificado en el navegador.
+
+
+### Fahida — 19/11/2026: Google conectado; «Guardar en Drive» acepta texto (sin commit)
+
+- SQL 19 aplicado (RPC de Google responden 401 a anónimos) y db/15 con los 22 conectores habilitados y
+  publicados (lo confirmó Fahida). Fahida conectó Google tras agregarse como usuaria de prueba del cliente
+  OAuth (modo prueba: la conexión vence a los 7 días).
+- Prompt «wow» (clima Valledupar → IA → Telegram + correo + Drive): Gemini real arma 5 pasos válidos. En la
+  app corrió hasta Drive y falló: el plan conecta el TEXTO de la IA al campo `archivo`. Arreglo en
+  `guardar_drive`: si no es un archivo en base64, guarda el texto como documento de Google Docs. Sin cambio
+  de contrato ni de hashes (no hace falta SQL). 43 pruebas de conectores OK; backend y trabajador reiniciados.
+- Pendiente: Fahida repite el prompt y confirma correo + Drive; commit de la fase 6 y de lo demás sin commit.
+
+
+### Fahida — 20/11/2026: pedidos de varias piezas (sin commit)
+
+Prueba de Fahida con «Cada lunes a las 7, revisa la lluvia… festivos… promoción… Telegram… calendario el
+día más lluvioso…» terminó en «falta un recurso». Causas: (1) la frecuencia hacía que planner/diseñador
+bloquearan; (2) la búsqueda usaba solo las 3 palabras más largas y no encontraba pronóstico ni Telegram;
+(3) «el día más lluvioso» exige calcular sobre la tabla del pronóstico (pieza fabricada intermedia, no
+confiable aún). Arreglos: prompts ignoran la frecuencia (se repite con «Repetir automáticamente»);
+`search_terms` usa 6 palabras; `conectores_relacionados` agrega los conectores que comparten una raíz de
+palabra con el pedido y van primero en las opciones. Verificado con Gemini real: «…pronóstico de lluvia
+en Valledupar, promoción con IA, Telegram y correo» → compose de 4 pasos validado (clima → IA → Telegram
++ correo). Backend reiniciado. No verificado en el navegador.
+
+
+### Fahida — 20/11/2026: interfaz sin emojis y formato de respuestas (sin commit, junto a la fase 6)
+
+- Cero emojis en el frontend (130 en 15 archivos): `Icono.jsx` suma 30 iconos SVG (clip, enviar, chat,
+  taller, globo, chispa, reloj, ok, error, candado, correo, calendario…); estados de los pasos
+  (`estadosNodo.js`), sellos de conectores, bitácora de la fábrica, botones y tipos de archivo usan
+  iconos; los textos de los mensajes quedan limpios.
+- Chat: se quitó la lista de sugerencias de la bienvenida (eran 10 y se veía recargado).
+- Formato: Telegram con HTML escapado (encabezado «Capacita», resumen partido por oraciones, viñetas,
+  pie); correo con plantilla HTML + texto plano (`html_correo`); en el chat el resumen del resultado
+  va destacado y sin etiqueta. Mismos contratos: no hace falta SQL.
+Verificado: 43 pruebas de conectores (HTML escapado, trozos ≤ 4.096, correo con text/html y
+text/plain), lint y build; trabajador reiniciado. No verificado en el navegador.
+
+
+### Fahida — 20/11/2026: fase 6 Google — código completo, falta SQL 19 y prueba real (sin commit)
+
+Último commit: `7c58ca7` (fase 4), etiqueta `respaldo/antes-fase-6-google`. Fahida creó el cliente
+OAuth web en Google Cloud (modo prueba, redirect http://localhost:8000/api/google/callback) y puso
+GOOGLE_CLIENT_ID/SECRET en `backend/.env`; GOOGLE_TOKEN_KEY (Fernet) generada ahí sin mostrarla.
+`cryptography==44.0.0` instalada con uv y en requirements.
+- `db/19_google.sql` (NO aplicado): google_links (token de actualización YA cifrado), google_states
+  (state + verificador PKCE, 10 min, un solo uso) y 6 RPC (persona: start/state_take/save/status/
+  unlink; trabajador: google_token_for_job del dueño del trabajo en curso). En la lista del gateway.
+- `services/google_oauth.py` y `api/google.py`: /google/connect (enlace PKCE), /google/callback (solo
+  devuelve el navegador a #configuracion/google/<código>/<state>), /google/complete (con sesión:
+  consume el state, cambia el código, guarda el token cifrado), /google/status, DELETE /google/link
+  (borra y revoca). Permisos: openid, email, gmail.send, drive.file, calendar.events.
+- Conectores de acción (`connectors/google.py`): «Enviarme por correo» (solo a la dirección
+  conectada; el asunto no puede inyectar cabeceras), «Guardar en mi Drive» (multipart/related) y
+  «Agendar en mi calendario» (hora de Colombia o día completo). El trabajador pide un token de acceso
+  al momento; el runtime se lo da solo al broker (Authorization) y lo quita del contexto.
+- Configuración → «Google» (`ConectarGoogle.jsx`); chat: errores y sugerencia «Envíame por correo…».
+- `db/15` regenerado: 22 versiones.
+Verificado: 43 pruebas de conectores (incluye Google: destinatario fijo, token nunca en el conector,
+sin Google no envía nada, Drive y Calendar), suite 240/242 (las 2 de siempre), lint y build;
+backend y trabajador reiniciados (también con la caja v2).
+Pendiente: aplicar `db/19_google.sql` y otra vez `db/15`; conectar Google en Configuración; probar
+«Envíame por correo el pronóstico de Bogotá de esta semana»; commit.
+
+
 ### Fahida — 20/11/2026: fase 4 caja de herramientas v2 — verificada
 
 - Perfil nuevo `gvisor-python-toolbox-v2` (imagen `sha256:056d17e5…89d83`, `scripts/sandbox/

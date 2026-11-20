@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Icono from '../common/Icono';
 import { api } from '../../api';
 
 const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50';
@@ -45,13 +46,13 @@ export default function CompartirHerramienta({ version }) {
   });
 
   if (!abierta) return <div className="mt-3">
-    <button type="button" disabled={ocupado} onClick={abrir} className={`${BOTON} border border-blue-300 bg-blue-50 text-blue-800`}>🌎 Compartir con la comunidad</button>
+    <button type="button" disabled={ocupado} onClick={abrir} className={`${BOTON} border border-blue-300 bg-blue-50 text-blue-800`}><Icono nombre="comunidad" className="mr-1 inline h-4 w-4 align-[-3px]" />Compartir con la comunidad</button>
     {error && <p role="alert" className="mt-2 break-words text-sm text-red-700">{error}</p>}
   </div>;
 
   return <div className="mt-3 space-y-2 rounded-xl border border-blue-200 bg-blue-50/50 p-3 text-sm">
     {publicacion ? <>
-      <p className="font-semibold text-blue-900">🌎 Compartida: otras cuentas ya pueden encontrarla y usarla con sus propios datos.</p>
+      <p className="font-semibold text-blue-900"><Icono nombre="comunidad" className="mr-1 inline h-4 w-4 align-[-3px]" />Compartida: otras cuentas ya pueden encontrarla y usarla con sus propios datos.</p>
       <p className="text-xs text-slate-600">Tu código, tus resultados y los datos de quienes la usen siguen privados.</p>
       <button type="button" disabled={ocupado} onClick={retirar} className={`${BOTON} border border-slate-300 bg-white`}>Dejar de compartir</button>
     </> : <>

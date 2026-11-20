@@ -42,6 +42,9 @@ if ($libreGB -lt 2) {
 } else { Write-Bien "Memoria libre: $libreGB GB" }
 
 Write-Paso 'Sandbox (Docker + gVisor dentro de WSL)'
+# WSL escribe avisos inofensivos en stderr al arrancar (p. ej. «Failed to start the systemd user
+# session»); con ErrorActionPreference=Stop PowerShell 5 los convertiría en error y detendría todo.
+$ErrorActionPreference = 'Continue'
 $listo = $false
 for ($intento = 1; $intento -le 3 -and -not $listo; $intento++) {
     # Arrancar WSL levanta systemd y con él el Docker del sandbox; puede tardar unos segundos.
@@ -56,11 +59,12 @@ if ($LASTEXITCODE -ne 0 -or ($runtimes -join '') -notmatch '"runsc"') {
     Stop-Demo 'Docker responde pero gVisor (runsc) no está registrado. Ver scripts/maintenance/configure_sandbox_socket_wsl.sh'
 }
 Write-Bien 'Sandbox listo (gVisor registrado)'
+$ErrorActionPreference = 'Stop'
 
 Write-Paso 'Backend (http://127.0.0.1:8000)'
 if (Test-Puerto 8000) { Write-Aviso 'El puerto 8000 ya está en uso: supongo que el backend ya corre y no abro otro.' }
 else { Start-Ventana 'backend' (Join-Path $raiz 'backend') "& '$python' main.py" }
-if (-not (Wait-Url 'http://127.0.0.1:8000/api/health' 60)) { Stop-Demo 'El backend no respondió en 60 s. Mira su ventana para ver el error.' }
+if (-not (Wait-Url 'http://127.0.0.1:8000/api/health' 150)) { Stop-Demo 'El backend no respondió en 150 s. Mira su ventana para ver el error.' }
 Write-Bien 'Backend responde'
 
 Write-Paso 'Trabajador (ejecuta las herramientas en el sandbox)'
@@ -86,13 +90,24 @@ else {
     Write-Bien 'Trabajador listo; sandbox recuperado'
 }
 
-Write-Paso 'Frontend (http://localhost:5173)'
-if (Test-Puerto 5173) { Write-Aviso 'El puerto 5173 ya está en uso: supongo que Vite ya corre.' }
-else { Start-Ventana 'frontend' $raiz 'npm run dev' }
-if (-not (Wait-Url 'http://localhost:5173' 60)) { Stop-Demo 'El frontend no respondió en 60 s. Mira su ventana para ver el error.' }
+Write-Paso 'Frontend (http://127.0.0.1:5173)'
+# Para la demo se sirve la versión compilada (vite preview): el modo desarrollo compila al vuelo y,
+# con poca memoria, se queda cargando. Se recompila solo si cambió algo de src/ desde el último build.
+if (Test-Puerto 5173) { Write-Aviso 'El puerto 5173 ya está en uso: supongo que el frontend ya corre.' }
+else {
+    $indice = Join-Path $raiz 'dist\index.html'
+    $ultimoCambio = (Get-ChildItem (Join-Path $raiz 'src') -Recurse -File | Measure-Object LastWriteTime -Maximum).Maximum
+    if (-not (Test-Path $indice) -or (Get-Item $indice).LastWriteTime -lt $ultimoCambio) {
+        Write-Aviso 'Compilando el frontend (tarda menos de un minuto)…'
+        Push-Location $raiz; & npm.cmd run build | Out-Null; $codigo = $LASTEXITCODE; Pop-Location
+        if ($codigo -ne 0) { Stop-Demo 'No se pudo compilar el frontend: ejecuta npm run build para ver el error.' }
+    }
+    Start-Ventana 'frontend' $raiz 'node node_modules\vite\bin\vite.js preview --host 127.0.0.1 --port 5173 --strictPort'
+}
+if (-not (Wait-Url 'http://127.0.0.1:5173' 60)) { Stop-Demo 'El frontend no respondió en 60 s. Mira su ventana para ver el error.' }
 Write-Bien 'Frontend responde'
 
-Start-Process 'http://localhost:5173'
+Start-Process 'http://127.0.0.1:5173'
 Write-Host "`nTodo listo. Archivo de ejemplo para la demo: $(Join-Path $raiz 'docs\demo\ventas.xlsx')" -ForegroundColor Green
 Write-Host 'Para apagar, cierra las ventanas «Capacita · backend / trabajador / frontend».'
 exit 0

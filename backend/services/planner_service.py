@@ -1,6 +1,8 @@
 """Busca en catálogo autorizado y valida propuesta con el contrato B existente."""
 import hashlib
 import json
+import re
+import unicodedata
 from uuid import UUID
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -23,6 +25,69 @@ def review_hash(option):
     content = {key: value for key, value in option.items() if key != "review_hash"}
     return hashlib.sha256(json.dumps(content, sort_keys=True, ensure_ascii=False,
                                      allow_nan=False, separators=(",", ":")).encode()).hexdigest()
+
+
+def _raices(texto):
+    plano = unicodedata.normalize("NFD", str(texto)).encode("ascii", "ignore").decode().lower()
+    return {palabra[:6] for palabra in re.findall(r"[a-z]{4,}", plano)}
+
+
+def conectores_relacionados(objective):
+    """Capacidades de los conectores que comparten alguna palabra con el pedido («lluvia» → pronóstico,
+    «Telegram», «festivos», «calendario», «redacta»…). Son pocos y la búsqueda por las palabras más
+    largas no siempre los encontraba, así que un pedido de varias piezas quedaba sin combinar."""
+    pedido = _raices(objective) - {"conect", "extern", "sirve", "para", "como", "desde", "esta", "este"}
+    elegidos = {connector.key: str(connector.capability_id) for connector in BY_VERSION.values()
+                if pedido & _raices(f"{connector.definition['name']} {connector.definition['description']}")}
+    # Si hay que escribir con IA, va también «Pedirle algo a la IA sobre un texto»: es el que recibe
+    # la orden de la persona Y los datos de otro paso (revision_logica lo exige en ese caso).
+    if elegidos.keys() & {"redactar_texto", "resumir_texto"}:
+        tarea = next(c for c in BY_VERSION.values() if c.key == "tarea_texto")
+        elegidos["tarea_texto"] = str(tarea.capability_id)
+    return set(elegidos.values())
+
+
+def revision_logica(definition):
+    """Errores de lógica que el validador de contratos no ve (los tipos encajan, el sentido no).
+
+    El caso típico: «Redactar» recibe en sus indicaciones solo la salida de otro paso (el resumen
+    del clima) y pierde lo que la persona pidió (la promoción); el texto que llega a Telegram habla
+    solo de la lluvia. Devuelve la corrección para la IA, o None si el plan tiene sentido."""
+    for node in definition.nodes:
+        conector = BY_VERSION.get(str(node.version_id))
+        if not conector:
+            continue
+        origen = node.bindings.get("indicaciones")
+        if conector.key == "redactar_texto" and origen and origen.source != "$input":
+            return (f"El paso «{node.id}» (Redactar) recibe en indicaciones solo la salida de «{origen.source}» "
+                    "y pierde lo que pidió la persona. Usa en su lugar «Pedirle algo a la IA sobre un texto»: "
+                    "en values.instruccion escribe la orden completa del objetivo (qué escribir, para quién, "
+                    "con qué tono y los datos del negocio que dio la persona) y conecta texto a esa salida.")
+        if (conector.key == "tarea_texto" and "instruccion" not in node.bindings
+                and not str(node.values.get("instruccion") or "").strip()):
+            return (f"El paso «{node.id}» (Pedirle algo a la IA) no tiene instrucción: escribe en "
+                    "values.instruccion la orden completa del objetivo.")
+    # Vale para cualquier proceso (conectores o herramientas propias): si hay envíos, todo lo que se
+    # calcula debe llegar a otro paso; si no, se consulta para nada y el envío sale sin esos datos.
+    usados = {b.source for node in definition.nodes for b in node.bindings.values()}
+    tipo = {node.id: getattr(BY_VERSION.get(str(node.version_id)), "key", None) for node in definition.nodes}
+    if any(tipo[node.id] in ACCIONES for node in definition.nodes):
+        suelto = next((node.id for node in definition.nodes
+                       if tipo[node.id] not in ACCIONES and node.id not in usados), None)
+        if suelto:
+            ciega = next((node.id for node in definition.nodes if tipo[node.id] in ESCRIBEN
+                          and not any(b.source != "$input" for b in node.bindings.values())), None)
+            if ciega:
+                return (f"El paso «{suelto}» produce datos que no llegan a ningún paso, y «{ciega}» escribe sin ellos. "
+                        "Usa «Pedirle algo a la IA sobre un texto» con la orden completa en values.instruccion y "
+                        f"conecta su texto a la salida de «{suelto}» (por ejemplo su resumen).")
+            return (f"El resultado del paso «{suelto}» no llega a ningún otro paso ni a los envíos: conéctalo "
+                    "(por ejemplo su resumen o su archivo al mensaje o archivo del envío) o quita ese paso.")
+    return None
+
+
+ESCRIBEN = {"redactar_texto", "tarea_texto", "resumir_texto", "traducir_texto"}
+ACCIONES = {"enviar_telegram", "enviar_correo", "guardar_drive", "agendar_evento"}
 
 
 def arrange_definition(definition, order):
@@ -48,7 +113,7 @@ async def planner_options(objective, catalog, mode='text'):
         matches, truncated = await search_catalog(search_terms(objective), catalog)
     truncated = truncated or len(matches) > 20
     matches = matches[:20]
-    allowed = {row["id"] for row in matches}
+    allowed = {row["id"] for row in matches} | conectores_relacionados(objective)
     shared = SharedExecutionRepository(catalog)
     options, cursor = [], None
     conectores = {}  # capability_id → (orden, opción) de la versión más nueva
@@ -92,7 +157,8 @@ async def planner_options(objective, catalog, mode='text'):
         cursor = page["next_cursor"]
         if not cursor:
             break
-    options.extend(option | {'review_hash': review_hash(option)} for _, option in conectores.values())
+    # Primero los conectores: el chat envía a la IA solo las primeras opciones.
+    options[:0] = [option | {'review_hash': review_hash(option)} for _, option in conectores.values()]
     bounded_json(options, 131072)
     return {"items": options, "next_cursor": None, "search_kind": mode,
             "search_truncated": bool(cursor) or truncated}
@@ -116,7 +182,7 @@ async def propose_plan(request, catalog, provider, limits=limiter):
     # vez, dentro del mismo turno del limitador (un pedido de la persona = un intento).
     limits.start(catalog.user_id)
     try:
-        for attempt in range(2):
+        for attempt in range(3):
             try:
                 raw = await (provider.plan(request.objective, options, feedback=feedback) if feedback
                              else provider.plan(request.objective, options))
@@ -127,12 +193,16 @@ async def propose_plan(request, catalog, provider, limits=limiter):
                 break
             if any(str(node.version_id) not in selected for node in proposal.definition.nodes):
                 raise HTTPException(502, "La propuesta incluye una versión no seleccionada; no se guardó")
+            logica = revision_logica(proposal.definition)
+            if logica and attempt < 2:
+                feedback = logica
+                continue
             try:
                 validation = await check_workflow(proposal.definition, catalog)
             except HTTPException as exc:
                 if exc.status_code in {404, 409}:
                     raise HTTPException(409, "Una versión cambió o dejó de estar disponible; vuelve a buscar") from None
-                if exc.status_code == 422 and attempt == 0:
+                if exc.status_code == 422 and attempt < 2:
                     feedback = str(exc.detail)
                     continue
                 if exc.status_code == 422:

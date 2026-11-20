@@ -1,7 +1,7 @@
 """Identidades y repositorios reales con transporte simulado; no certifica RLS remoto."""
 from types import SimpleNamespace
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from api.candidates import get_provider
 from api.planner import router
+from core.config import settings
 from core.supabase import SupabaseGateway, get_supabase_gateway
 from tests.fixtures.supabase_catalog import FAHIDA, MIGUEL, PRIVATE_ID, SupabaseFixture
 from tests.test_builds import manifest
@@ -17,6 +18,11 @@ from tests.test_builds import manifest
 
 class PlannerAPITests(unittest.TestCase):
     def setUp(self):
+        # Esta fixture simula `execution_versions`; con publicaciones activas en el .env local el
+        # planner consultaría otra RPC y las pruebas dependerían del computador.
+        patcher = patch.object(settings, 'PUBLICATIONS_ENABLED', False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.database = SupabaseFixture()
         self.candidate = manifest().model_copy(update={'capability_id': UUID(PRIVATE_ID)})
         self.version = {'id': str(uuid4()), 'status': 'enabled', 'capability_id': PRIVATE_ID,

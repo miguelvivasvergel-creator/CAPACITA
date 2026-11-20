@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Icono from '../common/Icono';
 import { api } from '../../api';
 import { comprobarDefinicion, guardarDefinicion } from '../../services/definiciones';
 import { generarCandidato, repararCandidato, revisarGeneracion } from '../../services/candidatos';
@@ -65,7 +66,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
     for (let intento = 0; ; intento++) {
       try { return await trabajo(); } catch (cause) {
         if (cause.status !== 429 || intento >= 2 || (cause.retryAfter || 0) > 15) throw cause;
-        anotar('⏳', 'Esperando turno con la IA (unos segundos)…');
+        anotar('reloj', 'Esperando turno con la IA (unos segundos)…');
         await espera(((cause.retryAfter || 5) + 1) * 1000, signal);
       }
     }
@@ -73,13 +74,13 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
 
   async function probar(candidato, signal) {
     const ejemplos = candidato.manifest.definition.examples;
-    anotar('🧪', `Probándola en el entorno aislado con ${ejemplos.length} ejemplo${ejemplos.length === 1 ? '' : 's'}…`);
+    anotar('matraz', `Probándola en el entorno aislado con ${ejemplos.length} ejemplo${ejemplos.length === 1 ? '' : 's'}…`);
     estado('probando');
     let build = await crearPrueba(candidato, await casosDesdeEjemplos(ejemplos), crypto.randomUUID());
     for (let lecturas = 1; ['queued', 'testing'].includes(build.status); lecturas++) {
       await espera(2500, signal);
       build = await api(`/builds/${encodeURIComponent(build.id)}`, { signal });
-      if (build.status === 'queued' && lecturas === 12) anotar('⏳', 'El trabajador de pruebas aún no responde. Sigo esperando; revisa que esté encendido.');
+      if (build.status === 'queued' && lecturas === 12) anotar('reloj', 'El trabajador de pruebas aún no responde. Sigo esperando; revisa que esté encendido.');
     }
     return build;
   }
@@ -90,28 +91,28 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
     setFase('trabajando'); setError(''); setResultado(null); setBitacora([]);
     try {
       if (!capacidad.current) {
-        anotar('💾', 'Guardando la idea en tus herramientas privadas…');
+        anotar('guardar', 'Guardando la idea en tus herramientas privadas…');
         capacidad.current = await guardarDefinicion(definition, true);
       }
       const revision = await revisarGeneracion(capacidad.current.id, { signal });
-      anotar('✍️', 'La IA está escribiendo el código…'); estado('escribiendo');
+      anotar('lapiz', 'La IA está escribiendo el código…'); estado('escribiendo');
       const generar = () => conTurno(() => generarCandidato(capacidad.current.id, { definition_hash: revision.definition_hash, acknowledge_similar: true, consent_to_provider: true }), signal);
       let candidato;
       try { candidato = await generar(); } catch (cause) {
         // 422/502: la IA entregó código inválido o bloqueado; se pide otra versión una sola vez.
         if (![422, 502].includes(cause.status)) throw cause;
-        anotar('🔁', 'La IA entregó un código que no sirve. Le pido otra versión…');
+        anotar('actualizar', 'La IA entregó un código que no sirve. Le pido otra versión…');
         candidato = await generar();
       }
       for (let correcciones = 0; ; correcciones++) {
         const build = await probar(candidato, signal);
         const casos = build.report?.cases || [];
         if (build.status === 'passed') {
-          anotar('✅', `Superó ${casos.length} de ${casos.length} ejemplos.`, 'ok');
+          anotar('ok', `Superó ${casos.length} de ${casos.length} ejemplos.`, 'ok');
           setResultado({ candidato, build });
           if (build.storage_backend !== 'supabase') { setFase('lista'); estado('aprobar'); return; }
           // Se activa en privado «en prueba» para mostrar el resultado con el archivo real.
-          anotar('🔓', 'La activo en prueba (solo tú la ves) para mostrarte el resultado…');
+          anotar('desbloqueo', 'La activo en prueba (solo tú la ves) para mostrarte el resultado…');
           const version = await habilitarVersion(candidato.id, build.id);
           if (automatica) {
             // Pieza intermedia: el resultado se verá al final, con la solución completa.
@@ -119,19 +120,19 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
             lista.current?.(version, false);
             return;
           }
-          anotar('👀', 'Lista para que la veas y la ajustes.', 'ok');
+          anotar('ojo', 'Lista para que la veas y la ajustes.', 'ok');
           setResultado({ candidato, build, version }); setFase('vista'); estado('aprobar');
           return;
         }
         const fallidos = casos.filter((caso) => !caso.passed).length;
         if (!pruebaReparable(build) || correcciones >= MAX_CORRECCIONES) {
-          anotar('⚠️', pruebaReparable(build)
+          anotar('alerta', pruebaReparable(build)
             ? `Después de ${MAX_CORRECCIONES} correcciones todavía falla ${fallidos} ejemplo${fallidos === 1 ? '' : 's'}.`
             : 'El entorno de pruebas no pudo completar la comprobación.', 'error');
           fallar();
           return;
         }
-        anotar('🔧', `Falló ${fallidos} ejemplo${fallidos === 1 ? '' : 's'}. La IA lo está corrigiendo (intento ${correcciones + 1} de ${MAX_CORRECCIONES})…`); estado('corrigiendo');
+        anotar('herramienta', `Falló ${fallidos} ejemplo${fallidos === 1 ? '' : 's'}. La IA lo está corrigiendo (intento ${correcciones + 1} de ${MAX_CORRECCIONES})…`); estado('corrigiendo');
         const anterior = candidato;
         candidato = await conTurno(() => repararCandidato(anterior.id, { feedback: observacionPruebas(anterior.manifest.definition, build), consent_to_provider: true }), signal);
       }
@@ -143,7 +144,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
 
   // «Me gusta»: además de quedar activa, se guarda como solución de un paso con las opciones
   // que la persona dejó (color, estilo…). «Usar ahora» en Herramientas la encuentra y la usa
-  // así, y esa solución guardada es lo que marca la herramienta como aprobada («✓ Lista»).
+  // así, y esa solución guardada es lo que marca la herramienta como aprobada («Lista»).
   async function guardar(valores) {
     setFase('activa'); estado('completed'); setError('');
     const spec = resultado.candidato.manifest.definition;
@@ -169,7 +170,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
 
   const ejemplos = definition.examples || [];
   return <div className="w-full rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
-    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">🛠️ Herramienta nueva</p>
+    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700"><Icono nombre="herramienta" className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />Herramienta nueva</p>
     <h3 className="mt-1 break-words text-lg font-bold">{definition.name}</h3>
     <p className="mt-1 break-words text-sm text-slate-600">{definition.description}</p>
     {ejemplos.length > 0 && <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
@@ -183,7 +184,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
       <button type="button" className={`${BOTON} mt-3 bg-amber-500 text-white`} onClick={fabricar}>Crear y probar</button>
     </>}
     {bitacora.length > 0 && <ol className="mt-3 space-y-1.5" aria-live="polite">{bitacora.map((item, index) => <li key={index} className={`flex gap-2 text-sm ${item.tono === 'error' ? 'text-red-700' : item.tono === 'activo' ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
-      <span aria-hidden="true">{item.icono}</span><span className="break-words">{item.texto}</span>
+      <Icono nombre={item.icono} className="mt-0.5 h-4 w-4 shrink-0" /><span className="break-words">{item.texto}</span>
     </li>)}</ol>}
     {error && <p role="alert" className="mt-3 break-words rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {fase === 'lista' && <div className="mt-3 rounded-xl bg-emerald-50 p-3">
@@ -192,12 +193,12 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
     {['vista', 'activa', 'descartada'].includes(fase) && resultado?.version && <VistaPrevia version={resultado.version} definition={resultado.candidato.manifest.definition} archivo={archivo}
       registrarAjustador={registrarAjustador} onEstado={estado} onGuardar={guardar} onDescartar={descartar}
       onMejorar={(texto, explicacion) => onMejorar?.(texto, explicacion, resultado.candidato.manifest.definition)} />}
-    {fase === 'descartada' && <p className="mt-3 text-sm text-slate-600">🗑️ Descartada: la desactivé y no aparecerá en tus soluciones.</p>}
+    {fase === 'descartada' && <p className="mt-3 text-sm text-slate-600"><Icono nombre="basura" className="mr-1 inline h-4 w-4 align-[-3px]" />Descartada: la desactivé y no aparecerá en tus soluciones.</p>}
     {fase === 'fallo' && !bloqueada && <div className="mt-3 flex flex-wrap gap-2">
       <button type="button" className={`${BOTON} bg-amber-500 text-white`} onClick={fabricar}>Intentar de nuevo</button>
       <p className="basis-full text-xs text-slate-500">También puedes describir tu necesidad de otra forma en el chat.</p>
     </div>}
-    {fase === 'activa' && <p className="mt-3 text-sm font-semibold text-emerald-700">✅ Guardada en tus herramientas privadas.</p>}
+    {fase === 'activa' && <p className="mt-3 text-sm font-semibold text-emerald-700"><Icono nombre="ok" className="mr-1 inline h-4 w-4 align-[-3px]" />Guardada en tus herramientas privadas.</p>}
     {fase === 'activa' && guardadoAviso && <p role="status" className="mt-1 text-xs text-amber-800">No pude guardar las opciones que elegiste; la primera vez que la uses saldrá con las de siempre y quedará guardada.</p>}
     {fase === 'activa' && resultado?.version && <CompartirHerramienta version={resultado.version} />}
     <div ref={final} />

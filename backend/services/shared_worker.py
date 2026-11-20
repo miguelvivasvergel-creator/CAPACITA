@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 import threading
 import time
+from fastapi import HTTPException
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -78,6 +79,26 @@ def needs_telegram(job):
     payload = job.get("payload") or {}
     manifests = [version.get("manifest") for version in (payload.get("versions") or {}).values()] + [payload.get("manifest")]
     return any(isinstance(m, dict) and str(m.get("connector_key", "")).startswith("enviar_telegram@") for m in manifests)
+
+
+def needs_google(job):
+    payload = job.get("payload") or {}
+    manifests = [version.get("manifest") for version in (payload.get("versions") or {}).values()] + [payload.get("manifest")]
+    return any(isinstance(m, dict) and m.get("credential") == "google" for m in manifests)
+
+
+async def google_context(session, identity, job):
+    """Token de acceso de Google (corta duración) y correo del dueño de ESTE trabajo, o {} si no conectó."""
+    from services import google_oauth
+    try:
+        datos = await session.rpc_raw("google_token_for_job", p_session=identity, p_job=job["id"])
+        if not datos.get("token_cifrado") or not google_oauth.disponible():
+            return {}
+        refresh = google_oauth.descifrar(datos["token_cifrado"])
+        acceso = await asyncio.to_thread(google_oauth.token_de_acceso, refresh)
+        return {"google_access_token": acceso, "google_email": datos.get("email")}
+    except Exception:
+        return {}
 
 
 async def telegram_context(session, identity, job):
@@ -150,6 +171,8 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
                 continue
             if needs_telegram(job):
                 job["context"] = await telegram_context(session, identity, job)
+            if needs_google(job):
+                job["context"] = {**(job.get("context") or {}), **await google_context(session, identity, job)}
             infrastructure_failure = False
             loop = asyncio.get_running_loop()
 
@@ -210,6 +233,11 @@ if __name__ == "__main__":
         asyncio.run(main(args.once))
     except KeyboardInterrupt:
         raise SystemExit(130) from None
-    except Exception:
-        print("Trabajador compartido no disponible. Revisa cuenta autorizada, migración, red, reserva y sandbox. No se reintenta automáticamente ni se muestran credenciales.", file=sys.stderr)
+    except Exception as exc:
+        # Solo el tipo de error (y el código interno si es uno nuestro, p. ej. worker_lease_lost): nunca
+        # el detalle completo, que podría incluir respuestas del servidor.
+        causa = type(exc).__name__ + (f": {exc}" if isinstance(exc, RuntimeError) and str(exc).isidentifier() else "")
+        if isinstance(exc, HTTPException):  # textos propios en español, sin datos del servidor
+            causa += f" {exc.status_code}: {exc.detail}"
+        print(f"Trabajador compartido no disponible ({causa}). Revisa cuenta autorizada, migración, red, reserva y sandbox. No se reintenta automáticamente ni se muestran credenciales.", file=sys.stderr)
         raise SystemExit(1) from None

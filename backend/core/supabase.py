@@ -23,6 +23,9 @@ EXECUTION_RPCS = {
     "telegram_link_complete", "telegram_unlink_chat", "telegram_chat_for_job",
     # Asistentes recurrentes (SQL 17): las cuatro primeras para la persona; la última, el trabajador.
     "assistant_save", "assistant_list", "assistant_set_active", "assistant_delete", "assistant_enqueue_due",
+    # Google (SQL 19): las cinco primeras para la persona; la última, el trabajador.
+    "google_link_start", "google_state_take", "google_link_save", "google_link_status", "google_unlink",
+    "google_token_for_job",
 }
 
 

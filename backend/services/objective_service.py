@@ -41,7 +41,9 @@ def quitar_librerias_instaladas(draft):
 def search_terms(objective: str):
     words = re.findall(r"[^\W\d_]{4,}", objective.lower(), flags=re.UNICODE)
     words = sorted(dict.fromkeys(word for word in words if word not in STOP_WORDS), key=len, reverse=True)
-    return list(dict.fromkeys([objective[:200], *words[:3]]))
+    # Hasta 6 palabras clave: con 3, un pedido de varias piezas («lluvia… festivos… Telegram…
+    # calendario») solo encontraba algunas y el planner no podía combinarlas.
+    return list(dict.fromkeys([objective[:200], *words[:6]]))
 
 
 async def search_catalog(queries, repository: CapabilityRepository):

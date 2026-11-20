@@ -1,4 +1,5 @@
 import { descargar, detectarTipo, infoTipo, tamano, urlDatos } from '../../utils/archivos';
+import Icono from './Icono';
 import { etiquetaLegible } from '../../utils/etiquetas';
 
 // Un archivo (base64) se muestra como vista previa o ficha con botón de descarga.
@@ -7,13 +8,25 @@ function Archivo({ value, media, nombre }) {
   return <div className="space-y-2">
     {media.startsWith('image/') && <img src={urlDatos(value, media)} alt={`Resultado: ${nombre}`} className="max-h-80 w-auto max-w-full rounded-xl border border-slate-200 bg-white object-contain" />}
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm text-slate-700">{tipo.icono} {tipo.nombre} · {tamano(value)}</span>
-      <button type="button" onClick={() => descargar(value, media, nombre)} className="min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white">📥 Descargar</button>
+      <span className="text-sm text-slate-700"><Icono nombre={tipo.icono} className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />{tipo.nombre} · {tamano(value)}</span>
+      <button type="button" onClick={() => descargar(value, media, nombre)} className="min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white"><Icono nombre="descargar" className="mr-1 inline h-4 w-4 align-[-3px]" />Descargar</button>
     </div>
   </div>;
 }
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+const URL_WEB = /^https?:\/\/\S+$/;
+// Lo vacío no aporta nada en un resultado: no se muestra (ni «Sin valor» ni listas vacías).
+const vacio = (valor) => valor === null || valor === undefined || (typeof valor === 'string' && !valor.trim())
+  || (Array.isArray(valor) && !valor.length) || (typeof valor === 'object' && !Array.isArray(valor) && !Object.keys(valor).length);
+
+// Un enlace del resultado (Drive, Calendar…) se abre en otra pestaña; se muestra solo el sitio.
+function Enlace({ url }) {
+  let sitio = url;
+  try { sitio = new URL(url).hostname.replace(/^www\./, ''); } catch { /* se muestra tal cual */ }
+  return <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 break-all rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100">
+    <Icono nombre="globo" className="h-4 w-4 shrink-0" />Abrir en {sitio}</a>;
+}
 const escalar = (valor) => valor === null || ['string', 'number', 'boolean'].includes(typeof valor);
 // «2026-11-21» → «sáb 21 nov» (fecha local, sin corrimiento por zona horaria).
 function fechaLegible(texto) {
@@ -55,12 +68,18 @@ export default function ResultadoDatos({ value, nombre = 'resultado' }) {
   if (value === null || value === undefined) return <span className="text-slate-500">Sin valor</span>;
   const media = detectarTipo(value);
   if (media) return <Archivo value={value} media={media} nombre={nombre} />;
+  if (typeof value === 'string' && URL_WEB.test(value.trim())) return <Enlace url={value.trim()} />;
   if (typeof value !== 'object') return <p className="whitespace-pre-wrap break-words">{typeof value === 'boolean' ? value ? 'Sí' : 'No' : String(value)}</p>;
   if (Array.isArray(value)) {
     if (!value.length) return <p>Sin elementos.</p>;
     if (esTabla(value)) return <Tabla filas={value} />;
     return <ol className="list-decimal space-y-2 pl-5">{value.map((item, index) => <li key={index} className="min-w-0"><ResultadoDatos value={item} nombre={`${nombre}-${index + 1}`} /></li>)}</ol>;
   }
-  const entradas = Object.entries(value).map((entrada, orden) => [entrada, orden]).sort(([a, i], [b, j]) => peso(a) - peso(b) || i - j).map(([entrada]) => entrada);
-  return <dl className="min-w-0 space-y-3">{entradas.map(([key, item]) => <div key={key} className="min-w-0"><dt className="break-words text-sm font-semibold text-slate-700">{etiquetaLegible(key)}</dt><dd className="mt-1 min-w-0"><ResultadoDatos value={item} nombre={key} /></dd></div>)}</dl>;
+  const entradas = Object.entries(value).filter(([, item]) => !vacio(item)).map((entrada, orden) => [entrada, orden]).sort(([a, i], [b, j]) => peso(a) - peso(b) || i - j).map(([entrada]) => entrada);
+  if (!entradas.length) return <span className="text-slate-500">Sin datos.</span>;
+  // El resumen es la respuesta: va destacado y sin etiqueta; el resto, debajo, como detalle.
+  return <dl className="min-w-0 space-y-3">{entradas.map(([key, item]) => /^resumen/i.test(key) && typeof item === 'string'
+    ? <div key={key} className="min-w-0"><dt className="sr-only">{etiquetaLegible(key)}</dt>
+      <dd className="whitespace-pre-line break-words rounded-xl border border-slate-200 bg-white p-3 text-[15px] leading-relaxed text-slate-900 shadow-sm">{item}</dd></div>
+    : <div key={key} className="min-w-0"><dt className="break-words text-sm font-semibold text-slate-700">{etiquetaLegible(key)}</dt><dd className="mt-1 min-w-0"><ResultadoDatos value={item} nombre={key} /></dd></div>)}</dl>;
 }

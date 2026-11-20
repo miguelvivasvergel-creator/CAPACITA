@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Icono from '../common/Icono';
 import { api } from '../../api';
 import { buscarOpcionesPlan, proponerPlan } from '../../services/planner';
 import { ajustarOpciones, interpretarObjetivo, investigar } from '../../services/objetivos';
@@ -10,23 +11,21 @@ import { infoTipo, leerArchivo, urlDatos } from '../../utils/archivos';
 import FabricaHerramienta from './FabricaHerramienta';
 import ResultadoDatos from '../common/ResultadoDatos';
 import LienzoTaller from './LienzoTaller';
-import { ESTADOS_NODO } from './estadosNodo';
+import { ESTADOS_NODO, etapaActual } from './estadosNodo';
+import RutaTaller from './RutaTaller';
+
+// Ideas para empezar, en el estilo de las píldoras del login (dato ⇄ herramienta).
+// Solo rellenan la caja de texto: la persona revisa y envía.
+const SUGERENCIAS = [
+  { de: 'Foto', a: 'Quitar fondo', texto: 'Quita el fondo de la foto de mi producto', tono: 'azul' },
+  { de: 'Recibo', a: 'Tabla', texto: 'Lee el texto de la foto de este recibo y pásalo a una tabla', tono: 'cian' },
+  { de: 'Excel', a: 'Gráfico', texto: 'Haz un gráfico con los datos de mi Excel de ventas', tono: 'indigo' },
+  { de: 'Clima', a: 'Telegram', texto: 'Mándame a Telegram el clima de mañana en mi ciudad', tono: 'cian' },
+];
 import TarjetaPlan from './TarjetaPlan';
 import TarjetaInvestigacion from './TarjetaInvestigacion';
 import { solucionDeVersion, solucionGuardadaDe, versionLista } from './solucionDirecta';
 
-// Ejemplos de la demo: los que llevan archivo abren el 📎 al tocarlos.
-const SUGERENCIAS = [
-  { icono: '🍽️', texto: 'Mejora la foto de mi plato y ponle encima el nombre de mi restaurante', archivo: true },
-  { icono: '🎨', texto: 'Ponle un filtro vintage cálido a mi foto', archivo: true },
-  { icono: '📄', texto: 'Agrégale a mi PDF una portada con un título', archivo: true },
-  { icono: '📊', texto: 'Convierte mi Excel de ventas en un informe PDF con los totales', archivo: true },
-  { icono: '🔍', texto: 'Compara dos versiones de mi documento Word y márcame todo lo que cambió', archivo: true },
-  { icono: '🌦️', texto: '¿Va a llover esta semana en Bogotá? Dime qué días', archivo: false },
-  { icono: '🧾', texto: 'Saca la fecha, el total y el proveedor de la foto de mi factura', archivo: true },
-  { icono: '📲', texto: 'Mándame por Telegram el pronóstico de lluvia de Bogotá de esta semana', archivo: false },
-  { icono: '✍️', texto: 'Cuenta cuántas palabras tiene un texto y dime las más repetidas', archivo: false },
-];
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
 const activo = (status) => ['queued', 'running'].includes(status);
 // El «Acepto» de Gemini se recuerda por cuenta en este navegador (se puede retirar desde la
@@ -67,7 +66,7 @@ function herramientasParecidas(items, objetivo) {
   return candidatas.slice(0, 3).map(({ item }) => item);
 }
 
-// Pasos que consultan un servicio externo (sello 🌐): version_id → proveedor («Open-Meteo»).
+// Pasos que consultan un servicio externo (sello globo): version_id → proveedor («Open-Meteo»).
 const SIN_CONECTORES = new Map();
 // ia: el paso envía tu contenido a una IA externa (exige un «Acepto» propio al aprobar).
 const conectorDe = (item) => {
@@ -86,13 +85,15 @@ const DATO = {
   texto_muy_largo: 'el texto (es muy largo: máximo 30.000 caracteres)', foto: 'la foto (debe ser JPG o PNG)',
   campos: 'los datos a sacar (sepáralos con comas, máximo 20)', indicaciones: 'las indicaciones', instruccion: 'qué hacer',
   mensaje: 'el mensaje (está vacío)', mensaje_muy_largo: 'el mensaje (máximo 12.000 caracteres)',
-  archivo: 'el archivo (no se pudo leer o pesa más de 4,5 MB)',
+  archivo: 'el archivo (no se pudo leer o pesa más de 4,5 MB)', titulo: 'el título', hora: 'la hora (HH:MM)',
+  duracion_minutos: 'la duración (de 5 a 1440 minutos)',
 };
 // Respuestas de la IA que no dependen de un dato concreto.
 const DETALLES_IA = {
   contenido_bloqueado: 'La IA no quiso procesar ese contenido (lo marcó como sensible). Prueba con otro texto o foto',
   respuesta_muy_larga: 'La respuesta de la IA salía demasiado larga. Prueba con un texto más corto',
   telegram_no_vinculado: 'Primero conecta tu Telegram en Configuración (sección «Telegram») y vuelve a ejecutarlo',
+  google_no_vinculado: 'Primero conecta tu cuenta de Google en Configuración (sección «Google») y vuelve a ejecutarlo',
 };
 const ERRORES = {
   connector_provider_unavailable: 'El servicio externo no respondió. Intenta de nuevo en unos minutos',
@@ -156,7 +157,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const recienCreadas = useRef([]);
   // Para ajustar un resultado: contratos de las versiones del plan y el último archivo usado.
   const opcionesPlan = useRef([]), ultimoArchivo = useRef(null);
-  // Qué pasos del plan son conectores (sello 🌐); se recalcula cada vez que cambian las opciones.
+  // Qué pasos del plan son conectores (sello globo); se recalcula cada vez que cambian las opciones.
   const [conectores, setConectores] = useState(SIN_CONECTORES);
   function fijarOpciones(items) { opcionesPlan.current = items; setConectores(mapaConectores(items)); }
   const registrarAjustador = useCallback((fn, previo) => {
@@ -204,7 +205,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     if (tipo === 'herramienta') { abrirHerramienta(valor); return; }
     if (tipo !== 'solucion') return;
     api(`/workflows/${encodeURIComponent(valor)}`).then((guardada) => {
-      abrirSolucion(guardada.definition, guardada, `Abrí tu solución «${guardada.definition.name}». Revisa sus pasos en el taller; te pido los datos para usarla 👇`);
+      abrirSolucion(guardada.definition, guardada, `Abrí tu solución «${guardada.definition.name}». Revisa sus pasos en el taller; te pido los datos para usarla`);
       cargarOpcionesDe(guardada.definition);
     }).catch((cause) => agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Puedes describir tu necesidad aquí.` }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,15 +230,15 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       const definicion = version && solucionDeVersion(version);
       if (!definicion) {
         agregar({ de: 'capacita', tipo: 'texto', texto: version
-          ? 'Esta herramienta no entrega un resultado que el chat pueda mostrarte, así que no puedo usarla desde aquí. Cuéntame qué necesitas y busco o creo una que sí sirva 👇'
-          : 'Esta herramienta todavía no tiene una versión probada que se pueda usar. Cuéntame qué necesitas y busco o creo una que sí funcione 👇' });
+          ? 'Esta herramienta no entrega un resultado que el chat pueda mostrarte, así que no puedo usarla desde aquí. Cuéntame qué necesitas y busco o creo una que sí sirva'
+          : 'Esta herramienta todavía no tiene una versión probada que se pueda usar. Cuéntame qué necesitas y busco o creo una que sí funcione' });
         return;
       }
       fijarOpciones([version]);
       const guardada = await solucionGuardadaDe(version.id).catch(() => null);
       const ajena = version.owner_id && usuario?.id && version.owner_id !== usuario.id;
       abrirSolucion(guardada?.definition || definicion, guardada,
-        `Abrí ${ajena ? 'la herramienta de la comunidad' : 'tu herramienta'} «${version.name}». No necesito la IA para usarla: te pido los datos y la ejecuto 👇`);
+        `Abrí ${ajena ? 'la herramienta de la comunidad' : 'tu herramienta'} «${version.name}». No necesito la IA para usarla: te pido los datos y la ejecuto`);
     } catch (cause) {
       agregar({ de: 'capacita', tipo: 'error', texto: `${cause.message} Puedes describir tu necesidad aquí.` });
     } finally { setOcupado(false); setFase(''); }
@@ -302,10 +303,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     if (!campo) { agregar({ de: 'capacita', tipo: 'confirmar', definicion: estado.definicion, datos: estado.datos }); return; }
     const inicio = estado.indice ? 'Ahora necesito' : 'Para ejecutarla necesito';
     if (campo.opcional) {
-      agregar({ de: 'capacita', tipo: 'texto', texto: `Si quieres personalizarla, sube ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}) con el botón 📎. Es opcional: si no, escribe «no» 👇` });
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Si quieres personalizarla, sube ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}) con el botón del clip. Es opcional: si no, escribe «no»` });
       return;
     }
-    agregar({ de: 'capacita', tipo: 'texto', texto: campo.archivo ? `${inicio}: ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}). Súbelo con el botón 📎 de abajo 👇` : `${inicio}: ${campo.etiqueta}${campo.ayuda ? ` (${campo.ayuda})` : ''}. Escríbelo abajo 👇` });
+    agregar({ de: 'capacita', tipo: 'texto', texto: campo.archivo ? `${inicio}: ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}). Súbelo con el botón del clip de abajo` : `${inicio}: ${campo.etiqueta}${campo.ayuda ? ` (${campo.ayuda})` : ''}. Escríbelo abajo` });
   }
 
   // Tras ejecutar, un dato nuevo vuelve a empezar la recogida para ejecutarla otra vez.
@@ -317,7 +318,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     if (campo.archivo) {
       if (campo.opcional && SALTAR.test(valor)) { pedirSiguiente({ ...estado, indice: estado.indice + 1 }); return; }
       setPidiendo(estado);
-      agregar({ de: 'capacita', tipo: 'texto', texto: campo.opcional ? `Para ${campo.etiqueta} súbelo con el botón 📎, o escribe «no» si prefieres seguir sin él.` : `Aquí necesito un archivo: ${campo.etiqueta}. Súbelo con el botón 📎 de abajo 👇` });
+      agregar({ de: 'capacita', tipo: 'texto', texto: campo.opcional ? `Para ${campo.etiqueta} súbelo con el botón del clip, o escribe «no» si prefieres seguir sin él.` : `Aquí necesito un archivo: ${campo.etiqueta}. Súbelo con el botón del clip de abajo` });
       return;
     }
     const numero = campo.tipo !== 'string';
@@ -348,13 +349,13 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       const estado = estadoParaDato(), campo = estado.campos[estado.indice];
       if (campo.archivo) { usarArchivo(archivo, estado); return; }
       setPidiendo(estado);
-      agregar({ de: 'capacita', tipo: 'texto', texto: `Ahora necesito: ${campo.etiqueta}. Escríbelo abajo 👇` });
+      agregar({ de: 'capacita', tipo: 'texto', texto: `Ahora necesito: ${campo.etiqueta}. Escríbelo abajo` });
       return;
     }
     // Aún no hay solución: se guarda y se usa cuando la solución pida un archivo.
     setAdjunto(archivo);
     agregar({ de: 'tu', tipo: 'archivo', nombre: archivo.name, vista: archivo.type.startsWith('image/') ? URL.createObjectURL(archivo) : null });
-    agregar({ de: 'capacita', tipo: 'texto', texto: 'Recibí tu archivo 👍. Cuéntame qué quieres hacer con él.' });
+    agregar({ de: 'capacita', tipo: 'texto', texto: 'Recibí tu archivo. Cuéntame qué quieres hacer con él.' });
   }
 
   function empezarDatos(definicion) {
@@ -398,7 +399,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     for (let intento = 0; ; intento += 1) {
       try { return await interpretarObjetivo(objetivo, aclaraciones, true, signal, investigacion); } catch (cause) {
         if (cause.status !== 429 || intento >= 1 || signal.aborted || (cause.retryAfter || 0) > 15) throw cause;
-        setFase('⏳ Esperando turno con la IA (unos segundos)…');
+        setFase('Esperando turno con la IA (unos segundos)…');
         await new Promise((resolve) => { setTimeout(resolve, ((cause.retryAfter || 5) + 1) * 1000); });
         if (signal.aborted) throw cause;
         setFase('Con lo que investigué, diseño una herramienta nueva…');
@@ -411,7 +412,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   // ya lo resuelven no se busca: usarlas no es hacer algo nuevo y la búsqueda tarda y gasta cuota.
   async function investigarPrimero(estado, signal) {
     if (estado.investigacion !== undefined) return estado.investigacion;
-    setFase('🔎 Antes de crearla, investigo en internet cómo se hace bien…');
+    setFase('Antes de crearla, investigo en internet cómo se hace bien…');
     let resultado = null;
     try { resultado = await investigar(estado.objetivo.slice(0, 2000), signal); } catch (cause) { if (signal.aborted) throw cause; }
     if (signal.aborted) return null;
@@ -458,7 +459,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         const definicion = version && solucionDeVersion(version);
         if (!definicion) return false;
         fijarOpciones([version]);
-        abrirSolucion(definicion, null, `Uso «${version.name}», la herramienta que acabamos de crear. Te pido los datos 👇`);
+        abrirSolucion(definicion, null, `Uso «${version.name}», la herramienta que acabamos de crear. Te pido los datos`);
         return true;
       };
       if (soloCatalogo(estado) && !recienCreadas.current.length) {
@@ -564,7 +565,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   function crearTodas(items) {
     if (ocupado || automatico.current || !conversacion || !items.length) return;
     automatico.current = true; cola.current = items.slice(1);
-    agregar({ de: 'capacita', tipo: 'texto', texto: `Voy a crear y probar las ${items.length} herramientas una por una. Al final armo tu solución con todas 💪` });
+    agregar({ de: 'capacita', tipo: 'texto', texto: `Voy a crear y probar las ${items.length} herramientas una por una. Al final armo tu solución con todas` });
     crearFaltante(items[0]);
   }
 
@@ -617,7 +618,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         if (respuesta.decision === 'new') { setOcupado(false); setFase(''); nuevaNecesidad(valor, false); return; }
         nuevos = respuesta.parameters; explicacion = respuesta.explanation;
       } catch (cause) {
-        agregar({ de: 'capacita', tipo: 'error', texto: cause.status === 429 && (cause.retryAfter || 0) <= 15 ? 'Vas muy rápido 🙂. Espera unos segundos y vuelve a escribirlo.' : cause.message });
+        agregar({ de: 'capacita', tipo: 'error', texto: cause.status === 429 && (cause.retryAfter || 0) <= 15 ? 'Vas muy rápido. Espera unos segundos y vuelve a escribirlo.' : cause.message });
         return;
       } finally { setOcupado(false); setFase(''); }
     }
@@ -629,7 +630,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     const anterior = solucion.current;
     solucion.current = { definicion: ajustado, guardada: null, incierta: false, base: anterior.guardada || anterior.base || null };
     setPlan(ajustado); setPidiendo({ ...pidiendo, definicion: ajustado });
-    agregar({ de: 'capacita', tipo: 'texto', texto: `${explicacion} Uso el mismo archivo; confirma para ver cómo queda 👇` });
+    agregar({ de: 'capacita', tipo: 'texto', texto: `${explicacion} Uso el mismo archivo; confirma para ver cómo queda` });
     agregar({ de: 'capacita', tipo: 'confirmar', definicion: ajustado, datos: pidiendo.datos });
   }
 
@@ -649,7 +650,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     if (automatico.current) {
       if (cola.current.length) {
         const siguiente = cola.current.shift();
-        agregar({ de: 'capacita', tipo: 'texto', texto: `✅ Lista. Sigo con la siguiente (quedan ${cola.current.length + 1})…` });
+        agregar({ de: 'capacita', tipo: 'texto', texto: `Lista. Sigo con la siguiente (quedan ${cola.current.length + 1})…` });
         crearFaltante(siguiente);
         return;
       }
@@ -662,7 +663,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       // El archivo ya se usó en la vista previa: una necesidad nueva no debe heredarlo en
       // silencio (ni decirle a la IA «adjunté una foto»). Queda como último archivo para ajustes.
       if (adjunto) { ultimoArchivo.current = adjunto; setAdjunto(null); }
-      agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! 🎉 Descarga el resultado desde la tarjeta. Para usarla otra vez con otro archivo, búscala en «Herramientas» y toca «Usar ahora»: no hará falta esperar a la IA.' });
+      agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! Descarga el resultado desde la tarjeta. Para usarla otra vez con otro archivo, búscala en «Herramientas» y toca «Usar ahora»: no hará falta esperar a la IA.' });
       return;
     }
     agregar({ de: 'capacita', tipo: 'texto', texto: '¡La herramienta nueva quedó probada y lista! Vuelvo a armar tu solución con ella…' });
@@ -672,17 +673,17 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
 
   function renderMensaje(mensaje) {
     if (mensaje.de === 'tu' && mensaje.tipo === 'archivo') {
-      return <div className="flex justify-end"><div className="max-w-[70%] rounded-2xl rounded-br-md bg-blue-700 p-2 text-sm text-white">
+      return <div className="flex justify-end"><div className="taller-burbuja-tu max-w-[70%] p-2 text-sm">
         {mensaje.vista && <img src={mensaje.vista} alt={`Archivo enviado: ${mensaje.nombre}`} className="max-h-48 rounded-xl object-contain" />}
-        <p className="break-words px-2 py-1">📎 {mensaje.nombre}</p>
+        <p className="break-words px-2 py-1"><Icono nombre="clip" className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />{mensaje.nombre}</p>
       </div></div>;
     }
     if (mensaje.de === 'tu') {
-      return <div className="flex justify-end"><p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-blue-700 px-4 py-2.5 text-sm text-white">{mensaje.texto}</p></div>;
+      return <div className="flex justify-end"><p className="taller-burbuja-tu max-w-[85%] whitespace-pre-wrap break-words px-4 py-2.5 text-sm">{mensaje.texto}</p></div>;
     }
-    const tarjeta = 'w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm';
+    const tarjeta = 'taller-tarjeta';
     switch (mensaje.tipo) {
-      case 'texto': return <p className="max-w-[90%] whitespace-pre-wrap break-words rounded-2xl rounded-bl-md bg-slate-100 px-4 py-2.5 text-sm text-slate-800">{mensaje.texto}</p>;
+      case 'texto': return <p className="taller-burbuja max-w-[92%] whitespace-pre-wrap break-words px-4 py-2.5 text-sm">{mensaje.texto}</p>;
       case 'error': return <p role="alert" className="max-w-[90%] break-words rounded-2xl bg-red-50 px-4 py-2.5 text-sm text-red-800">{mensaje.texto}</p>;
       case 'bloqueado': return <p className="max-w-[90%] rounded-2xl bg-amber-50 px-4 py-2.5 text-sm text-amber-900">Para esto falta un recurso o permiso que Capacita todavía no tiene. No he creado ni ejecutado nada; puedes reformular tu necesidad.</p>;
       case 'consentimiento': return <div className={tarjeta}>
@@ -697,7 +698,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         <p className="mt-2 text-xs text-slate-500">Respóndeme abajo en un solo mensaje.</p>
       </div>;
       case 'atajo': return <div className={tarjeta}>
-        <p className="font-semibold">🧰 Ya tienes algo que puede servir</p>
+        <p className="font-semibold"><Icono nombre="herramientas" className="mr-1 inline h-4 w-4 align-[-3px]" />Ya tienes algo que puede servir</p>
         <p className="mt-1 text-sm text-slate-600">Lo encontré en tus herramientas y las de la comunidad. Usarla no necesita la IA ni esperar: te pido los datos y la ejecuto.</p>
         <ul className="mt-3 space-y-2">{mensaje.atajos.map((item) => <li key={item.id} className="rounded-xl bg-emerald-50 p-3">
           <p className="break-words text-sm font-semibold">{item.name}</p>
@@ -709,14 +710,14 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         </div>
       </div>;
       case 'faltan': return <div className={tarjeta}>
-        <p className="font-semibold">🛠️ Me falta una herramienta para resolverlo</p>
+        <p className="font-semibold"><Icono nombre="herramienta" className="mr-1 inline h-4 w-4 align-[-3px]" />Me falta una herramienta para resolverlo</p>
         <p className="mt-1 text-sm text-slate-600">Puedo crearla, probarla en un entorno aislado y dejarla lista para ti. No estará disponible hasta superar las pruebas.</p>
         <ul className="mt-3 space-y-2">{mensaje.faltan.map((item, index) => <li key={index} className="rounded-xl bg-amber-50 p-3">
           <p className="break-words text-sm">{item}</p>
           <button type="button" disabled={ocupado} onClick={() => crearFaltante(item)} className="mt-2 min-h-11 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Créala</button>
         </li>)}</ul>
         {mensaje.faltan.length > 1 && <div className="mt-3 border-t border-slate-200 pt-3">
-          <button type="button" disabled={ocupado} onClick={() => crearTodas(mensaje.faltan)} className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">⚡ Créalas todas ({mensaje.faltan.length})</button>
+          <button type="button" disabled={ocupado} onClick={() => crearTodas(mensaje.faltan)} className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Icono nombre="rayo" className="mr-1 inline h-4 w-4 align-[-3px]" />Créalas todas ({mensaje.faltan.length})</button>
           <p className="mt-1 text-xs text-slate-500">Las diseño, escribo y pruebo una tras otra sin preguntarte en cada una. Enviaré a Google Gemini la descripción y los ejemplos de cada una (nunca tus datos reales). Al final armo la solución con tu archivo.</p>
         </div>}
       </div>;
@@ -747,26 +748,40 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const vacio = !mensajes.length;
   return <section className="taller-pantalla" data-vista={vistaMovil} aria-label="Chat y taller de Capacita" data-task-busy={ocupado ? 'true' : undefined} data-trabajo-pendiente={conversacion ? 'true' : undefined}>
     <div className="taller-pestanas" role="tablist" aria-label="Vista">
-      {[['chat', '💬 Chat'], ['taller', '🧩 Taller']].map(([valor, etiqueta]) => <button key={valor} type="button" role="tab" aria-selected={vistaMovil === valor} onClick={() => setVistaMovil(valor)}>{etiqueta}</button>)}
+      {[['chat', 'Chat'], ['taller', 'Taller']].map(([valor, etiqueta]) => <button key={valor} type="button" role="tab" aria-selected={vistaMovil === valor} onClick={() => setVistaMovil(valor)}><Icono nombre={valor} className="mr-1 inline h-4 w-4 align-[-3px]" />{etiqueta}</button>)}
     </div>
     <div className="taller-chat">
       <div className="taller-mensajes" aria-live="polite">
         {vacio && <div className="taller-bienvenida">
-          <p className="text-sm font-semibold text-blue-700">Hola, {usuario?.name?.split(' ')[0] || 'bienvenida'} 👋</p>
-          <h1>¿Qué necesitas resolver hoy?</h1>
-          <p>Cuéntamelo con tus palabras. Busco las herramientas que ya existen, creo las que falten y te muestro el proceso armándose a la derecha.</p>
-          {consentimiento && <p className="mt-2 text-xs text-slate-500">Ya aceptaste que use Gemini de Google para entender tus pedidos (nunca tus archivos). <button type="button" className="font-semibold text-blue-700 underline" onClick={() => aceptarGemini(false)}>Retirar mi permiso</button></p>}
-          <div className="mt-4 flex flex-col gap-2">{SUGERENCIAS.map((sugerencia) => <button key={sugerencia.texto} type="button" className="taller-sugerencia" onClick={() => {
-            setTexto(sugerencia.texto);
-            if (sugerencia.archivo && !adjunto) selector.current?.click(); else entrada.current?.focus();
-          }}><span aria-hidden="true">{sugerencia.icono}</span> {sugerencia.texto}{sugerencia.archivo && <span className="ml-1 text-xs text-slate-500">· 📎 con tu archivo</span>}</button>)}</div>
+          <p className="taller-saludo"><span className="inicio-punto" aria-hidden="true" />Hola, {usuario?.name?.split(' ')[0] || 'de nuevo'}</p>
+          <h1>¿Qué necesitas <span>resolver</span> hoy?</h1>
+          <p>Cuéntamelo con tus palabras o sube un archivo. Busco las herramientas que ya existen, creo las que falten y te muestro el proceso armándose en el taller.</p>
+          <p className="taller-sugerencias-titulo">Prueba con una idea</p>
+          <div className="taller-sugerencias">
+            {SUGERENCIAS.map((idea) => <button key={idea.texto} type="button" className={`taller-sugerencia taller-sugerencia--${idea.tono}`} disabled={ocupado}
+              onClick={() => { setTexto(idea.texto); entrada.current?.focus(); }} aria-label={`Usar idea: ${idea.texto}`}>
+              <span className="taller-sugerencia-punto" aria-hidden="true" />
+              <span className="taller-sugerencia-de">{idea.de}</span>
+              <Icono nombre="flecha" className="taller-sugerencia-flecha h-3.5 w-3.5" />
+              <span className="taller-sugerencia-a">{idea.a}</span>
+            </button>)}
+          </div>
+          {consentimiento && <p className="mt-4 text-xs text-slate-500">Ya aceptaste que use Gemini de Google para entender tus pedidos (nunca tus archivos). <button type="button" className="font-semibold text-blue-700 underline" onClick={() => aceptarGemini(false)}>Retirar mi permiso</button></p>}
         </div>}
-        {mensajes.map((mensaje) => <div key={mensaje.id} className="taller-mensaje">{renderMensaje(mensaje)}</div>)}
-        {ocupado && <p role="status" className="taller-escribiendo"><span className="taller-puntos" aria-hidden="true"><i /><i /><i /></span>{fase}</p>}
+        {mensajes.map((mensaje, index) => {
+          const deCapacita = mensaje.de !== 'tu';
+          // El nodo de Capacita aparece al inicio de cada turno suyo, no en cada mensaje seguido.
+          const avatar = deCapacita && (index === 0 || mensajes[index - 1].de === 'tu');
+          return <div key={mensaje.id} className={`taller-mensaje ${deCapacita ? 'is-capacita' : 'is-tu'}`}>
+            {deCapacita && <span className={`taller-avatar ${avatar ? '' : 'is-oculto'}`} aria-hidden="true" />}
+            <div className="taller-mensaje-cuerpo">{renderMensaje(mensaje)}</div>
+          </div>;
+        })}
+        {ocupado && <p role="status" className="taller-escribiendo"><span className="taller-avatar taller-avatar--pulso" aria-hidden="true" /><span className="taller-puntos" aria-hidden="true"><i /><i /><i /></span>{fase}</p>}
         <div ref={fin} />
       </div>
-      {campoActual && <div className="flex items-center justify-between gap-2 px-1 pb-1 text-xs text-slate-600">
-        <span className="break-words">{campoActual.archivo ? '📎' : '✍️'} Esperando: {campoActual.etiqueta}{campoActual.opcional ? ' (opcional: escribe «no» para seguir sin él)' : ''}</span>
+      {campoActual && <div className="flex items-center justify-between gap-2 px-5 pb-2 text-xs text-slate-600">
+        <span className="break-words"><Icono nombre={campoActual.archivo ? 'clip' : 'lapiz'} className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />Esperando: {campoActual.etiqueta}{campoActual.opcional ? ' (opcional: escribe «no» para seguir sin él)' : ''}</span>
         <button type="button" className="shrink-0 rounded-lg px-2 py-1 font-semibold text-blue-700 hover:bg-blue-50" onClick={() => { setPidiendo(null); entrada.current?.focus(); }}>Pedir otra cosa</button>
       </div>}
       <form onSubmit={enviar} className="taller-compositor">
@@ -774,30 +789,31 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
           accept={campoActual?.archivo ? infoTipo(campoActual.archivo).acepta : 'image/*,.pdf,.docx,.xlsx'}
           onChange={(event) => { recibirArchivo(event.target.files?.[0]); event.target.value = ''; }} />
         <button type="button" className="taller-adjuntar" disabled={ocupado || leyendo} onClick={() => selector.current?.click()}
-          aria-label={campoActual?.archivo ? `Subir ${campoActual.etiqueta}` : 'Adjuntar foto, PDF, Word o Excel'} title="Adjuntar archivo">{leyendo ? '⏳' : '📎'}</button>
+          aria-label={campoActual?.archivo ? `Subir ${campoActual.etiqueta}` : 'Adjuntar foto, PDF, Word o Excel'} title="Adjuntar archivo"><Icono nombre={leyendo ? 'reloj' : 'clip'} className="h-5 w-5" /></button>
         <label htmlFor="taller-entrada" className="sr-only">Escribe tu necesidad</label>
         <textarea id="taller-entrada" ref={entrada} rows={2} maxLength={2000} value={texto} disabled={ocupado} onChange={(event) => setTexto(event.target.value)}
           onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) enviar(event); }}
-          placeholder={pendientes.length ? 'Responde a mis preguntas…' : campoActual ? (campoActual.archivo ? `Sube ${campoActual.etiqueta} con 📎` : `Escribe aquí: ${campoActual.etiqueta}`) : 'Ej.: mejora la foto de mi plato y ponle el nombre de mi restaurante…'} />
-        <button type="submit" disabled={ocupado || !texto.trim()} aria-label="Enviar">➤</button>
+          placeholder={pendientes.length ? 'Responde a mis preguntas…' : campoActual ? (campoActual.archivo ? `Sube ${campoActual.etiqueta} con el clip` : `Escribe aquí: ${campoActual.etiqueta}`) : 'Ej.: mejora la foto de mi plato y ponle el nombre de mi restaurante…'} />
+        <button type="submit" disabled={ocupado || !texto.trim()} aria-label="Enviar"><Icono nombre="enviar" className="h-5 w-5" /></button>
       </form>
     </div>
     <aside className="taller-lienzo" aria-label="Taller">
-      <div className="flex items-center justify-between gap-2">
-        <p className="font-bold text-slate-900">🧩 Taller</p>
-        {(plan || creando) && <p className="text-xs text-slate-500">{creando ? (ESTADOS_NODO[estadoCreacion] || ESTADOS_NODO.creando).texto : run ? ESTADO_RUN[run.status] || run.status : 'Plan listo · toca un paso para ver detalles'}</p>}
+      <div className="taller-cabecera">
+        <p className="taller-cabecera-titulo"><span className="taller-cabecera-icono"><Icono nombre="taller" className="h-4 w-4" /></span>Taller</p>
+        {(plan || creando) && <p className="taller-cabecera-estado">{creando ? (ESTADOS_NODO[estadoCreacion] || ESTADOS_NODO.creando).texto : run ? ESTADO_RUN[run.status] || run.status : 'Plan listo · toca un paso para ver detalles'}</p>}
       </div>
+      <RutaTaller etapa={etapaActual({ conversacion, ocupado, plan, creando, runId })} terminado={run?.status === 'completed'} trabajando={ocupado || Boolean(creando) || Boolean(run && activo(run.status))} />
       <div className="min-h-0 flex-1"><LienzoTaller definicion={plan} creando={creando} estadoCreacion={estadoCreacion} estados={estados} seleccionado={seleccionado} onSeleccionar={setSeleccionado} conectores={conectores} /></div>
       {nodoElegido && <div className="taller-detalle">
         <div className="flex items-start justify-between gap-2">
           <p className="break-words font-semibold">{nodoElegido.label}</p>
-          <button type="button" className="text-sm text-slate-500" onClick={() => setSeleccionado(null)} aria-label="Cerrar detalle">✕</button>
+          <button type="button" className="text-sm text-slate-500" onClick={() => setSeleccionado(null)} aria-label="Cerrar detalle"><Icono nombre="x" className="h-4 w-4" /></button>
         </div>
-        <p className="mt-1 text-xs text-slate-600">{(ESTADOS_NODO[estados[nodoElegido.id]] || ESTADOS_NODO.espera).icono} {(ESTADOS_NODO[estados[nodoElegido.id]] || ESTADOS_NODO.espera).texto} · {Object.values(nodoElegido.bindings || {}).some((binding) => binding.source !== '$input') ? 'usa el resultado del paso anterior' : 'usa tus datos'}</p>
+        <p className="mt-1 text-xs text-slate-600"><Icono nombre={(ESTADOS_NODO[estados[nodoElegido.id]] || ESTADOS_NODO.espera).icono} className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />{(ESTADOS_NODO[estados[nodoElegido.id]] || ESTADOS_NODO.espera).texto} · {Object.values(nodoElegido.bindings || {}).some((binding) => binding.source !== '$input') ? 'usa el resultado del paso anterior' : 'usa tus datos'}</p>
         {Object.keys(nodoElegido.parameters || {}).length > 0 && <div className="mt-2 text-sm"><p className="text-xs font-semibold text-slate-500">Opciones</p><ResultadoDatos value={nodoElegido.parameters} /></div>}
         {pasoElegido?.output != null && <div className="mt-2 text-sm"><p className="text-xs font-semibold text-slate-500">Lo que produjo</p><ResultadoDatos value={pasoElegido.output} /></div>}
         {pasoElegido?.error && <p className="mt-2 break-words text-sm text-red-700">{explicarError({ steps: [pasoElegido] })}.</p>}
-        {conectores.get(nodoElegido.version_id) && <p className="mt-2 text-xs text-sky-800">{conectores.get(nodoElegido.version_id).ia ? '✨' : conectores.get(nodoElegido.version_id).accion ? '🔒' : '🌐'} Usa {conectores.get(nodoElegido.version_id).proveedor}: solo recibe los datos de este paso.</p>}
+        {conectores.get(nodoElegido.version_id) && <p className="mt-2 text-xs text-sky-800"><Icono nombre={conectores.get(nodoElegido.version_id).ia ? 'chispa' : conectores.get(nodoElegido.version_id).accion ? 'candado' : 'globo'} className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />Usa {conectores.get(nodoElegido.version_id).proveedor}: solo recibe los datos de este paso.</p>}
       </div>}
     </aside>
   </section>;

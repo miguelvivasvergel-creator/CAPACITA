@@ -5,7 +5,7 @@ import { listarCapacidades } from '../services/capacidades';
 import { estadoHerramientas } from '../components/taller/solucionDirecta';
 
 const ORDEN = { lista: 0, probada: 1 };
-const ETIQUETA = { lista: '✓ Lista · Usar ahora', probada: 'Probada, sin tu visto bueno · Usar ahora', sin: 'Sin terminar · Crearla otra vez en el chat' };
+const ETIQUETA = { lista: 'Lista · Usar ahora', probada: 'Probada, sin tu visto bueno · Usar ahora', sin: 'Sin terminar · Crearla otra vez en el chat' };
 
 /**
  * Una entrada por nombre: las «versiones mejoradas» conservan el nombre de la original, así

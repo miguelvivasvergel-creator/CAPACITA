@@ -7,6 +7,7 @@ de otros pasos no puede inyectar formato ni enlaces ocultos.
 """
 import base64
 import binascii
+import html
 import re
 
 from connectors.base import Connector, ConnectorInputError
@@ -15,8 +16,8 @@ from services.connector_broker import ConnectorFailure
 HOST = "api.telegram.org"
 API = "https://" + HOST + "/bot/{metodo}"
 MAX_MENSAJE = 12000
-TROZO = 4000  # Telegram admite 4.096 caracteres por mensaje
-LEYENDA = 1000  # y 1.024 en la leyenda de un archivo
+TROZO = 3800  # Telegram admite 4.096 caracteres por mensaje (deja sitio al encabezado y al pie)
+LEYENDA = 900  # y 1.024 en la leyenda de un archivo
 FIRMAS = [(b"%PDF", "application/pdf", "pdf"), (b"\xff\xd8\xff", "image/jpeg", "jpg"), (b"\x89PNG", "image/png", "png")]
 OFFICE = {"word/": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"),
           "xl/": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx")}
@@ -37,6 +38,28 @@ def archivo_de(valor):
             if marca.encode() in datos[:200000]:
                 return datos, tipo, extension
     return datos, "application/octet-stream", "bin"
+
+
+def en_lineas(texto):
+    """Un párrafo largo de un solo bloque (un resumen) se parte por oraciones; las viñetas se unifican."""
+    if "\n" not in texto and len(texto) > 140:
+        texto = re.sub(r"(?<=[a-záéíóúñ0-9)])\. (?=[A-ZÁÉÍÓÚÑ¿¡])", ".\n", texto)
+    lineas = []
+    for linea in texto.split("\n"):
+        limpia = linea.strip()
+        if limpia[:2] in ("- ", "* ", "• "):
+            limpia = "• " + limpia[2:].strip()
+        lineas.append(limpia)
+    return lineas
+
+
+def formatear(texto, primero=True, ultimo=True):
+    """HTML de Telegram con TODO el contenido escapado: lo que llega de otros pasos no inyecta formato."""
+    partes = ["<b>Capacita</b>"] if primero else []
+    partes.append("\n".join(html.escape(linea, quote=False) for linea in en_lineas(texto)))
+    if ultimo:
+        partes.append("<i>Enviado por Capacita a tu chat.</i>")
+    return "\n\n".join(partes)
 
 
 def respuesta_ok(data):
@@ -61,14 +84,16 @@ def enviar(http, inputs, parameters, context):
         leyenda = mensaje if len(mensaje) <= LEYENDA else ""
         foto = tipo in ("image/jpeg", "image/png")
         respuesta_ok(http.post_form(API.format(metodo="sendPhoto" if foto else "sendDocument"),
-                                    {"chat_id": str(chat), **({"caption": leyenda} if leyenda else {})},
+                                    {"chat_id": str(chat), **({"caption": formatear(leyenda), "parse_mode": "HTML"} if leyenda else {})},
                                     {"photo" if foto else "document": (f"{nombre}.{extension}", datos, tipo)}))
         enviados += 1
         pendiente = "" if leyenda else mensaje
     trozos = [pendiente[i:i + TROZO] for i in range(0, len(pendiente), TROZO)]
-    for trozo in trozos:
+    for indice, trozo in enumerate(trozos):
+        texto = formatear(trozo, primero=indice == 0 and not archivo, ultimo=indice == len(trozos) - 1)
         respuesta_ok(http.post_json(API.format(metodo="sendMessage"),
-                                    {"chat_id": chat, "text": trozo, "link_preview_options": {"is_disabled": True}}))
+                                    {"chat_id": chat, "text": texto, "parse_mode": "HTML",
+                                     "link_preview_options": {"is_disabled": True}}))
         enviados += 1
     partes = []
     if archivo:

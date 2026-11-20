@@ -1,16 +1,39 @@
 // Estados visibles de cada nodo del taller; el backend sigue siendo la fuente de verdad.
+// tono: color del punto y del borde (ver .nodo-taller--<tono> en workspace.css).
+// pulso: el nodo late mientras trabaja, como los nodos del login.
 export const ESTADOS_NODO = {
-  espera: { icono: '⚪', texto: 'En espera', clase: 'border-slate-300 bg-white' },
-  queued: { icono: '⏳', texto: 'En cola', clase: 'border-slate-400 bg-white' },
-  pending: { icono: '⚪', texto: 'En espera', clase: 'border-slate-300 bg-white' },
-  running: { icono: '🔵', texto: 'Trabajando', clase: 'border-blue-500 bg-blue-50 taller-pulso' },
-  completed: { icono: '🟢', texto: 'Listo', clase: 'border-emerald-500 bg-emerald-50' },
-  failed: { icono: '🔴', texto: 'Falló', clase: 'border-red-500 bg-red-50' },
-  interrupted: { icono: '🔴', texto: 'Interrumpido', clase: 'border-red-500 bg-red-50' },
-  skipped: { icono: '⏭️', texto: 'Omitido', clase: 'border-slate-300 bg-slate-100' },
-  creando: { icono: '🛠️', texto: 'Creándose', clase: 'border-amber-500 bg-amber-50 taller-pulso' },
-  escribiendo: { icono: '✍️', texto: 'Escribiendo el código', clase: 'border-amber-500 bg-amber-50 taller-pulso' },
-  probando: { icono: '🧪', texto: 'Probándose aislada', clase: 'border-blue-500 bg-blue-50 taller-pulso' },
-  corrigiendo: { icono: '🔧', texto: 'Corrigiéndose', clase: 'border-amber-500 bg-amber-50 taller-pulso' },
-  aprobar: { icono: '🔒', texto: 'Espera tu aprobación', clase: 'border-violet-500 bg-violet-50' },
+  espera: { icono: 'circulo', texto: 'En espera', tono: 'espera' },
+  queued: { icono: 'reloj', texto: 'En cola', tono: 'espera' },
+  pending: { icono: 'circulo', texto: 'En espera', tono: 'espera' },
+  running: { icono: 'actualizar', texto: 'Trabajando', tono: 'activo', pulso: true },
+  completed: { icono: 'ok', texto: 'Listo', tono: 'listo' },
+  failed: { icono: 'error', texto: 'Falló', tono: 'fallo' },
+  interrupted: { icono: 'error', texto: 'Interrumpido', tono: 'fallo' },
+  skipped: { icono: 'saltar', texto: 'Omitido', tono: 'omitido' },
+  creando: { icono: 'herramienta', texto: 'Creándose', tono: 'creando', pulso: true },
+  escribiendo: { icono: 'lapiz', texto: 'Escribiendo el código', tono: 'creando', pulso: true },
+  probando: { icono: 'matraz', texto: 'Probándose aislada', tono: 'activo', pulso: true },
+  corrigiendo: { icono: 'herramienta', texto: 'Corrigiéndose', tono: 'creando', pulso: true },
+  aprobar: { icono: 'candado', texto: 'Espera tu aprobación', tono: 'aprobar' },
 };
+
+// Recorrido de toda solución, en el orden que ve la persona (componente RutaTaller).
+export const ETAPAS = [
+  { id: 'pedir', titulo: 'Pides', icono: 'guiado', ayuda: 'Cuéntalo con tus palabras o sube un archivo' },
+  { id: 'entender', titulo: 'Entiendo', icono: 'chispa', ayuda: 'Te pregunto solo lo que falta' },
+  { id: 'armar', titulo: 'Armo', icono: 'soluciones', ayuda: 'Reutilizo herramientas y creo las que falten' },
+  { id: 'revisar', titulo: 'Revisas', icono: 'ojo', ayuda: 'Ves el proceso y apruebas antes de actuar' },
+  { id: 'resultado', titulo: 'Resultado', icono: 'resultados', ayuda: 'Se ejecuta de verdad y queda guardado' },
+];
+
+/**
+ * Deduce la etapa visible a partir del estado real del chat. Es solo presentación:
+ * no decide nada del flujo, que sigue en ChatTaller y en el backend.
+ */
+export function etapaActual({ conversacion, ocupado, plan, creando, runId }) {
+  if (runId) return 'resultado';
+  if (plan) return 'revisar';
+  if (creando || (conversacion && ocupado)) return 'armar';
+  if (conversacion) return 'entender';
+  return 'pedir';
+}

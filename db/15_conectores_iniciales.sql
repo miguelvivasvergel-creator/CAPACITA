@@ -157,6 +157,39 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
     input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
 
+  -- Capacidad enviar_correo (datos de enviar_correo@1) · Gmail
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('2344e135-d979-57b5-97ba-d1325a0371a9'::uuid, propietario, $txt$Enviarme por correo$txt$, $txt$Conector de acción (Gmail): te envía a TU propio correo de Gmail conectado un mensaje y, si quieres, un archivo adjunto (el informe en PDF, una foto, un Excel). Sirve para recibir resultados en tu correo.$txt$,
+    $txt$comunicacion$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"archivo":{"contentEncoding":"base64","description":"Archivo adjunto (opcional)","title":"Archivo","type":"string"},"asunto":{"title":"Asunto","type":"string"},"mensaje":{"title":"Mensaje","type":"string"},"nombre_archivo":{"description":"Sin extensión (opcional)","title":"Nombre del archivo","type":"string"}},"required":["asunto","mensaje"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"enviado":{"title":"Enviado","type":"boolean"},"resumen":{"title":"Resumen","type":"string"}},"required":["enviado","resumen"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["gmail.googleapis.com","www.googleapis.com"],"key":"enviar_correo@1","provider":"Gmail","provider_url":"https://developers.google.com/workspace","seal":"conectada"},"definition":{"constraints":["Solo actúa en TU cuenta de Google conectada en Capacita → Configuración.","Gmail recibe el contenido de este paso."],"definition_hash":"fc8f085f22b2184acbfcb3568d7d4e71165d05b7cb9380a6127ec2d3d31cb8f2","examples":[{"inputs":{"asunto":"Tu informe semanal","mensaje":"Aquí está el resumen de la semana."},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad guardar_drive (datos de guardar_drive@1) · Google Drive
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('1339cf79-93dd-59fd-8658-c9e816444423'::uuid, propietario, $txt$Guardar en mi Drive$txt$, $txt$Conector de acción (Google Drive): guarda un archivo (el informe en PDF, una foto, un Word o un Excel) en TU Google Drive y devuelve el enlace. Capacita solo ve los archivos que ella misma crea.$txt$,
+    $txt$comunicacion$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"archivo":{"contentEncoding":"base64","description":"El archivo que quieres guardar","title":"Archivo","type":"string"},"nombre_archivo":{"description":"Sin extensión (opcional)","title":"Nombre del archivo","type":"string"}},"required":["archivo"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"enlace":{"title":"Enlace","type":"string"},"nombre":{"title":"Nombre","type":"string"},"resumen":{"title":"Resumen","type":"string"}},"required":["enlace","nombre","resumen"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["gmail.googleapis.com","www.googleapis.com"],"key":"guardar_drive@1","provider":"Google Drive","provider_url":"https://developers.google.com/workspace","seal":"conectada"},"definition":{"constraints":["Solo actúa en TU cuenta de Google conectada en Capacita → Configuración.","Google Drive recibe el contenido de este paso."],"definition_hash":"8863d2a635035f0f7b3c3dd411527b7a4ea0ff092df7c5bc575934d2d6f9b4dc","examples":[{"inputs":{"archivo":"MUESTRA:pdf"},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
+  -- Capacidad agendar_evento (datos de agendar_evento@1) · Google Calendar
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('63bd469a-8607-5d7c-b2f3-69216c3017b9'::uuid, propietario, $txt$Agendar en mi calendario$txt$, $txt$Conector de acción (Google Calendar): crea un evento o recordatorio en TU Google Calendar con título, fecha y, si quieres, hora y duración (hora de Colombia). Sin hora queda como evento de todo el día.$txt$,
+    $txt$comunicacion$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"descripcion":{"description":"Opcional","title":"Descripción","type":"string"},"duracion_minutos":{"description":"De 5 a 1440 (opcional)","title":"Duración en minutos","type":"integer"},"fecha":{"description":"Fecha AAAA-MM-DD","title":"Fecha","type":"string"},"hora":{"description":"HH:MM en hora de Colombia (opcional)","title":"Hora","type":"string"},"titulo":{"title":"Título","type":"string"}},"required":["titulo","fecha"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"enlace":{"title":"Enlace","type":"string"},"resumen":{"title":"Resumen","type":"string"}},"required":["enlace","resumen"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["gmail.googleapis.com","www.googleapis.com"],"key":"agendar_evento@1","provider":"Google Calendar","provider_url":"https://developers.google.com/workspace","seal":"conectada"},"definition":{"constraints":["Solo actúa en TU cuenta de Google conectada en Capacita → Configuración.","Google Calendar recibe el contenido de este paso."],"definition_hash":"2f97a4b54d9882842f3ed4d8408740c7c56cdeb3c5171740ad93c8b058ca093e","examples":[{"inputs":{"fecha":"2026-11-24","hora":"09:00","titulo":"Revisar inventario"},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
   -- Versión clima_pronostico@1
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
     profile, connector_key)
@@ -365,6 +398,39 @@ BEGIN
   INSERT INTO capacita_execution.publications(version_id, owner_id, license)
   SELECT '076b39c6-412b-560c-9442-8757ab0fb09b'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '076b39c6-412b-560c-9442-8757ab0fb09b'::uuid AND active);
+
+  -- Versión enviar_correo@1
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('8236d22a-5609-55df-9eff-a516f107af3f'::uuid, propietario, '2344e135-d979-57b5-97ba-d1325a0371a9'::uuid,
+    $json${"connector_key":"enviar_correo@1","credential":"google","definition":{"category":"comunicacion","constraints":["Solo actúa en TU cuenta de Google conectada en Capacita → Configuración.","Gmail recibe el contenido de este paso."],"description":"Conector de acción (Gmail): te envía a TU propio correo de Gmail conectado un mensaje y, si quieres, un archivo adjunto (el informe en PDF, una foto, un Excel). Sirve para recibir resultados en tu correo.","examples":[{"inputs":{"asunto":"Tu informe semanal","mensaje":"Aquí está el resumen de la semana."},"parameters":{}}],"input_schema":{"additionalProperties":false,"properties":{"archivo":{"contentEncoding":"base64","description":"Archivo adjunto (opcional)","title":"Archivo","type":"string"},"asunto":{"title":"Asunto","type":"string"},"mensaje":{"title":"Mensaje","type":"string"},"nombre_archivo":{"description":"Sin extensión (opcional)","title":"Nombre del archivo","type":"string"}},"required":["asunto","mensaje"],"type":"object"},"input_type":"texto","name":"Enviarme por correo","output_schema":{"additionalProperties":false,"properties":{"enviado":{"title":"Enviado","type":"boolean"},"resumen":{"title":"Resumen","type":"string"}},"required":["enviado","resumen"],"type":"object"},"output_type":"texto","parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"fc8f085f22b2184acbfcb3568d7d4e71165d05b7cb9380a6127ec2d3d31cb8f2","format_version":1,"hosts":["gmail.googleapis.com","www.googleapis.com"],"kind":"connector","provider":"Gmail","provider_url":"https://developers.google.com/workspace","sends_content":true}$json$::jsonb,
+    '2490f1042ff6746446333ce614bb44350aa8021d28b24c038995a6afdc0a9daa', 'fc8f085f22b2184acbfcb3568d7d4e71165d05b7cb9380a6127ec2d3d31cb8f2', 'connector-v1', 'enviar_correo@1')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT '8236d22a-5609-55df-9eff-a516f107af3f'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '8236d22a-5609-55df-9eff-a516f107af3f'::uuid AND active);
+
+  -- Versión guardar_drive@1
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('05a4a671-2477-5106-b0e9-eedce937b081'::uuid, propietario, '1339cf79-93dd-59fd-8658-c9e816444423'::uuid,
+    $json${"connector_key":"guardar_drive@1","credential":"google","definition":{"category":"comunicacion","constraints":["Solo actúa en TU cuenta de Google conectada en Capacita → Configuración.","Google Drive recibe el contenido de este paso."],"description":"Conector de acción (Google Drive): guarda un archivo (el informe en PDF, una foto, un Word o un Excel) en TU Google Drive y devuelve el enlace. Capacita solo ve los archivos que ella misma crea.","examples":[{"inputs":{"archivo":"MUESTRA:pdf"},"parameters":{}}],"input_schema":{"additionalProperties":false,"properties":{"archivo":{"contentEncoding":"base64","description":"El archivo que quieres guardar","title":"Archivo","type":"string"},"nombre_archivo":{"description":"Sin extensión (opcional)","title":"Nombre del archivo","type":"string"}},"required":["archivo"],"type":"object"},"input_type":"texto","name":"Guardar en mi Drive","output_schema":{"additionalProperties":false,"properties":{"enlace":{"title":"Enlace","type":"string"},"nombre":{"title":"Nombre","type":"string"},"resumen":{"title":"Resumen","type":"string"}},"required":["enlace","nombre","resumen"],"type":"object"},"output_type":"texto","parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"8863d2a635035f0f7b3c3dd411527b7a4ea0ff092df7c5bc575934d2d6f9b4dc","format_version":1,"hosts":["gmail.googleapis.com","www.googleapis.com"],"kind":"connector","provider":"Google Drive","provider_url":"https://developers.google.com/workspace","sends_content":true}$json$::jsonb,
+    '08b63a2b878c89130b22aea20f693ed83c0b2f7ab3a9a8d1694198afb1b3b299', '8863d2a635035f0f7b3c3dd411527b7a4ea0ff092df7c5bc575934d2d6f9b4dc', 'connector-v1', 'guardar_drive@1')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT '05a4a671-2477-5106-b0e9-eedce937b081'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '05a4a671-2477-5106-b0e9-eedce937b081'::uuid AND active);
+
+  -- Versión agendar_evento@1
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('dc4f9d3a-1781-514e-b35b-1d8604b5a575'::uuid, propietario, '63bd469a-8607-5d7c-b2f3-69216c3017b9'::uuid,
+    $json${"connector_key":"agendar_evento@1","credential":"google","definition":{"category":"comunicacion","constraints":["Solo actúa en TU cuenta de Google conectada en Capacita → Configuración.","Google Calendar recibe el contenido de este paso."],"description":"Conector de acción (Google Calendar): crea un evento o recordatorio en TU Google Calendar con título, fecha y, si quieres, hora y duración (hora de Colombia). Sin hora queda como evento de todo el día.","examples":[{"inputs":{"fecha":"2026-11-24","hora":"09:00","titulo":"Revisar inventario"},"parameters":{}}],"input_schema":{"additionalProperties":false,"properties":{"descripcion":{"description":"Opcional","title":"Descripción","type":"string"},"duracion_minutos":{"description":"De 5 a 1440 (opcional)","title":"Duración en minutos","type":"integer"},"fecha":{"description":"Fecha AAAA-MM-DD","title":"Fecha","type":"string"},"hora":{"description":"HH:MM en hora de Colombia (opcional)","title":"Hora","type":"string"},"titulo":{"title":"Título","type":"string"}},"required":["titulo","fecha"],"type":"object"},"input_type":"texto","name":"Agendar en mi calendario","output_schema":{"additionalProperties":false,"properties":{"enlace":{"title":"Enlace","type":"string"},"resumen":{"title":"Resumen","type":"string"}},"required":["enlace","resumen"],"type":"object"},"output_type":"texto","parameter_schema":{"additionalProperties":false,"properties":{},"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"2f97a4b54d9882842f3ed4d8408740c7c56cdeb3c5171740ad93c8b058ca093e","format_version":1,"hosts":["gmail.googleapis.com","www.googleapis.com"],"kind":"connector","provider":"Google Calendar","provider_url":"https://developers.google.com/workspace","sends_content":true}$json$::jsonb,
+    'd32858001f82d5990c78600dc4e0662542e5b606b7cd54edcd43e99794f0a7da', '2f97a4b54d9882842f3ed4d8408740c7c56cdeb3c5171740ad93c8b058ca093e', 'connector-v1', 'agendar_evento@1')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT 'dc4f9d3a-1781-514e-b35b-1d8604b5a575'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'dc4f9d3a-1781-514e-b35b-1d8604b5a575'::uuid AND active);
 END $$;
 COMMIT;
 NOTIFY pgrst, 'reload schema';

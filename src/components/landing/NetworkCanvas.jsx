@@ -1,61 +1,56 @@
 import { useEffect, useRef } from 'react';
 
-export default function NetworkCanvas() {
+/**
+ * Red de nodos animada (identidad visual de Capacita).
+ * En el login va a plena intensidad; dentro de la app se usa más tenue y con menos nodos.
+ * Respeta «reducir movimiento» (dibuja un solo cuadro) y se pausa con la pestaña oculta.
+ */
+export default function NetworkCanvas({ densidad = 1, opacidad = 1, className = 'fixed inset-0 w-full h-full pointer-events-auto z-0' }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
     let ancho = (canvas.width = window.innerWidth);
     let alto = (canvas.height = window.innerHeight);
 
-    const handleResize = () => {
-      ancho = canvas.width = window.innerWidth;
-      alto = canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', handleResize);
-
     const mouse = { x: null, y: null };
-    const handleMouseMove = (e) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-    };
-    const handleMouseLeave = () => {
-      mouse.x = null;
-      mouse.y = null;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseleave', handleMouseLeave);
+    const handleMouseMove = (e) => { mouse.x = e.clientX; mouse.y = e.clientY; };
+    const handleMouseLeave = () => { mouse.x = null; mouse.y = null; };
 
     const particulas = [];
-    const totalParticulas = 50;
+    const crear = () => {
+      // 50 nodos en una pantalla de escritorio; proporcional al área para no saturar el móvil.
+      const total = Math.max(14, Math.round(Math.min(50, (ancho * alto) / 26000) * densidad));
+      particulas.length = 0;
+      for (let i = 0; i < total; i++) {
+        particulas.push({
+          x: Math.random() * ancho,
+          y: Math.random() * alto,
+          vx: (Math.random() - 0.5) * 1,
+          vy: (Math.random() - 0.5) * 1,
+          radio: Math.random() * 2 + 2,
+        });
+      }
+    };
+    crear();
 
-    for (let i = 0; i < totalParticulas; i++) {
-      particulas.push({
-        x: Math.random() * ancho,
-        y: Math.random() * alto,
-        vx: (Math.random() - 0.5) * 1,
-        vy: (Math.random() - 0.5) * 1,
-        radio: Math.random() * 2 + 2,
-      });
-    }
+    let animationId = null;
 
-    let animationId;
-
-    const animarRed = () => {
+    function dibujar(mover) {
       ctx.clearRect(0, 0, ancho, alto);
-
+      ctx.globalAlpha = opacidad;
       for (let i = 0; i < particulas.length; i++) {
         const p = particulas[i];
-
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x < 0 || p.x > ancho) p.vx *= -1;
-        if (p.y < 0 || p.y > alto) p.vy *= -1;
+        if (mover) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0 || p.x > ancho) p.vx *= -1;
+          if (p.y < 0 || p.y > alto) p.vy *= -1;
+        }
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radio, 0, Math.PI * 2);
@@ -67,7 +62,6 @@ export default function NetworkCanvas() {
           const dx = p.x - p2.x;
           const dy = p.y - p2.y;
           const distancia = Math.sqrt(dx * dx + dy * dy);
-
           if (distancia < 120) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
@@ -82,7 +76,6 @@ export default function NetworkCanvas() {
           const dxMouse = p.x - mouse.x;
           const dyMouse = p.y - mouse.y;
           const distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
-
           if (distMouse < 140) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
@@ -93,24 +86,44 @@ export default function NetworkCanvas() {
           }
         }
       }
+      ctx.globalAlpha = 1;
+    }
 
-      animationId = requestAnimationFrame(animarRed);
+    const handleResize = () => {
+      ancho = canvas.width = window.innerWidth;
+      alto = canvas.height = window.innerHeight;
+      crear();
+      if (quieto) dibujar(false);
     };
 
-    animarRed();
+    const animarRed = () => {
+      dibujar(true);
+      animationId = requestAnimationFrame(animarRed);
+    };
+    const detener = () => { if (animationId !== null) cancelAnimationFrame(animationId); animationId = null; };
+    const handleVisibilidad = () => {
+      if (document.hidden) detener();
+      else if (animationId === null) animarRed();
+    };
+
+    window.addEventListener('resize', handleResize);
+    if (quieto) {
+      dibujar(false);
+    } else {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseleave', handleMouseLeave);
+      document.addEventListener('visibilitychange', handleVisibilidad);
+      animarRed();
+    }
 
     return () => {
-      cancelAnimationFrame(animationId);
+      detener();
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('visibilitychange', handleVisibilidad);
     };
-  }, []);
+  }, [densidad, opacidad]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 w-full h-full pointer-events-auto z-0"
-    />
-  );
+  return <canvas ref={canvasRef} aria-hidden="true" className={className} />;
 }

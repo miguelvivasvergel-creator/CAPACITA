@@ -331,7 +331,8 @@ class AIConnectorTests(unittest.TestCase):
         self.assertEqual({c.key for c in ia}, {"resumir_texto", "traducir_texto", "redactar_texto", "leer_texto_foto",
                                               "extraer_datos_foto", "tarea_texto"})
         # Todo lo que envía contenido a un tercero exige «Acepto»: la IA y la acción de Telegram.
-        self.assertEqual({c.key for c in CONNECTORS if c.sends_content}, {c.key for c in ia} | {"enviar_telegram"})
+        self.assertEqual({c.key for c in CONNECTORS if c.sends_content},
+                         {c.key for c in ia} | {"enviar_telegram", "enviar_correo", "guardar_drive", "agendar_evento"})
         for connector in ia:
             self.assertEqual((connector.credential, connector.hosts), ("gemini", ["generativelanguage.googleapis.com"]))
             self.assertTrue(connector.definition["description"].startswith("Conector de IA (Google Gemini): "))
@@ -455,7 +456,15 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(estado, "completed", reporte)
         self.assertEqual(vistas[0].url.path, "/bot123456:TOKEN-DE-PRUEBA/sendMessage")
         self.assertEqual(json.loads(vistas[0].content)["chat_id"], 555)
-        self.assertNotIn("parse_mode", json.loads(vistas[0].content))
+        cuerpo = json.loads(vistas[0].content)
+        self.assertEqual(cuerpo["parse_mode"], "HTML")
+        self.assertTrue(cuerpo["text"].startswith("<b>Capacita</b>\n\nTu informe está listo"))
+        # Lo que llega de otros pasos se escapa: no puede inyectar formato ni enlaces.
+        vistas = []
+        ejecutar_tg({"mensaje": 'Hola <b>x</b> <a href="https://evil.example">clic</a>'}, vistas=vistas)
+        texto = json.loads(vistas[0].content)["text"]
+        self.assertIn("&lt;b&gt;x&lt;/b&gt;", texto)
+        self.assertNotIn("<a ", texto)
         self.assertTrue(salida["enviado"])
 
     def test_without_linked_chat_nothing_is_sent(self):
@@ -476,7 +485,9 @@ class TelegramTests(unittest.TestCase):
         self.assertIn(b"Informe", vistas[0].content)
         vistas = []
         ejecutar_tg({"mensaje": "a" * 9000}, vistas=vistas)
-        self.assertEqual([len(json.loads(v.content)["text"]) for v in vistas], [4000, 4000, 1000])
+        largos = [len(json.loads(v.content)["text"]) for v in vistas]
+        self.assertEqual(len(largos), 3)
+        self.assertTrue(all(largo <= 4096 for largo in largos), largos)
 
     def test_rejections_and_wrong_paths(self):
         estado, reporte, _ = ejecutar_tg({"mensaje": "hola"}, ok=False)
@@ -526,3 +537,81 @@ class TelegramBotTests(unittest.IsolatedAsyncioTestCase):
         tg, otro = REGISTRY["enviar_telegram@1"], REGISTRY["festivos_pais@2"]
         self.assertTrue(needs_telegram({"payload": {"versions": {"a": {"manifest": tg.manifest()}}}}))
         self.assertFalse(needs_telegram({"payload": {"versions": {"a": {"manifest": otro.manifest()}}}}))
+
+
+def google(vistas, respuesta=None):
+    def handler(request):
+        vistas.append(request)
+        return httpx.Response(200, json=respuesta or {"id": "x1", "webViewLink": "https://drive.google.com/file/d/x1/view",
+                                                    "htmlLink": "https://calendar.google.com/event?eid=x1", "name": "informe.pdf"})
+    return httpx.MockTransport(handler)
+
+
+def ejecutar_google(key, inputs, contexto, vistas):
+    connector = REGISTRY[key]
+    job = trabajo(connector, inputs, {}) | {"context": contexto}
+    return run_connector(job, transport=google(vistas), resolver=PUBLICA)
+
+
+CONECTADA = {"google_access_token": "ya29.token-de-prueba", "google_email": "fahida@example.com"}
+
+
+class GoogleConnectorTests(unittest.TestCase):
+    def test_mail_goes_only_to_own_address_with_token_in_header(self):
+        vistas = []
+        estado, reporte, salida = ejecutar_google("enviar_correo@1", {"asunto": "Informe\nBcc: otro@x.com", "mensaje": "Hola",
+                                                                     "archivo": PDF}, CONECTADA, vistas)
+        self.assertEqual(estado, "completed", reporte)
+        self.assertEqual(vistas[0].headers["authorization"], "Bearer ya29.token-de-prueba")
+        crudo = __import__("base64").urlsafe_b64decode(json.loads(vistas[0].content)["raw"]).decode(errors="ignore")
+        self.assertIn("To: fahida@example.com", crudo)
+        self.assertNotIn("Bcc:", crudo.split("\n\n")[0].replace("Subject: Informe Bcc: otro@x.com", ""))
+        self.assertIn("application/pdf", crudo)
+        self.assertIn("text/html", crudo)
+        self.assertIn("text/plain", crudo)
+        self.assertIn("fahida@example.com", salida["resumen"])
+        # Ni la entrada ni el contrato permiten elegir otro destinatario.
+        estado, reporte, _ = ejecutar_google("enviar_correo@1", {"asunto": "a", "mensaje": "b", "para": "otro@x.com"}, CONECTADA, [])
+        self.assertEqual(reporte["error"], "input_contract")
+
+    def test_without_google_nothing_is_sent_and_token_never_reaches_connector(self):
+        vistas = []
+        estado, reporte, _ = ejecutar_google("guardar_drive@1", {"archivo": PDF}, {}, vistas)
+        self.assertEqual((estado, reporte["detail"], vistas), ("failed", "google_no_vinculado", []))
+        vistos = {}
+        from connectors.google import CORREO
+        original = CORREO._run
+        try:
+            CORREO._run = lambda http, i, p, c: vistos.update(c) or {"enviado": True, "resumen": "ok"}
+            ejecutar_google("enviar_correo@1", {"asunto": "a", "mensaje": "b"}, CONECTADA, [])
+        finally:
+            CORREO._run = original
+        self.assertEqual(vistos, {"google_email": "fahida@example.com"})
+
+    def test_drive_upload_and_calendar_event(self):
+        vistas = []
+        estado, _, salida = ejecutar_google("guardar_drive@1", {"archivo": PDF, "nombre_archivo": "informe ventas"}, CONECTADA, vistas)
+        self.assertEqual(estado, "completed")
+        self.assertTrue(vistas[0].headers["content-type"].startswith("multipart/related; boundary="))
+        self.assertIn(b'"name": "informe ventas.pdf"', vistas[0].content)
+        self.assertTrue(salida["enlace"].startswith("https://drive.google.com/"))
+        # Un texto (la promoción de la IA) se guarda como documento de Google Docs.
+        vistas = []
+        estado, _, _ = ejecutar_google("guardar_drive@1", {"archivo": "Promo de lluvia: 2x1 en sopas, solo el jueves.",
+                                                           "nombre_archivo": "Promo lluvia"}, CONECTADA, vistas)
+        self.assertEqual(estado, "completed")
+        self.assertIn(b'"name": "Promo lluvia", "mimeType": "application/vnd.google-apps.document"', vistas[0].content)
+        self.assertIn("Promo de lluvia: 2x1 en sopas".encode(), vistas[0].content)
+        vistas = []
+        estado, _, salida = ejecutar_google("agendar_evento@1", {"titulo": "Revisar inventario", "fecha": "2026-11-24", "hora": "09:00",
+                                                                 "duracion_minutos": 30}, CONECTADA, vistas)
+        evento = json.loads(vistas[0].content)
+        self.assertEqual((evento["start"]["dateTime"], evento["end"]["dateTime"], evento["start"]["timeZone"]),
+                         ("2026-11-24T09:00:00", "2026-11-24T09:30:00", "America/Bogota"))
+        estado, reporte, _ = ejecutar_google("agendar_evento@1", {"titulo": "x", "fecha": "24/11/2026"}, CONECTADA, [])
+        self.assertEqual(reporte["detail"], "fecha")
+
+    def test_worker_detects_google_steps(self):
+        from services.shared_worker import needs_google
+        self.assertTrue(needs_google({"payload": {"versions": {"a": {"manifest": REGISTRY["guardar_drive@1"].manifest()}}}}))
+        self.assertFalse(needs_google({"payload": {"versions": {"a": {"manifest": REGISTRY["enviar_telegram@1"].manifest()}}}}))

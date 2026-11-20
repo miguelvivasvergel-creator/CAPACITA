@@ -1,7 +1,33 @@
 import Navbar from './Navbar';
 import Icono from '../common/Icono';
+import NetworkCanvas from '../landing/NetworkCanvas';
+
+// Fondo compartido con el login: red de nodos tenue y manchas de luz azul, índigo y cian.
+function FondoNodos() {
+  return <div className="fondo-nodos" aria-hidden="true">
+    <span className="fondo-luz fondo-luz--azul" />
+    <span className="fondo-luz fondo-luz--cian" />
+    <span className="fondo-luz fondo-luz--indigo" />
+    <NetworkCanvas densidad={0.6} opacidad={0.28} className="fondo-red" />
+  </div>;
+}
+
 export default function AppLayout({children,usuario,seccionActiva,onCambiarSeccion,onCerrarSesion,experiencia='desarrollador',onCambiarExperiencia}) {
   const section=seccionActiva?.split('/')[0];
-  const labels={inicio:'Inicio',capacidades:experiencia==='guiado'?'Herramientas':'Capacidades',workflows:experiencia==='guiado'?'Soluciones':'Workflows',historial:'Resultados',comunidad:'Comunidad',buscar:'Buscar',perfil:'Perfil',configuracion:'Configuración',ejecutar:'Preparar herramienta'};
-  return <div className="workspace-shell"><a className="workspace-skip" href="#contenido-principal">Ir al contenido</a><Navbar usuario={usuario} seccionActiva={seccionActiva} onCambiarSeccion={onCambiarSeccion} onCerrarSesion={onCerrarSesion} experiencia={experiencia}/><div className="workspace-body"><header className="workspace-toolbar"><p className="workspace-breadcrumb"><span>Mi espacio</span><Icono nombre="chevron" className="h-3 w-3"/><strong>{labels[section]||'Capacita'}</strong></p>{onCambiarExperiencia&&<div className="workspace-modos" role="group" aria-label="Modo de uso">{[['guiado','Guiado','guiado'],['desarrollador','Desarrollador','codigo']].map(([value,label,icono])=><button key={value} type="button" aria-pressed={experiencia===value} onClick={()=>onCambiarExperiencia(value)}><Icono nombre={icono} className="h-4 w-4"/>{label}</button>)}</div>}</header><main id="contenido-principal" tabIndex={-1} className="workspace-main">{children}</main><footer className="workspace-footer"><span>Capacita</span><span>Tu trabajo, conectado.</span></footer></div></div>;
+  // El chat + taller ocupa toda la altura disponible: sin pie de página que le robe espacio.
+  const pantallaCompleta=experiencia==='guiado'&&section==='inicio';
+  const labels={inicio:experiencia==='guiado'?'Chat y taller':'Inicio',capacidades:experiencia==='guiado'?'Herramientas':'Capacidades',workflows:experiencia==='guiado'?'Soluciones':'Workflows',historial:'Resultados',comunidad:'Comunidad',buscar:'Buscar',perfil:'Perfil',configuracion:'Configuración',ejecutar:'Preparar herramienta'};
+  return <div className={`workspace-shell ${pantallaCompleta?'workspace-shell--lleno':''}`}>
+    <FondoNodos/>
+    <a className="workspace-skip" href="#contenido-principal">Ir al contenido</a>
+    <Navbar usuario={usuario} seccionActiva={seccionActiva} onCambiarSeccion={onCambiarSeccion} onCerrarSesion={onCerrarSesion} experiencia={experiencia}/>
+    <div className="workspace-body">
+      <header className="workspace-toolbar">
+        <p className="workspace-breadcrumb"><span className="workspace-breadcrumb-nodo" aria-hidden="true"/><span>Mi espacio</span><Icono nombre="chevron" className="h-3 w-3"/><strong>{labels[section]||'Capacita'}</strong></p>
+        {onCambiarExperiencia&&<div className="workspace-modos" role="group" aria-label="Modo de uso">{[['guiado','Guiado','guiado'],['desarrollador','Desarrollador','codigo']].map(([value,label,icono])=><button key={value} type="button" aria-pressed={experiencia===value} onClick={()=>onCambiarExperiencia(value)}><Icono nombre={icono} className="h-4 w-4"/>{label}</button>)}</div>}
+      </header>
+      <main id="contenido-principal" tabIndex={-1} className="workspace-main">{children}</main>
+      {!pantallaCompleta&&<footer className="workspace-footer"><span>Capacita</span><span>Tu trabajo, conectado.</span></footer>}
+    </div>
+  </div>;
 }

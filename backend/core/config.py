@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     # disponibles. El token solo lo usan el broker y el trabajador; nunca el código generado.
     TELEGRAM_BOT_TOKEN: SecretStr = SecretStr("")
     TELEGRAM_BOT_USERNAME: str = Field(default="", pattern=r"^$|^[A-Za-z0-9_]{5,32}$")
+    # Google (fase 6, SQL 19): cliente OAuth web de Google Cloud y clave Fernet con que se cifra el
+    # token de cada persona en la base de datos. Vacíos = conectar Google no está disponible.
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: SecretStr = SecretStr("")
+    GOOGLE_TOKEN_KEY: SecretStr = SecretStr("")
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/google/callback"
+    FRONTEND_URL: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",

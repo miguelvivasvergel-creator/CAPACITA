@@ -121,7 +121,9 @@ def compile_workflow(raw, versions, inputs=None):
     def port_schema(binding):
         schema = definition.input_schema if binding.source == "$input" else manifests[binding.source].definition.output_schema
         if binding.field not in schema.get("properties", {}) or binding.field not in schema.get("required", []):
-            raise HTTPException(422, "La conexión necesita un campo declarado y obligatorio")
+            raise HTTPException(422, f"La conexión a «{binding.source}.{binding.field}» no existe: ese paso no "
+                                     f"entrega «{binding.field}» como campo obligatorio "
+                                     f"(entrega: {', '.join(schema.get('required', [])) or 'nada'})")
         return schema["properties"][binding.field]
 
     for node in definition.nodes:
@@ -132,11 +134,14 @@ def compile_workflow(raw, versions, inputs=None):
         if node.bindings and ("enum" in schema or "const" in schema):
             raise HTTPException(422, "Ese contrato de objeto necesita entradas fijas completas")
         if set(node.values) & set(node.bindings):
-            raise HTTPException(422, "Una entrada no puede recibir dos valores")
+            raise HTTPException(422, f"En el paso {node.id}, {', '.join(sorted(set(node.values) & set(node.bindings)))} "
+                                     "tiene un valor fijo y además una conexión: deja solo uno")
         if not set(schema.get("required", [])) <= supplied:
-            raise HTTPException(422, f"Faltan entradas en el paso {node.id}")
+            raise HTTPException(422, f"Faltan entradas en el paso {node.id}: "
+                                     f"{', '.join(sorted(set(schema.get('required', [])) - supplied))}")
         if schema.get("additionalProperties") is False and supplied - set(schema.get("properties", {})):
-            raise HTTPException(422, "La conexión usa una entrada no declarada")
+            raise HTTPException(422, f"El paso {node.id} no tiene la entrada "
+                                     f"{', '.join(sorted(supplied - set(schema.get('properties', {}))))}")
         for field, value in node.values.items():
             if not Draft202012Validator(schema.get("properties", {}).get(field, {})).is_valid(value):
                 raise HTTPException(422, "Un valor fijo no cumple el contrato")
@@ -144,7 +149,8 @@ def compile_workflow(raw, versions, inputs=None):
             raise HTTPException(422, "Las entradas fijas no cumplen el contrato completo")
         for field, binding in node.bindings.items():
             if not compatible(port_schema(binding), schema.get("properties", {}).get(field, {})):
-                raise HTTPException(422, "Los campos conectados tienen contratos incompatibles")
+                raise HTTPException(422, f"En el paso {node.id}, «{field}» no acepta lo que entrega "
+                                         f"«{binding.source}.{binding.field}» (tipos incompatibles)")
     for binding in definition.outputs.values():
         if binding.source != "$input" and binding.source not in nodes:
             raise HTTPException(422, "La salida apunta a un paso inexistente")

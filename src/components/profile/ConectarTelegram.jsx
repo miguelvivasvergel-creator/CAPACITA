@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Icono from '../common/Icono';
 import { desvincularTelegram, estadoTelegram, vincularTelegram } from '../../services/telegram';
 
 const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50';
@@ -57,7 +58,7 @@ export default function ConectarTelegram() {
     <p className="mb-3 font-body text-xs text-slate-500">Recibe en tu celular los resultados que pidas enviar a Telegram. Solo tu chat los recibe; puedes desconectarlo cuando quieras.</p>
     {!estado && !error && <p className="text-sm text-slate-500">Consultando…</p>}
     {estado?.linked && <div className="space-y-3">
-      <p className="text-sm text-emerald-800">✅ Conectado{estado.linked_at ? ` desde el ${new Date(estado.linked_at).toLocaleDateString('es-CO')}` : ''} con @{estado.bot_username}.</p>
+      <p className="text-sm text-emerald-800"><Icono nombre="ok" className="mr-1 inline h-4 w-4 align-[-3px]" />Conectado{estado.linked_at ? ` desde el ${new Date(estado.linked_at).toLocaleDateString('es-CO')}` : ''} con @{estado.bot_username}.</p>
       <button type="button" disabled={ocupado} onClick={desconectar} className={`${BOTON} border border-slate-300`}>Desconectar Telegram</button>
     </div>}
     {estado && !estado.linked && !vinculo && <button type="button" disabled={ocupado} onClick={conectar} className={`${BOTON} bg-sky-600 text-white`}>Conectar Telegram</button>}

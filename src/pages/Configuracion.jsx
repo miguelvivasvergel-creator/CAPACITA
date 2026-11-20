@@ -2,6 +2,7 @@ import EncabezadoVista from '../components/common/EncabezadoVista';
 import { useEffect, useId, useRef, useState } from 'react';
 import { supabase } from '../services/supabase';
 import ConectarTelegram from '../components/profile/ConectarTelegram';
+import ConectarGoogle from '../components/profile/ConectarGoogle';
 
 export default function Configuracion({ usuario, onCerrarSesion }) {
   const [correo, setCorreo] = useState(usuario?.email || '');
@@ -46,7 +47,7 @@ export default function Configuracion({ usuario, onCerrarSesion }) {
     try {
       const { error } = await supabase.auth.updateUser({ password: nuevaContrasena });
       if (error) mostrarMensaje(`Error: ${error.message}`, true);
-      else { mostrarMensaje('Contraseña actualizada ✓'); setNuevaContrasena(''); }
+      else { mostrarMensaje('Contraseña actualizada.'); setNuevaContrasena(''); }
     } catch {
       mostrarMensaje('No se pudo contactar al servicio de cuentas. Comprueba tu conexión e inténtalo de nuevo.', true);
     } finally { setCargando(false); }
@@ -64,6 +65,7 @@ export default function Configuracion({ usuario, onCerrarSesion }) {
       )}
 
       <ConectarTelegram />
+      <ConectarGoogle />
 
       {/* Cambiar correo */}
       <section className="mt-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">

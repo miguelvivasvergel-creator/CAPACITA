@@ -32,7 +32,7 @@ class HourlyBudget:
 
 
 # Tope por hora en este trabajador, por proveedor con credencial (cuida las cuotas gratuitas).
-BUDGETS = {"gemini": HourlyBudget(30), "telegram": HourlyBudget(60)}
+BUDGETS = {"gemini": HourlyBudget(30), "telegram": HourlyBudget(60), "google": HourlyBudget(60)}
 AI_BUDGET = BUDGETS["gemini"]
 # Nombre de credencial → (host exacto, cabecera o modo, cómo leer la clave). La clave vive en
 # backend/.env; el broker la añade a la petición y el código del conector no la ve.
@@ -63,7 +63,17 @@ def run_connector(job, transport=None, resolver=None, credentials=None, budget=N
         if not isinstance(value, dict) or not Draft202012Validator(schema).is_valid(value):
             return "failed", report | {"error": "input_contract"}, None
     auth = None
-    if connector.credential:
+    contexto = dict(job.get("context") or {})
+    if connector.credential == "google":
+        # El token de acceso de la persona lo pone el trabajador en el contexto; solo lo usa el
+        # broker (cabecera Authorization hacia las APIs de Google) y se quita antes del conector.
+        token = contexto.pop("google_access_token", None)
+        if not token:
+            return "failed", report | {"error": "connector_input", "detail": "google_no_vinculado"}, None
+        if not (budget or BUDGETS["google"]).take():
+            return "failed", report | {"error": "connector_quota"}, None
+        auth = (tuple(connector.hosts), "Authorization", f"Bearer {token}")
+    elif connector.credential:
         auth = credential_for(connector.credential, credentials)
         if auth is None:
             return "failed", report | {"error": "connector_not_configured"}, None
@@ -73,7 +83,7 @@ def run_connector(job, transport=None, resolver=None, credentials=None, budget=N
                     **({"resolver": resolver} if resolver else {}))
     started = time.monotonic()
     try:
-        output = connector.run(http, inputs, parameters, job.get("context"))
+        output = connector.run(http, inputs, parameters, contexto)
     except ConnectorInputError as error:
         # El código dice qué dato revisar (ciudad, fecha…); nunca el valor recibido.
         return "failed", report | {"error": "connector_input", "detail": str(error)[:40]}, None
