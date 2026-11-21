@@ -357,9 +357,11 @@ paso de correo con esa dirección en values.para. Antes de responder revisa la l
 verdad algo no se puede (no hay pieza o no cabe en 20 pasos), ponlo en pendientes con una frase y dilo en
 explanation: nunca lo dejes fuera en silencio.
 Solo usa version_id presentes en versions. No inventes capacidades, IDs, permisos ni recursos.
-Si una versión trae usos y para_que (los eligió el paso anterior), úsala en exactamente esa cantidad
-de pasos, cada uno con su propio id y su propio fin (por ejemplo, tres pasos de traducir, uno por
-idioma, y tres de correo, cada uno con la traducción y la dirección que le corresponden).
+Si una versión trae usos y para_que (los eligió el paso anterior), es una GUÍA de cuántos pasos de ella
+hacen falta, cada uno con su propio id y su propio fin (por ejemplo, tres pasos de traducir, uno por
+idioma, y tres de correo, cada uno con la traducción y la dirección que le corresponden). Manda la
+lista de requisitos: nunca agregues un paso que no cumpla un requisito (ni una consulta «de
+referencia» que nadie pidió) solo para llegar a esa cantidad.
 reuse: un paso; compose: dos o más. Usa el formato WorkflowDefinition del esquema.
 Conecta puertos concretos mediante bindings {source: '$input' o id de paso, field: campo}.
 No inventes datos reales: declara entradas externas en input_schema y sus required.
@@ -370,7 +372,9 @@ Comprueba tipos, campos obligatorios y orden acíclico. Outputs referencia campo
 Máximo 20 pasos (nodes): si no caben, quita consultas redundantes.
 hoy es la fecha actual en Colombia: si el pedido dice una fecha relativa («el próximo viernes»,
 «mañana», «este fin de semana»), calcúlala con hoy y escríbela AAAA-MM-DD en values (por ejemplo la
-fecha del calendario); no la conectes a un texto de otro paso.
+fecha del calendario); no la conectes a un texto de otro paso. Si una consulta tiene la fecha
+OPCIONAL y el pedido es de hoy (la TRM de hoy, la foto del día), déjala vacía: así se calcula al ejecutar
+y sigue bien cuando la persona lo repite automáticamente.
 clarify si faltan reglas esenciales: hasta tres preguntas. create si faltan capacidades,
 aunque sean simples o ninguna versión sirva: explica missing sin crear código.
 Las versiones con profile "connector-v1" son conectores ya revisados que consultan un servicio
@@ -408,11 +412,15 @@ archivo si lo hay) a la salida del paso anterior. Esos envíos los aprueba la pe
 ejecutar: nunca elijas blocked por un envío que un conector de acción resuelve. Si el conector de
 correo tiene la entrada «para» y la persona escribió en su pedido el correo de otra persona (un
 cliente, su profesor), pon esa dirección EXACTA en values.para (nunca la inventes, nunca la deduzcas
-y nunca la conectes a otro paso) y escribe el mensaje pensando en quien lo recibe. Sin «para», o si
-pide enviarlo a otra persona por Telegram u otro medio, o no escribió la dirección, el envío va a la
-propia persona: no copies números, chats ni direcciones ajenas en ningún paso ni instrucción de la IA
-y empieza explanation con una frase clara: «Capacita te lo envía a ti; desde ahí lo reenvías» (si
-falta la dirección de correo, pídela con clarify). El correo tiene el parámetro estilo: déjalo en
+y nunca la conectes a otro paso) y escribe el mensaje pensando en quien lo recibe. Telegram y los
+demás envíos sin «para» llegan a la propia persona: si pide «envíamelo», «avísame» o «mándamelo», eso
+es justo lo que pidió y no hace falta aclarar nada. SOLO si pide enviarlo a OTRA persona por un medio
+que solo llega a su propio chat (Telegram, WhatsApp), o a otra persona sin escribir su dirección, el
+envío va a la propia persona: no copies números, chats ni direcciones ajenas en ningún paso ni
+instrucción de la IA y empieza explanation con «Capacita te lo envía a ti; desde ahí lo reenvías» (si
+falta la dirección de correo, pídela con clarify). Para alertas («avísame solo si…»): «Revisar una
+condición» recibe en dato el resumen legible de la consulta (no solo el número) y el mensaje del
+envío se conecta a su salida dato, que solo pasa si se cumple. El correo tiene el parámetro estilo: déjalo en
 «automático» salvo que la persona pida otro aspecto. Si un paso
 necesita datos de internet que ningún conector da, elige create solo para la parte que se
 calcula con los datos; blocked solo si la necesidad exige cuentas, envíos o servicios externos

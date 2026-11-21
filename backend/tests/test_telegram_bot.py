@@ -375,3 +375,28 @@ class CharlaTests(unittest.IsolatedAsyncioTestCase):
         with patch("services.telegram_planner.planear_pedido", planear):
             await tb.atender(bot, base, "sesion", asyncio.to_thread, servicios())
         planear.assert_awaited_once()
+
+
+class NumeroDecisivoTests(unittest.TestCase):
+    """La condición solo decide sin IA cuando no hay duda de cuál número es «el dato»."""
+
+    def test_fechas_horas_y_tasas_no_se_confunden_con_el_dato(self):
+        from connectors.ia import numero_decisivo
+        casos = {"TRM vigente desde el 2026-11-21: $4.123,45 pesos por dólar": 4123.45,  # antes leía 2026
+                 "TRM del 21/11/2026: $4.123,45 por dólar": 4123.45,
+                 "El 21 de noviembre de 2026 el dólar está en 4.123,45 pesos": 4123.45,
+                 "300.000,00 COP = 89,70 USD (1 COP = 0.000299 USD).": 89.7,  # antes tomaba la tasa
+                 "1 USD = 4.215,30 COP": 4215.3, "A las 14:30 la máxima es 33 °C": 33.0, "4123.45": 4123.45}
+        for texto, esperado in casos.items():
+            self.assertAlmostEqual(numero_decisivo(texto), esperado, msg=texto)
+        # Dos cifras posibles: no se adivina (decide la IA con el texto completo).
+        self.assertIsNone(numero_decisivo("Bogotá mañana: 19 °C máx; hoy 21 °C"))
+        self.assertIsNone(numero_decisivo("sin cifras"))
+
+    def test_el_motivo_se_entiende(self):
+        from connectors.ia import revisar_condicion
+        salida = revisar_condicion(None, {"dato": "TRM vigente desde el 2026-11-21: $5.123,45 pesos por dólar",
+                                          "condicion": "pasa de 5.000"}, {})
+        self.assertTrue(salida["cumple"])
+        self.assertEqual(salida["motivo"], "Se cumple «pasa de 5.000»: el valor es 5.123,45, que es mayor que 5.000.")
+        self.assertIn("2026-11-21", salida["dato"])  # el aviso lleva el texto legible, no solo el número

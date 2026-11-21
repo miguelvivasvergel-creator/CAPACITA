@@ -76,6 +76,18 @@ def conectores_relacionados(objective):
     return {str(ultimos[k].capability_id): puntajes[k] for k in orden}
 
 
+def antecesores(paso_id, pasos):
+    """Todos los pasos de los que depende `paso_id` (directa o indirectamente), sin él mismo."""
+    vistos, pendientes = set(), [b.source for b in pasos[paso_id].bindings.values()]
+    while pendientes:
+        actual = pendientes.pop()
+        if actual in vistos or actual not in pasos:
+            continue
+        vistos.add(actual)
+        pendientes.extend(b.source for b in pasos[actual].bindings.values())
+    return vistos
+
+
 def revision_logica(definition):
     """Errores de lógica que el validador de contratos no ve (los tipos encajan, el sentido no).
 
@@ -122,6 +134,16 @@ def revision_logica(definition):
     # calcula debe llegar a otro paso; si no, se consulta para nada y el envío sale sin esos datos.
     usados = {b.source for node in definition.nodes for b in node.bindings.values()}
     tipo = {node.id: getattr(BY_VERSION.get(str(node.version_id)), "key", None) for node in definition.nodes}
+    # Alertas («avísame SOLO si…»): el motor omite lo que depende de la condición cuando no se cumple. Si
+    # ningún envío depende de ella, la condición no frena nada y el aviso saldría SIEMPRE. (Un envío aparte
+    # sin condición puede ser legítimo: «mándame el clima y avísame solo si llueve».)
+    condiciones = {node.id for node in definition.nodes if tipo[node.id] == "revisar_condicion"}
+    envios = [node.id for node in definition.nodes if tipo[node.id] in ACCIONES]
+    if condiciones and envios and not any(antecesores(envio, pasos) & condiciones for envio in envios):
+        condicion = sorted(condiciones)[0]
+        return (f"Ningún envío depende de la condición «{condicion}»: el aviso saldría aunque no se cumpla. Conecta "
+                f"el mensaje del envío a «{condicion}.dato» (pasa el dato solo si se cumple) o a un paso que dependa "
+                "de la condición. En la condición conecta dato al resumen legible de la consulta.")
     if any(tipo[node.id] in ACCIONES for node in definition.nodes):
         sueltos = [node.id for node in definition.nodes if tipo[node.id] not in ACCIONES and node.id not in usados]
         suelto = sueltos[0] if sueltos else None
@@ -368,6 +390,14 @@ def reparar_plan(definition, options):
         if entrada.get("additionalProperties") is False:
             node.bindings = {campo: b for campo, b in node.bindings.items() if campo in entrada.get("properties", {})}
         node.values = ajustar_objeto(entrada, {k: v for k, v in node.values.items() if k not in node.bindings})
+        # Una fecha OPCIONAL vacía es «hoy» al ejecutar. Si la IA escribe la de hoy («2026-11-21» en «avísame si
+        # el dólar pasa de 5.000 hoy»), al repetirse cada día consultaría siempre el día en que se planeó.
+        from connectors.fechas import hoy_colombia
+        hoy = hoy_colombia().isoformat()
+        requeridos = set(entrada.get("required") or [])
+        for campo in [c for c in node.values if "fecha" in c and c not in requeridos]:
+            if str(node.values[campo]).strip()[:10] == hoy:
+                node.values.pop(campo)
 
 
 def errores_del_plan(error):
@@ -545,7 +575,11 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
             # Lista de verificación: la del paso 1 o, si no hubo, la que escribió la IA al planear.
             lista = requisitos or proposal.requisitos
             faltan = requisitos_sin_cubrir(proposal.definition, lista, proposal.cobertura) if lista else []
-            logica = (revision_logica(proposal.definition) or usos_incompletos(proposal.definition, usos, options)
+            # Con lista de verificación, ella manda: el conteo de usos del paso 1 es solo una guía. Exigirlo
+            # aparte hacía que, si el paso 1 contaba de más, el plan inventara pasos («convertir a pesos
+            # mexicanos» en un pedido de euros y pesos colombianos) para llegar al número.
+            exigir_usos = None if lista else usos_incompletos(proposal.definition, usos, options)
+            logica = (revision_logica(proposal.definition) or exigir_usos
                       or (sin_cubrir_como_error(faltan) if faltan else None))
             if logica and attempt < 2:
                 feedback = logica

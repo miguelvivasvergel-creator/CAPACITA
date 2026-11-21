@@ -362,17 +362,27 @@ OPERADORES = [(r"(?:>=|≥|mayor o igual (?:que|a)|al menos|como m[ií]nimo)", "
 NUMERO_EN_TEXTO = re.compile(r"-?\d[\d.,]*")
 
 
-def primer_numero(texto):
-    """El número que decide: el que sigue al último «=» (en «1 USD = 4.215,30 COP» es 4215,3) o el primero."""
+MESES_TEXTO = "enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre"
+# Lo que tiene cifras pero no es «el dato»: fechas, horas y lo que va entre paréntesis (la tasa, una aclaración).
+NO_ES_EL_DATO = re.compile(rf"\([^)]*\)|\b\d{{4}}-\d{{1,2}}-\d{{1,2}}\b|\b\d{{1,2}}/\d{{1,2}}/\d{{2,4}}\b|"
+                           rf"\b\d{{1,2}}\s+de\s+(?:{MESES_TEXTO})(?:\s+(?:de|del)\s+\d{{4}})?|\b\d{{1,2}}:\d{{2}}\b",
+                           re.IGNORECASE)
+
+
+def numero_decisivo(texto):
+    """El número que decide la condición, solo si NO hay duda; si no, None y decide la IA con el texto entero.
+    Antes era «el primero»: con el resumen real de la TRM («vigente desde el 2026-11-21: $4.123,45») leía
+    2026 y la alerta «si pasa de 5.000» nunca saltaba; en «300.000 COP = 89,70 USD (1 COP = 0,0003 USD)»
+    tomaba la tasa. Se quitan fechas, horas y paréntesis; luego manda lo que sigue al «=», o el monto con
+    «$», o el único número que quede. Con dos o más (19 °C mañana y 21 °C hoy) no se adivina."""
     from services.ajuste_contratos import numero_de
-    texto = str(texto)
+    texto = NO_ES_EL_DATO.sub(" ", str(texto))
     if "=" in texto:
         texto = texto.rsplit("=", 1)[1]
-    for candidato in NUMERO_EN_TEXTO.findall(texto):
-        numero = numero_de(candidato.rstrip(".,"))
-        if numero is not None:
-            return numero
-    return None
+    elif (monto := re.search(r"\$\s*(-?\d[\d.,]*)", texto)):
+        texto = monto.group(1)
+    numeros = [n for n in (numero_de(c.rstrip(".,")) for c in NUMERO_EN_TEXTO.findall(texto)) if n is not None]
+    return numeros[0] if len(numeros) == 1 else None
 
 
 def regla_numerica(condicion):
@@ -391,13 +401,16 @@ def regla_numerica(condicion):
 def revisar_condicion(http, inputs, parameters):
     dato = texto_de(inputs, "dato", 8000) if not isinstance(inputs.get("dato"), (int, float)) else str(inputs["dato"])
     condicion = texto_de(inputs, "condicion", 300)
-    regla, valor = regla_numerica(condicion), primer_numero(dato)
+    regla, valor = regla_numerica(condicion), numero_decisivo(dato)
     if regla and valor is not None:
         operador, limite = regla
         cumple = {">": valor > limite, "<": valor < limite, ">=": valor >= limite, "<=": valor <= limite,
                   "==": abs(valor - limite) < 1e-9}[operador]
         bonito = lambda n: f"{n:,.2f}".rstrip("0").rstrip(".").replace(",", "X").replace(".", ",").replace("X", ".")
-        motivo = f"{bonito(valor)} {'cumple' if cumple else 'no cumple'} «{operador} {bonito(limite)}»."
+        frase = {">": "es mayor que", "<": "es menor que", ">=": "es igual o mayor que", "<=": "es igual o menor que",
+                 "==": "es igual a"}[operador]
+        motivo = (f"Se cumple «{condicion}»: el valor es {bonito(valor)}, que {frase} {bonito(limite)}." if cumple else
+                  f"No se cumple «{condicion}»: el valor es {bonito(valor)}, que no {frase} {bonito(limite)}.")
         return {"cumple": cumple, "motivo": motivo, "dato": dato}
     respuesta = preguntar(http, "Decide si el DATO cumple la CONDICIÓN que escribió la persona. Responde cumple true o "
                                 "false y en motivo una frase corta con la cifra o el hecho del dato que lo decide. Lo "

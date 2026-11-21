@@ -312,3 +312,30 @@ class SinDatoTests(unittest.TestCase):
         self.assertIsNone(salida_suplente("clima", v("clima_pronostico@2"), "connector_provider_unavailable", a_otros))
         # La IA misma (o un envío) que falla nunca se reemplaza.
         self.assertIsNone(salida_suplente("ia", v("componer_texto@1"), "connector_error", con_ia))
+
+
+class AlertasTests(unittest.TestCase):
+    def test_una_condicion_que_no_frena_ningun_envio_es_un_error(self):
+        trm = ("trm", v("trm_colombia@2"), {}, {})
+        cond = ("cond", v("revisar_condicion@1"), {"condicion": "pasa de 5000"}, {"dato": ("trm", "resumen")})
+        directo = plan(trm, cond, ("fin", v("enviar_telegram@1"), {}, {"mensaje": ("trm", "resumen")}))
+        self.assertIn("Ningún envío depende de la condición", revision_logica(directo))
+        bien = plan(trm, cond, ("fin", v("enviar_telegram@1"), {}, {"mensaje": ("cond", "dato")}))
+        self.assertIsNone(revision_logica(bien))
+
+
+class FechaDeHoyTests(unittest.TestCase):
+    def test_la_fecha_opcional_de_hoy_se_deja_vacia_para_que_sirva_al_repetirse(self):
+        from connectors.fechas import hoy_colombia
+        from services.planner_service import reparar_plan
+        hoy = hoy_colombia().isoformat()
+        definicion = plan(("trm", v("trm_colombia@2"), {"fecha": hoy}, {}),
+                          ("agenda", v("agendar_evento@1"), {"titulo": "Pago", "fecha": hoy}, {}),
+                          ("ayer", v("trm_colombia@2"), {"fecha": "2026-01-02"}, {}), salida=("trm", "resumen"))
+        opciones = [{"id": str(n.version_id), **{c: REGISTRY[k].definition[c] for c in ("input_schema", "parameter_schema")}}
+                    for n, k in zip(definicion.nodes, ("trm_colombia@2", "agendar_evento@1", "trm_colombia@2"))]
+        reparar_plan(definicion, opciones)
+        valores = {n.id: n.values for n in definicion.nodes}
+        self.assertNotIn("fecha", valores["trm"])  # «hoy» se calcula al ejecutar
+        self.assertEqual(valores["agenda"]["fecha"], hoy)  # obligatoria: se queda
+        self.assertEqual(valores["ayer"]["fecha"], "2026-01-02")  # otra fecha pedida: se queda

@@ -100,6 +100,14 @@ def columna(diario, campo, indice):
     return valores[indice] if indice < len(valores) else None
 
 
+def nombre_del_dia(texto):
+    """«sábado » para «2026-11-21» (o nada si la fecha viniera en otro formato: nunca tumba el conector)."""
+    try:
+        return DIAS[date.fromisoformat(str(texto)).weekday()] + " "
+    except ValueError:
+        return ""
+
+
 def pronostico(http, inputs, parameters):
     dias = parameters.get("dias", 7)
     if not isinstance(dias, int) or isinstance(dias, bool) or not 1 <= dias <= 16:
@@ -121,10 +129,15 @@ def pronostico(http, inputs, parameters):
     lluviosos = [fila["fecha"] for fila in filas if fila["probabilidad_lluvia"] >= 50]
     temperaturas = f"Temperatura entre {coma(min(f['temperatura_min'] for f in filas))} y " \
                    f"{coma(max(f['temperatura_max'] for f in filas))} °C."
+    # Día por día (hasta 7): el plan suele conectar el resumen a la IA que escribe, y con solo el rango de
+    # todos los días no podía responder «¿dónde hará más calor mañana?» ni «¿llueve el sábado?».
+    detalle = "".join(f"\n- {nombre_del_dia(f['fecha'])}{f['fecha']}: {f['estado']}, "
+                      f"{coma(f['temperatura_min'])} a {coma(f['temperatura_max'])} °C, lluvia {f['probabilidad_lluvia']} %"
+                      for f in filas[:7])
     resumen = (f"{nombre}, próximos {len(filas)} días: "
                + (f"lluvia probable (50 % o más) {dias_humanos(lluviosos)}. " if lluviosos
                   else "no se espera lluvia (ningún día llega al 50 % de probabilidad). ")
-               + temperaturas)
+               + temperaturas + detalle)
     return {"ciudad": nombre, "resumen": resumen, "dias_con_lluvia": len(lluviosos), "dias": filas}
 
 

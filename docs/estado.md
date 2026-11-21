@@ -41,6 +41,19 @@ Tres fallos, corregidos por su causa general (no para este pedido):
   25/min por chat, un solo aviso), máximo 40 chats a la vez, y saludos/gracias sin IA (`CHARLA`).
   Revisado sin cambios: la web bloquea el doble clic (lock + clave de idempotencia estable) y los
   objetivos tienen 10–2000 caracteres. 334 pruebas OK.
+- **Coherencia de la IA (mismo día, tras 66065f2), hallado con el planner real en pedidos difíciles:**
+  (1) todo plan empezaba con «Capacita te lo envía a ti; desde ahí lo reenvías» (la regla decía «sin
+  para» y Telegram nunca lo tiene): ahora solo si pide enviar a OTRA persona; (2) inventaba pasos («convertir
+  a pesos mexicanos») para llegar al conteo del paso 1: con lista de verificación el conteo es guía y ya no
+  se exige (`usos_incompletos` solo sin lista); (3) la condición tomaba el primer número: con el resumen
+  real de la TRM («vigente desde el 2026-11-21: $3.461,92») leía 2026 y la alerta nunca saltaba; en una
+  conversión tomaba la tasa. `numero_decisivo` quita fechas, horas y paréntesis, usa «=» o «$» y si queda
+  más de un número decide la IA; motivo en frase clara; (4) `revision_logica`: una condición que no frena
+  ningún envío es error; (5) el clima resumía 3 días en un rango y no se podía comparar «mañana»: el
+  resumen trae cada día; (6) fecha OPCIONAL = hoy se deja vacía (`reparar_plan`): al repetirse consultaba
+  siempre el día en que se planeó. Verificado real: alerta (3.461,92 vs 5.000 → no; vs 3.000 → sí), «En
+  Medellín hará más calor mañana domingo 22 (27,8 vs 22,7 °C)», conversiones sin paso inventado, reenvío
+  solo para «mándale a mi mamá», promoción sin negocio → pregunta. 338 pruebas OK.
 - Pendiente: confirmar el correo en inglés en Gmail y la prueba completa por Telegram tras reiniciar.
 
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)
