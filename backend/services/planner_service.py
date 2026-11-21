@@ -450,6 +450,52 @@ def requisitos_sin_cubrir(definition, requisitos, cobertura):
     return faltan
 
 
+# Pasos de IA que escriben el texto final y el campo donde va su orden (con el largo que acepta al ejecutar).
+REDACTORES = {"componer_texto": ("instruccion", 2000), "tarea_texto": ("instruccion", 1000),
+              "redactar_texto": ("indicaciones", 4000)}
+MARCA_PUNTOS = "Puntos del pedido que este texto debe responder, uno por uno:"
+# Pasos que ya entregan un texto escrito: lo que cubren es de ellos, no del paso que recibe su texto.
+ESCRITORES = set(REDACTORES) | {"resumir_texto", "traducir_texto"}
+
+
+def puntos_para_redactar(definition, requisitos, cobertura):
+    """Cada paso que escribe recibe, junto a su orden, los requisitos que cumplen él mismo o los pasos que le
+    dan datos. La IA del plan resumía «si el lunes es festivo» como «arma un itinerario con todo eso» y la
+    pregunta se perdía al escribir aunque el dato llegara. Los requisitos de pasos posteriores (el envío, la
+    traducción) no se le pasan: no son tarea de ese texto. El recorrido se detiene en otro paso que escribe:
+    la traducción recibe «escribe la versión en inglés», no «arma el itinerario» (ya lo hizo el anterior).
+    Sin cobertura no se adivina nada."""
+    pasos = {node.id: node for node in definition.nodes}
+    clave = lambda paso: getattr(BY_VERSION.get(str(paso.version_id)), "key", None)
+    por_numero = {}
+    for item in cobertura:
+        por_numero.setdefault(item.n, set()).update(p for p in item.pasos if p in pasos)
+    if not por_numero:
+        return
+    for node in definition.nodes:
+        campo, maximo = REDACTORES.get(clave(node), (None, 0))
+        orden = node.values.get(campo) if campo else None
+        if not isinstance(orden, str) or campo in node.bindings or MARCA_PUNTOS in orden:
+            continue
+        antes, pendientes = set(), [node.id]
+        while pendientes:
+            actual = pendientes.pop()
+            if actual in antes or actual not in pasos or (actual != node.id and clave(pasos[actual]) in ESCRITORES):
+                continue
+            antes.add(actual)
+            pendientes.extend(b.source for b in pasos[actual].bindings.values() if b.source != "$input")
+        puntos = [requisito for n, requisito in enumerate(requisitos, 1) if por_numero.get(n, set()) & antes]
+        texto = orden.rstrip() + "\n\n" + MARCA_PUNTOS
+        agregados = 0
+        for punto in puntos:
+            linea = f"\n- {punto}"
+            if len(texto) + len(linea) > maximo:
+                break
+            texto, agregados = texto + linea, agregados + 1
+        if agregados:
+            node.values[campo] = texto
+
+
 def sin_cubrir_como_error(faltan):
     lineas = "; ".join(f"requisito {n} «{texto}»: {motivo}" for n, texto, motivo in faltan[:8])
     return ("El plan no cumple todo lo que pidió la persona: " + lineas + ". Agrega los pasos que faltan (cada uno con "
@@ -504,6 +550,7 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
             if logica and attempt < 2:
                 feedback = logica
                 continue
+            puntos_para_redactar(proposal.definition, lista, proposal.cobertura)
             try:
                 validation = await validar(proposal.definition)
             except HTTPException as exc:

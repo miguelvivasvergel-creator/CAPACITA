@@ -17,6 +17,7 @@ CHAT = 42
 class Bot:
     def __init__(self, eventos=(), archivo=b""):
         self.eventos, self.archivo, self.dichos, self.editados, self.archivos = list(eventos), archivo, [], [], []
+        self.avisos, self.sin_botones = [], []
 
     def novedades(self, espera=0):
         eventos, self.eventos = self.eventos, []
@@ -29,8 +30,11 @@ class Bot:
     def editar(self, chat_id, mensaje_id, texto, html_=False):
         self.editados.append((mensaje_id, texto))
 
-    def contestar(self, *_):
-        pass
+    def contestar(self, callback_id, texto=""):
+        self.avisos.append(texto)
+
+    def quitar_botones(self, chat_id, mensaje_id):
+        self.sin_botones.append(mensaje_id)
 
     def descargar(self, file_id, maximo):
         if len(self.archivo) > maximo:
@@ -86,9 +90,10 @@ def mensaje(texto=None, **extra):
 
 
 def boton(bot, indice=0):
-    """El callback del botón número `indice` del último mensaje con botones."""
-    ultimo = next(d for d in reversed(bot.dichos) if d["botones"])
-    return (CHAT, {"_boton": {"id": "cb", "data": ultimo["botones"][indice][0]["callback_data"]}})
+    """El callback del botón número `indice` del último mensaje con botones (con su message_id, como Telegram)."""
+    numero, ultimo = next((n, d) for n, d in reversed(list(enumerate(bot.dichos, 1))) if d["botones"])
+    return (CHAT, {"_boton": {"id": "cb", "data": ultimo["botones"][indice][0]["callback_data"],
+                              "message": {"message_id": numero, "chat": {"id": CHAT, "type": "private"}}}})
 
 
 def servicios():
@@ -123,17 +128,28 @@ class BotTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Enviar &lt;b&gt;", tarjeta["texto"])  # lo que viene de la IA se escapa
         self.assertIn("💬 Este chat", tarjeta["texto"])
         self.assertNotIn("telegram_save_and_run", [n for n, _ in base.llamadas])  # nada sin aprobar
-        bot.eventos = [boton(bot, 0)]
+        aprobar = boton(bot, 0)
+        bot.eventos = [aprobar]
         await self.atender(bot, base)
         datos = base.ultima("telegram_save_and_run")
         self.assertEqual(datos["p_chat"], CHAT)
         self.assertEqual(datos["p_definition"]["name"], "Clima a Telegram")
         self.assertTrue(datos["p_key"].startswith("telegram:") and isinstance(datos["p_message"], int))
-        # El mismo botón otra vez ya no sirve: no se encola dos veces.
-        bot.eventos = [(CHAT, {"_boton": {"id": "cb", "data": tarjeta["botones"][0][0]["callback_data"]}})]
+        # Al tocarlo, la tarjeta pierde TODOS sus botones: no queda nada a la vista que se pueda repetir.
+        self.assertEqual(bot.sin_botones, [aprobar[1]["_boton"]["message"]["message_id"]])
+        self.assertEqual(bot.avisos, [""])
+        # Si aun así llega otra vez (doble toque rápido): no se encola dos veces y solo hay un aviso
+        # flotante, sin mensaje nuevo en medio de la conversación.
+        dichos = len(bot.dichos)
+        bot.eventos = [aprobar]
         await self.atender(bot, base)
         self.assertEqual([n for n, _ in base.llamadas].count("telegram_save_and_run"), 1)
-        self.assertIn("ya se usó", bot.dichos[-1]["texto"])
+        self.assertEqual(len(bot.dichos), dichos)
+        self.assertIn("ya se usó", bot.avisos[-1])
+        # Un callback sin message_id ni datos válidos tampoco rompe nada.
+        bot.eventos = [(CHAT, {"_boton": {"id": "cb", "data": "basura"}})]
+        await self.atender(bot, base)
+        self.assertEqual(len(bot.dichos), dichos)
 
     async def test_sin_permiso_no_llama_a_la_ia_y_lo_pide(self):
         bot, base = Bot([mensaje("haz un resumen")]), Base(consent=False)

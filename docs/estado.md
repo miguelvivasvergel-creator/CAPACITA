@@ -4,6 +4,26 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 21/11/2026: arreglos de raíz tras la prueba real del bot (sin commit; tras d944799)
+
+Prueba real por Telegram (Santa Marta): plan de 9 pasos con ✓ en todo, ejecutado y recibido en el chat.
+Tres fallos, corregidos por su causa general (no para este pedido):
+- **«Ese botón ya se usó» en medio del chat:** los botones seguían a la vista mientras el planner pensaba
+  (~20 s, con el chat ocupado); se volvía a tocar «Sí, autorizo» y el aviso salía al terminar. Ahora todo
+  botón, al tocarse, se consume y **quita todos los botones de su mensaje** (`quitar_botones`,
+  editMessageReplyMarkup); uno repetido o vencido recibe un aviso flotante, no un mensaje.
+- **Pregunta sin respuesta directa** («¿el lunes es festivo?» → «el próximo festivo es…»): (1) la IA no sabía
+  qué día era al ejecutar: toda llamada de `connectors/ia.py` lleva `FECHA` (`fechas.contexto_de_fecha`: hoy
+  y los 7 días siguientes, calculado en cada ejecución, también para asistentes); (2) el plan resumía las
+  preguntas en «con todo eso»: `planner_service.puntos_para_redactar` añade a cada paso que escribe
+  (componer, tarea, redactar) los requisitos que cumplen él o los pasos que le dan datos, sin cruzar otro
+  paso que escribe (la traducción no recibe «arma el itinerario») ni pasar del largo del campo. Web y bot.
+- **Relleno inventado** («Restaurante adicional disponible en la zona»): `lugares_cercanos` ya no devuelve
+  lugares sin nombre, y el protocolo común de la IA prohíbe completar cantidades con elementos genéricos
+  (dice cuántos encontró) y exige contestar directo cada pregunta o decir que el dato no alcanza.
+- Validación: 323 pruebas OK. **Sin probar con Telegram ni Gemini reales.** Sin cambios de SQL ni de
+  contratos; reiniciar backend y trabajador. Pendiente: confirmar que llegó el correo en inglés.
+
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)
 
 - **Arquitectura:** el bot es su propia tarea en el trabajador (`bot_loop`, long polling de 25 s): contesta

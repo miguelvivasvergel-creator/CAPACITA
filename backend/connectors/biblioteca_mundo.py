@@ -265,14 +265,19 @@ def cercanos(http, inputs, parameters):
         lat, lon = numero(coordenadas[1]), numero(coordenadas[0])
     clave, valor = CERCANOS[tipo]
     # La consulta solo lleva números y una etiqueta de la lista fija (nada escrito por la persona).
-    consulta = f'[out:json][timeout:25];nwr(around:{radio},{lat:.6f},{lon:.6f})["{clave}"="{valor}"];out center 40;'
+    consulta = f'[out:json][timeout:25];nwr(around:{radio},{lat:.6f},{lon:.6f})["{clave}"="{valor}"];out center 60;'
     filas = []
     for e in map(dic, lista_de(http.get_json("https://overpass-api.de/api/interpreter", {"data": consulta}), "elements")):
         centro = dic(e.get("center"))
         plat, plon = numero(e.get("lat", centro.get("lat"))), numero(e.get("lon", centro.get("lon")))
         etiquetas = dic(e.get("tags"))
+        nombre = cadena(etiquetas.get("name"))
+        if not nombre:
+            # Un lugar sin nombre no se puede recomendar ni buscar: antes salía «Sin nombre» y la IA lo
+            # convertía en «otro restaurante de la zona». Solo cuentan los que la persona puede encontrar.
+            continue
         calle = " ".join(str(x) for x in (etiquetas.get("addr:street"), etiquetas.get("addr:housenumber")) if x)
-        filas.append({"nombre": cadena(etiquetas.get("name")) or "Sin nombre", "direccion": calle,
+        filas.append({"nombre": nombre, "direccion": calle,
                       "distancia_m": round(distancia(lat, lon, plat, plon)), "mapa": mapa(round(plat, 6), round(plon, 6))})
     filas = sorted(filas, key=lambda f: f["distancia_m"])[:15]
     return respuesta(filas, lambda n: f"{n} lugares de tipo {tipo} a menos de {radio} m. El más cercano: "

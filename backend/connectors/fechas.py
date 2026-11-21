@@ -22,6 +22,18 @@ def hoy_legible(hoy=None):
     return f"{hoy.isoformat()} ({NOMBRES_DIAS[hoy.weekday()]})"
 
 
+def contexto_de_fecha(ahora=None):
+    """Hoy y los 7 días siguientes con su nombre, para que la IA que escribe al EJECUTAR resuelva «el lunes»,
+    «mañana» o «este fin de semana» (sin esto respondía «el próximo festivo» en vez de si el lunes lo es).
+    Se calcula en cada ejecución: un asistente semanal no hereda la fecha del día en que se planeó."""
+    ahora = ahora or datetime.now(COLOMBIA)
+    hoy = ahora.date()
+    siguientes = ", ".join(f"{NOMBRES_DIAS[d.weekday()]} {d.isoformat()}"
+                           for d in (hoy + timedelta(days=n) for n in range(1, 8)))
+    return (f"Hoy es {NOMBRES_DIAS[hoy.weekday()]} {hoy.isoformat()}, {ahora:%H:%M} (hora de Colombia). "
+            f"Próximos días: {siguientes}.")
+
+
 def _plano(texto):
     return unicodedata.normalize("NFD", str(texto)).encode("ascii", "ignore").decode().lower().strip()
 

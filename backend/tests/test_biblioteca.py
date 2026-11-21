@@ -168,6 +168,7 @@ class BibliotecaTests(unittest.TestCase):
         self.assertEqual([f["valor"] for f in oms["resultados"]], [77.1, 76.8])
         cerca = self.completo("lugares_cercanos@1", {"lugar": "Plaza Alfonso López"}, {"que": "farmacia", "radio_metros": 1000})
         self.assertEqual(cerca["resultados"][0]["nombre"], "Droguería Central")
+        self.assertEqual(cerca["total"], 1)  # el lugar sin nombre no cuenta: la IA lo volvía «otro de la zona»
         self.assertEqual(self.completo("buscar_iconos@1", {"tema": "coffee"})["total"], 1)
         self.assertEqual(self.completo("tendencias_tecnologia@1", {"tema": "ai"})["resultados"][0]["titulo"], "Open & AI")
         self.assertEqual(self.completo("vuelos_en_vivo@1", {"ciudad": "Bogotá"})["resultados"][0]["vuelo"], "AVA123")

@@ -265,6 +265,33 @@ class ListaDeVerificacionTests(unittest.TestCase):
         # Sin cobertura (la IA no la llenó) no se acusa todo: solo se revisan correos e idiomas del plan.
         self.assertEqual(requisitos_sin_cubrir(completo, self.REQUISITOS, []), [])
 
+    def test_cada_paso_que_escribe_recibe_los_puntos_de_sus_datos(self):
+        """La pregunta del pedido llega a la IA que escribe aunque el plan la resuma en «con todo eso»."""
+        from services.planner_service import MARCA_PUNTOS, puntos_para_redactar
+        requisitos = ["Consultar el clima", "Dime si el lunes es festivo", "Escribir el itinerario",
+                      "Escribir una versión corta en inglés", "Enviar la versión en inglés a ana@example.com"]
+        definicion = plan(CLIMA, ("festivos", v("festivos_pais@2"), {"anio": 2026}, {}),
+                          ("ia", v("componer_texto@1"), {"instruccion": "Itinerario con todo eso"},
+                           {"dato_1": ("clima", "dias"), "dato_2": ("festivos", "resumen")}),
+                          ("ingles", v("tarea_texto@1"), {"instruccion": "Versión corta en inglés"}, {"texto": ("ia", "resultado")}),
+                          ("correo", v("enviar_correo@2"), {"asunto": "Trip", "para": "ana@example.com"},
+                           {"mensaje": ("ingles", "resultado")}))
+        cobertura = self.cobertura((1, ["clima"]), (2, ["festivos"]), (3, ["ia"]), (4, ["ingles"]), (5, ["correo"]))
+        puntos_para_redactar(definicion, requisitos, cobertura)
+        pasos = {n.id: n.values.get("instruccion") for n in definicion.nodes}
+        self.assertEqual(pasos["ia"], "Itinerario con todo eso\n\n" + MARCA_PUNTOS + "\n- Consultar el clima"
+                         "\n- Dime si el lunes es festivo\n- Escribir el itinerario")
+        # La traducción solo recibe lo suyo: lo del itinerario ya lo cumplió el paso anterior; el envío, nadie.
+        self.assertEqual(pasos["ingles"], "Versión corta en inglés\n\n" + MARCA_PUNTOS + "\n- Escribir una versión corta en inglés")
+        # Repetirlo no duplica la lista, sin cobertura no se toca nada y nunca pasa del largo del campo.
+        puntos_para_redactar(definicion, requisitos, cobertura)
+        self.assertEqual(pasos["ia"], definicion.nodes[2].values["instruccion"])
+        otro = plan(CLIMA, ("ia", v("tarea_texto@1"), {"instruccion": "x" * 990}, {"texto": ("clima", "resumen")}))
+        puntos_para_redactar(otro, requisitos, [])
+        self.assertEqual(otro.nodes[1].values["instruccion"], "x" * 990)
+        puntos_para_redactar(otro, requisitos, self.cobertura((1, ["clima"])))
+        self.assertEqual(otro.nodes[1].values["instruccion"], "x" * 990)  # no cabía ni un punto: queda igual
+
 
 class SinDatoTests(unittest.TestCase):
     """Una consulta que falla y solo alimenta a una IA no tumba la solución; con un envío directo sí."""

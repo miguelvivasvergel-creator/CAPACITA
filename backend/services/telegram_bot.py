@@ -146,6 +146,10 @@ class TelegramBot:
     def contestar(self, callback_id, texto=""):
         self._llamar("answerCallbackQuery", {"callback_query_id": callback_id, "text": texto[:180]})
 
+    def quitar_botones(self, chat_id, message_id):
+        self._llamar("editMessageReplyMarkup", {"chat_id": chat_id, "message_id": message_id,
+                                                "reply_markup": {"inline_keyboard": []}})
+
     def menu(self):
         self._llamar("setMyCommands", {"commands": [{"command": c, "description": d} for c, d in COMANDOS]})
 
@@ -345,16 +349,25 @@ async def al_recibir(chat, mensaje):
 
 
 async def al_tocar(chat, boton):
+    """Un botón vale una vez: se consume en la base y en el acto se quitan TODOS los botones de su mensaje.
+    Antes quedaban a la vista mientras el planner pensaba (~20 s); la persona volvía a tocar y, al
+    terminar, le llegaba «ya se usó» en medio de la conversación. Un botón viejo o repetido solo recibe
+    un aviso flotante (no un mensaje) y también pierde los botones."""
     ident, _, indice = str(boton.get("data") or "").partition(":")
-    try:
-        await chat.to_thread(chat.bot.contestar, boton.get("id"), "")
-    except RuntimeError:
-        pass
-    if not re.fullmatch(r"[0-9a-f-]{36}", ident) or not indice.isdigit():
-        return
-    guardado = await chat.sql("telegram_pending_take", p_id=ident, p_consume=True)
-    if not guardado.get("found"):
-        await chat.decir("Ese botón ya se usó o venció (duran 30 minutos). Pídemelo de nuevo.")
+    valido = bool(re.fullmatch(r"[0-9a-f-]{36}", ident)) and indice.isdigit()
+    guardado = await chat.sql("telegram_pending_take", p_id=ident, p_consume=True) if valido else {}
+    encontrado = bool(guardado.get("found"))
+    aviso = "" if encontrado else "Ese botón ya se usó o venció. Pídemelo de nuevo."
+    mensaje_id = (boton.get("message") or {}).get("message_id")
+    llamadas = [(chat.bot.contestar, boton.get("id"), aviso)]
+    if isinstance(mensaje_id, int):
+        llamadas.append((chat.bot.quitar_botones, chat.id, mensaje_id))
+    for llamada, *datos in llamadas:
+        try:
+            await chat.to_thread(llamada, *datos)
+        except RuntimeError:
+            pass  # el aviso venció o el mensaje ya no tiene botones: nada que hacer
+    if not encontrado:
         return
     payload = guardado["payload"] or {}
     acciones = payload.get("acciones") or []
