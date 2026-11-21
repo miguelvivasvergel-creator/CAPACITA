@@ -167,6 +167,33 @@ class CatalogAPITests(unittest.TestCase):
         self.assertEqual(self.client.delete(f"/api/capabilities/{PRIVATE_ID}", headers=self.headers).status_code, 200)
         self.assertEqual(self.client.get(f"/api/capabilities/{PRIVATE_ID}", headers=self.headers).status_code, 404)
 
+    def test_delete_archives_keeps_history_and_hides_it_everywhere(self):
+        deleted = self.client.delete(f"/api/capabilities/{PRIVATE_ID}", headers=self.headers)
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        self.assertEqual(deleted.json()["data"]["disabled_versions"], 2)
+        # La fila sigue en la base (archivada) para conservar el historial, pero no se lista ni se abre.
+        self.assertTrue(any(row["id"] == PRIVATE_ID and row["archived"] for row in self.provider.rows))
+        mine = self.client.get("/api/capabilities?scope=mine", headers=self.headers).json()["data"]["items"]
+        self.assertNotIn(PRIVATE_ID, [row["id"] for row in mine])
+        # Eliminarla otra vez responde 404, igual que una ajena.
+        self.assertEqual(self.client.delete(f"/api/capabilities/{PRIVATE_ID}", headers=self.headers).status_code, 404)
+
+    def test_delete_without_db22_explains_what_is_missing(self):
+        self.provider.sin_db22 = True
+        response = self.client.delete(f"/api/capabilities/{PRIVATE_ID}", headers=self.headers)
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("script SQL", response.json()["detail"])
+
+    def test_rename_keeps_status_but_behavior_change_returns_to_draft(self):
+        for row in self.provider.rows:
+            if row["id"] == PRIVATE_ID:
+                row["status"] = "published"
+        renamed = self.client.put(f"/api/capabilities/{PRIVATE_ID}", headers=self.headers,
+                                  json={"name": "Limpiar textos", "description": "Quita espacios sobrantes"})
+        self.assertEqual(renamed.json()["data"]["status"], "published", renamed.text)
+        changed = self.client.put(f"/api/capabilities/{PRIVATE_ID}", headers=self.headers, json={"input_type": "pdf"})
+        self.assertEqual(changed.json()["data"]["status"], "draft", changed.text)
+
     def test_invalid_input_returns_422_instead_of_database_error(self):
         for payload in ({"name": None}, {"config": None}, {"description": "   "}, {"category": "x" * 51}, {}):
             response = self.client.put(f"/api/capabilities/{PRIVATE_ID}", headers=self.headers, json=payload)

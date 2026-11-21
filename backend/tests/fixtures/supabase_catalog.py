@@ -25,6 +25,7 @@ class SupabaseFixture:
         self.rows = [record(PRIVATE_ID, MIGUEL, "private"), record(PUBLIC_ID, FAHIDA, "public")]
         self.requests = []
         self.fail = None
+        self.sin_db22 = False  # simula una base donde aún no se aplicó db/22
 
     def handle(self, request):
         self.requests.append(request)
@@ -38,6 +39,16 @@ class SupabaseFixture:
             return httpx.Response(200, json={"id": user_id})
         if request.url.path == "/rest/v1/profiles":
             return httpx.Response(200, json=[{"id": user_id, "username": "miguel" if user_id == MIGUEL else "fahida", "display_name": "Nombre real", "bio": "Biografía real"}])
+        if request.url.path == "/rest/v1/rpc/capability_archive":
+            # Como db/22: solo el dueño, no encontrada si no es suya o ya se archivó.
+            if self.sin_db22:
+                return httpx.Response(404, json={"code": "PGRST202"})
+            target = json.loads(request.content)["p_id"]
+            owned = [row for row in self.rows if row["id"] == target and row["owner_id"] == user_id and not row.get("archived")]
+            if not owned:
+                return httpx.Response(400, json={"code": "P0002"})
+            owned[0].update(archived=True, visibility="private", status="draft")
+            return httpx.Response(200, json={"id": target, "archived": True, "disabled_versions": 2})
         if request.url.path != "/rest/v1/capabilities":
             return httpx.Response(404, json={"code": "PGRST205"})
         query = request.url.params

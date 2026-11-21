@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import PlanGuiado from '../components/capabilities/PlanGuiado';
 import { coincide } from '../utils/buscar';
+import { archivarWorkflow } from '../services/workflows';
+import AccionesBiblioteca from '../components/capabilities/AccionesBiblioteca';
 
 // incrustada: sección de Mi biblioteca (sin encabezado ni botón propios). pasos: 'varios' muestra
 // las combinadas; 'uno', las de un solo paso que NO son herramientas tuyas (por ejemplo, una de la
@@ -22,7 +24,8 @@ export default function SolucionesGuiadas({ workflowId, onCambiarSeccion, incrus
     return ()=>{vivo=false;};
   },[pasos]);
   const numero=row=>row.definition?.nodes?.length||0;
-  const deOtro=row=>propias!=null&&capacidadDe!=null&&!propias.has(capacidadDe.get(row.definition.nodes[0]?.version_id));
+  // De 1 paso con herramienta ajena y todavía disponible: si su versión ya no existe (se eliminó), no se ofrece.
+  const deOtro=row=>{const version=row.definition.nodes[0]?.version_id;return propias!=null&&capacidadDe!=null&&capacidadDe.has(version)&&!propias.has(capacidadDe.get(version));};
   // Se busca en el nombre de la solución y en el de cada uno de sus pasos.
   const pasa=row=>(estado==='todos'||estado==='lista')&&coincide(`${row.definition?.name||''} ${(row.definition?.nodes||[]).map(node=>node.label||'').join(' ')}`,busqueda);
   const porPasos=pasos==='varios'?page.items.filter(row=>numero(row)>1):pasos==='uno'?page.items.filter(row=>numero(row)===1&&deOtro(row)):page.items;
@@ -62,7 +65,10 @@ export default function SolucionesGuiadas({ workflowId, onCambiarSeccion, incrus
     {busy&&pasos!=='uno'&&<p role="status">Cargando soluciones…</p>}{error&&<div role="alert" className="text-sm text-red-700"><p>{error}</p><button type="button" className="min-h-11 underline" onClick={()=>{setError('');setBusy(true);setRevision(old=>old+1);}}>Volver a consultar</button></div>}
     {saved&&<PlanGuiado key={saved.id+':'+saved.revision} definition={saved.definition} initialSaved={saved} onCambiarSeccion={onCambiarSeccion}/>}
     {!workflowId&&!busy&&!error&&!visibles.length&&pasos!=='uno'&&<p className="guiado-vacio">Todavía no tienes soluciones combinadas. Pide en el chat algo de varios pasos (por ejemplo «el clima de mañana y mándamelo a Telegram») y guárdalo.</p>}
-    {!workflowId&&<ul className="guiado-lista">{visibles.map(row=><li key={row.id}><button type="button" className="guiado-item" onClick={()=>onCambiarSeccion?.(`inicio/solucion/${row.id}`)}><span className="guiado-item-icono"><MiniCadena pasos={row.definition.nodes.length}/></span><span className="guiado-item-copy"><strong>{row.definition.name}</strong><span>{numero(row)===1?'Simple · de la comunidad o de Capacita · Usar en el chat':`Combinada · ${numero(row)} pasos conectados · Usar en el chat`}</span></span><Icono nombre="flecha" className="guiado-item-flecha"/></button></li>)}</ul>}
+    {!workflowId&&<ul className="guiado-lista">{visibles.map(row=><li key={row.id}><button type="button" className="guiado-item" onClick={()=>onCambiarSeccion?.(`inicio/solucion/${row.id}`)}><span className="guiado-item-icono"><MiniCadena pasos={row.definition.nodes.length}/></span><span className="guiado-item-copy"><strong>{row.definition.name}</strong><span>{numero(row)===1?'Simple · de la comunidad o de Capacita · Usar en el chat':`Combinada · ${numero(row)} pasos conectados · Usar en el chat`}</span></span><Icono nombre="flecha" className="guiado-item-flecha"/></button>
+      <AccionesBiblioteca nombre={row.definition.name} onCambiar={()=>onCambiarSeccion?.(`inicio/solucion/${row.id}`)}
+        onEliminar={async()=>{await archivarWorkflow(row.id);setBusy(true);setRevision(old=>old+1);}}
+        confirmar={`¿Eliminar «${row.definition.name}»? Dejará de aparecer en Mi biblioteca. Las herramientas que usa y tus resultados anteriores se conservan.`}/></li>)}</ul>}
     {page.next_cursor&&pasos!=='uno'&&<button type="button" disabled={busy} className="vista-boton-primario" onClick={more}>Ver más soluciones</button>}
   </div>;
 }

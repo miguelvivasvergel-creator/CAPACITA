@@ -28,6 +28,8 @@ EXECUTION_RPCS = {
     "telegram_assistant_set_active", "telegram_assistant_run_now",
     # Asistentes recurrentes (SQL 17): las cuatro primeras para la persona; la última, el trabajador.
     "assistant_save", "assistant_list", "assistant_set_active", "assistant_delete", "assistant_enqueue_due",
+    # Eliminar (archivar) una herramienta propia (SQL 22).
+    "capability_archive",
     # Google (SQL 19): las cinco primeras para la persona; la última, el trabajador.
     "google_link_start", "google_state_take", "google_link_save", "google_link_status", "google_unlink",
     "google_token_for_job",
@@ -68,6 +70,8 @@ class SupabaseGateway:
                     "53000": (429, "La cola compartida está llena"),
                     "55P03": (409, "Hay otro trabajador activo; espera a que termine su reserva"),
                     "42501": (403, "Esta cuenta no está autorizada como trabajador"),
+                    # La función no existe en la base: falta aplicar su script SQL (db/README.md).
+                    "PGRST202": (503, "Esta función todavía no está instalada en Supabase: falta aplicar un script SQL pendiente (ver db/README.md)"),
                 }
                 if safe_code in mapped:
                     status, message = mapped[safe_code]

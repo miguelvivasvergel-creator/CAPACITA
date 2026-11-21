@@ -62,3 +62,10 @@ de visibilidad que db/17). Sin él, el bot solo vincula y desvincula.
 
 `15_conectores_iniciales.sql` **regenerado** con el conector `revisar_condicion@1` (alertas «avísame si…»).
 Volver a ejecutarlo: no duplica filas, solo agrega el conector nuevo.
+
+`22_archivar_capacidades.sql`: **pendiente de aplicar por Fahida** (después de 07, 08 y 09). Permite
+eliminar una herramienta propia desde Mi biblioteca: columna `archived` en `public.capabilities` y función
+`capability_archive(p_id)` (solo el dueño; 404 si no es suya). No borra la fila, porque sus versiones y
+ejecuciones la referencian: deshabilita sus versiones, retira su publicación y la oculta del catálogo, el
+planner y la comunidad, conservando el historial. Sin aplicarlo, «Eliminar» responde que falta un script
+SQL; el resto funciona igual. Termina con una comprobación (`archivar_listo = true`).

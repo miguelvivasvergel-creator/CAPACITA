@@ -2,7 +2,8 @@ import EncabezadoVista from '../components/common/EncabezadoVista';
 import Icono from '../components/common/Icono';
 import MiniCadena from '../components/common/MiniCadena';
 import { useEffect, useState } from 'react';
-import { listarCapacidades } from '../services/capacidades';
+import { actualizarCapacidad, eliminarCapacidad, listarCapacidades } from '../services/capacidades';
+import AccionesBiblioteca from '../components/capabilities/AccionesBiblioteca';
 import { estadoHerramientas, mapaVersiones } from '../components/taller/solucionDirecta';
 import CompartirHerramienta from '../components/taller/CompartirHerramienta';
 import { coincide } from '../utils/buscar';
@@ -103,11 +104,20 @@ export default function HerramientasGuiadas({ onCambiarSeccion, incrustada = fal
   // escrito el pedido para crearla otra vez con la IA.
   const abrir = (row, estado) => onCambiarSeccion?.(desconocido || estado !== 'sin' ? `inicio/herramienta/${row.id}`
     : `inicio/usar/${encodeURIComponent(`Quiero usar mi herramienta «${row.name}»: ${row.description}`.slice(0, 1500))}`);
+  // Tras editar o eliminar se vuelve a consultar todo (lista, estados y versiones).
+  const recargar = () => { setBusy(true); setEstados(undefined); setRevision((old) => old + 1); };
+  // Editar y eliminar actúan sobre TODAS las versiones del grupo, para que sigan juntas.
+  const acciones = (grupo) => <AccionesBiblioteca nombre={grupo.row.name} descripcion={grupo.row.description || ''}
+    onRenombrar={async (name, description) => { await Promise.all(grupo.filas.map(({ row }) => actualizarCapacidad(row.id, { name, description }))); recargar(); }}
+    onCambiar={grupo.estado !== 'sin' ? () => onCambiarSeccion?.(`inicio/herramienta/${grupo.row.id}`) : undefined}
+    onEliminar={async () => { for (const { row } of grupo.filas) await eliminarCapacidad(row.id); recargar(); }}
+    confirmar={`¿Eliminar «${grupo.row.name}»${grupo.filas.length > 1 ? ` y sus ${grupo.filas.length} versiones` : ''}? Dejará de aparecer y de poder usarse, también en las combinadas que la incluyan. Tus resultados anteriores se conservan.`} />;
   const ficha = (row) => <button type="button" className="ml-2 mt-1 min-h-11 text-sm text-slate-600 underline" onClick={() => onCambiarSeccion?.(`ejecutar/capability/${row.id}`)}>Ficha técnica</button>;
   const item = (grupo) => <li key={grupo.row.id}>
     <button type="button" className="guiado-item" onClick={() => abrir(grupo.row, grupo.estado)}><span className="guiado-item-icono"><MiniCadena pasos={1} /></span><span className="guiado-item-copy"><strong>{grupo.row.name}</strong><span>{grupo.row.description}</span>
       <span>Simple · {etiqueta(grupo.estado)}{grupo.filas.length > 1 ? ` · abro la mejor de ${grupo.filas.length} versiones` : ''}</span></span><Icono nombre="flecha" className="guiado-item-flecha" /></button>
     {ficha(grupo.row)}
+    {acciones(grupo)}
     {/* Solo una herramienta probada se puede compartir: los demás la usarán tal como pasó sus pruebas. */}
     {grupo.estado !== 'sin' && versionDe?.get(grupo.row.id) && <div className="ml-2"><CompartirHerramienta capacidad={grupo.row}
       version={{ id: versionDe.get(grupo.row.id), capability_id: grupo.row.id }} /></div>}

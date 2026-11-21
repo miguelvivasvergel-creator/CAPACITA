@@ -87,6 +87,9 @@ async def clone_capability(id: UUID, repository: Repository):
     return APIResponse(message="Copia privada guardada como borrador", data=cloned)
 
 
+SOLO_PRESENTACION = {"name", "description", "category"}
+
+
 @router.put("/{id}", response_model=APIResponse[CapabilityResponse])
 async def update_capability(id: UUID, payload: CapabilityUpdate, repository: Repository):
     changes = payload.model_dump(exclude_unset=True)
@@ -94,12 +97,16 @@ async def update_capability(id: UUID, payload: CapabilityUpdate, repository: Rep
         require_draft(changes["status"])
     if not changes:
         raise HTTPException(422, "Indica al menos un campo para actualizar")
-    # Una edición siempre vuelve a borrador: no conserva evidencia de una versión anterior.
-    changes["status"] = "draft"
-    return APIResponse(message="Borrador actualizado", data=await repository.update(id, changes))
+    # Cambiar cómo funciona (tipos, contratos, permisos, adaptador, visibilidad) vuelve a borrador: no
+    # conserva evidencia de la versión anterior. Renombrar o describir no cambia lo que hace, así que no
+    # despublica una herramienta compartida (db/09 exige status='published').
+    if set(changes) - SOLO_PRESENTACION:
+        changes["status"] = "draft"
+    return APIResponse(message="Capacidad actualizada", data=await repository.update(id, changes))
 
 
 @router.delete("/{id}", response_model=APIResponse[dict])
 async def delete_capability(id: UUID, repository: Repository):
-    await repository.delete(id)
-    return APIResponse(message="Capacidad eliminada", data={"deleted_id": str(id)})
+    result = await repository.delete(id)
+    return APIResponse(message="Capacidad eliminada", data={"deleted_id": str(id),
+                       "disabled_versions": (result or {}).get("disabled_versions", 0)})

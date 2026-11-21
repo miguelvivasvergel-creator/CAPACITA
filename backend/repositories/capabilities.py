@@ -14,10 +14,13 @@ class CapabilityRepository:
     def __init__(self, gateway: SupabaseGateway, token: str, user_id: str):
         self.gateway, self.token, self.user_id = gateway, token, user_id
 
-    async def _read(self, filters=None) -> list[dict]:
+    async def _read(self, filters=None, *, archivadas=False) -> list[dict]:
         params = {"select": SELECT, **visible_to(None, self.user_id), **(filters or {})}
         rows = await self.gateway.request("GET", "/rest/v1/capabilities", self.token, params=params)
-        return [self._normalize(row) for row in visible_to(rows, self.user_id)]
+        rows = [self._normalize(row) for row in visible_to(rows, self.user_id)]
+        # Una herramienta eliminada (archivada, db/22) no aparece en ningún lado: biblioteca, comunidad,
+        # planner ni ficha. Se filtra aquí y no en la consulta para que funcione aunque falte db/22.
+        return rows if archivadas else [row for row in rows if not row.get("archived")]
 
     @staticmethod
     def _normalize(row: dict) -> dict:
@@ -51,8 +54,11 @@ class CapabilityRepository:
             filters["id"] = f"gt.{UUID(str(cursor))}"
         if conditions:
             filters["and"] = "(" + ",".join(conditions) + ")"
-        rows = await self._read(filters)
-        return {"items": rows[:limit], "next_cursor": rows[limit - 1]["id"] if len(rows) > limit else None}
+        # El cursor sale de las filas SIN filtrar: si la página tenía archivadas, no se corta la lista.
+        rows = await self._read(filters, archivadas=True)
+        pagina = rows[:limit]
+        return {"items": [row for row in pagina if not row.get("archived")],
+                "next_cursor": pagina[-1]["id"] if len(rows) > limit else None}
 
     async def visible_ids(self, capability_ids) -> set[str]:
         """Cuáles de esas capacidades ve el usuario, en una sola consulta (pasa por visible_to)."""
@@ -90,14 +96,12 @@ class CapabilityRepository:
             raise HTTPException(404, "Capacidad no encontrada")
         return self._normalize(rows[0])
 
-    async def delete(self, capability_id: UUID):
+    async def delete(self, capability_id: UUID) -> dict:
+        """Elimina la herramienta archivándola (db/22): deshabilita sus versiones y retira su publicación,
+        pero conserva el historial de ejecuciones que la referencia (un DELETE fallaría por esas referencias)."""
         await self._owned(capability_id)
-        rows = await self.gateway.request(
-            "DELETE", "/rest/v1/capabilities", self.token,
-            params={"id": f"eq.{capability_id}", "owner_id": f"eq.{self.user_id}"},
-        )
-        if not rows:
-            raise HTTPException(404, "Capacidad no encontrada")
+        return await self.gateway.request("POST", "/rest/v1/rpc/capability_archive", self.token,
+                                          json={"p_id": str(capability_id)})
 
     async def _owned(self, capability_id: UUID):
         item = await self.get(capability_id)
