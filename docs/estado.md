@@ -86,6 +86,12 @@ Tres fallos, corregidos por su causa general (no para este pedido):
   son siempre poster_version_1 y poster_version_2. Leyenda de la versión 1 en palabras de la persona.
   Verificado con el planner real (5 pasos, ambas versiones a Telegram y Drive). 349 pruebas OK. Sin SQL
   nuevo; reiniciar backend y trabajador.
+- **Póster: uno solo, el mejor (tras ccfba21).** Fahida prefirió recibir un póster bien hecho en vez de
+  elegir entre dos. El conector arma los dos diseños con los colores de la marca y entrega en «poster» el
+  de mayor puntaje (producto grande pesa más; un sello que monta un poco se tolera, que tape más del 20 %
+  resta mucho; titular grande suma). `planner_service.un_solo_poster` reemplaza a los gemelos: un envío
+  del alternativo pasa a llevar «poster» o se quita si ya hay otro igual; las salidas muestran solo
+  «poster». Contrato sin cambios (no requiere db/15 otra vez). 350 pruebas OK; revisado a ojo.
 - Pendiente: confirmar el correo en inglés en Gmail y la prueba completa por Telegram tras reiniciar.
 
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)

@@ -413,8 +413,8 @@ salida de la IA que escribe una sola frase corta. Si la persona adjunta la foto 
 logo, decláralos en input_schema como foto_producto (image/jpeg) y logo (image/png) y conéctalos;
 si no los adjunta, no los pidas como obligatorios. formato «historia» solo si pide estados o
 historias. Para enviarlo, conecta archivo de Telegram, del correo o de Drive a «poster» (y el
-mensaje al «resumen»). En outputs incluye «poster» y «poster_alternativo» del paso del póster para
-que la persona vea las dos versiones en Capacita.
+mensaje al «resumen»). En outputs incluye «poster»: es el mejor diseño y el único que se entrega
+(nunca uses «poster_alternativo»).
 La entrada archivo de Telegram y del correo solo recibe archivos de verdad (un PDF, una foto, un
 Excel que produjo otro paso); un texto escrito por la IA va en mensaje. En «Guardar en mi Drive» sí
 puedes conectar un texto a archivo: se guarda como documento.

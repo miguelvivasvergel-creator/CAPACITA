@@ -87,7 +87,8 @@ class PosterTests(unittest.TestCase):
         sello = Image.new("RGBA", (160, 160), (0, 0, 0, 0))
         ImageDraw.Draw(sello).ellipse((0, 0, 159, 159), fill=(255, 255, 0, 255))
         texto = (0, 0, 1080, 300)
-        x, y = mejor_esquina(sello, producto, (500, 320), (420, 300, 1050, 900), texto, (1080, 950), 70)
+        (x, y), tapado = mejor_esquina(sello, producto, (500, 320), (420, 300, 1050, 900), texto, (1080, 950), 70)
+        self.assertLess(tapado, 0.05)  # casi nada del producto queda bajo el sello
         self.assertGreaterEqual(y, 300)  # debajo del texto
         self.assertGreater(y, 320 + 250 - 160)  # en la mitad vacía de abajo, no sobre lo lleno
 
@@ -123,10 +124,10 @@ class PosterEnUnProcesoTests(unittest.TestCase):
         self.assertEqual(orden[0], "poster")
 
 
-class MismasVersionesTests(unittest.TestCase):
-    def test_cada_envio_lleva_las_dos_versiones_y_la_web_las_ve_en_orden(self):
-        """Antes la web mostraba primero «alternativo» (ordena por nombre) y a Telegram llegaba la otra."""
-        from services.planner_service import entregar_versiones
+class UnSoloPosterTests(unittest.TestCase):
+    def test_se_entrega_un_solo_poster_el_mismo_en_la_web_y_en_los_envios(self):
+        """Antes salían dos y a Telegram llegaba uno distinto del que la web mostraba primero."""
+        from services.planner_service import un_solo_poster
         v = lambda k: str(REGISTRY[k].version_id)
         definicion = WorkflowDefinition.model_validate({
             "name": "Póster", "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
@@ -135,20 +136,31 @@ class MismasVersionesTests(unittest.TestCase):
                       {"id": "tg", "version_id": v("enviar_telegram@1"), "label": "Telegram", "values": {}, "parameters": {},
                        "bindings": {"archivo": {"source": "poster", "field": "poster"},
                                     "mensaje": {"source": "poster", "field": "resumen"}}},
+                      {"id": "tg2", "version_id": v("enviar_telegram@1"), "label": "Telegram 2", "values": {}, "parameters": {},
+                       "bindings": {"archivo": {"source": "poster", "field": "poster_alternativo"}}},
                       {"id": "drive", "version_id": v("guardar_drive@1"), "label": "Drive",
                        "values": {"nombre_archivo": "Póster"}, "parameters": {},
-                       "bindings": {"archivo": {"source": "poster", "field": "poster"}}}],
+                       "bindings": {"archivo": {"source": "poster", "field": "poster_alternativo"}}}],
             "outputs": {"alternativo": {"source": "poster", "field": "poster_alternativo"},
-                        "principal": {"source": "poster", "field": "poster"}}})
-        entregar_versiones(definicion)
+                        "enviado": {"source": "tg", "field": "resumen"}}})
+        un_solo_poster(definicion)
         nodos = {n.id: n for n in definicion.nodes}
-        self.assertEqual([n.id for n in definicion.nodes], ["poster", "tg", "tg_v2", "drive", "drive_v2"])
-        self.assertEqual(nodos["tg_v2"].bindings["archivo"].field, "poster_alternativo")
-        self.assertNotIn("mensaje", nodos["tg_v2"].bindings)
-        self.assertIn("Versión 2", nodos["tg_v2"].values["mensaje"])
-        self.assertEqual(nodos["drive_v2"].values["nombre_archivo"], "Póster (versión 2)")
-        self.assertEqual({k: b.field for k, b in definicion.outputs.items()},
-                         {"poster_version_1": "poster", "poster_version_2": "poster_alternativo"})
-        entregar_versiones(definicion)  # repetirlo no duplica nada
-        self.assertEqual(len(definicion.nodes), 5)
+        self.assertEqual(list(nodos), ["poster", "tg", "drive"])  # el segundo Telegram sobraba
+        self.assertEqual(nodos["drive"].bindings["archivo"].field, "poster")  # Drive guarda el mismo
+        self.assertEqual({k: f"{b.source}.{b.field}" for k, b in definicion.outputs.items()},
+                         {"enviado": "tg.resumen", "poster": "poster.poster"})
         self.assertIsNone(revision_logica(definicion))
+
+    def test_el_poster_entregado_es_el_mejor_de_los_dos_disenos(self):
+        from connectors.poster import componer_poster, paleta
+        producto = Image.new("RGBA", (200, 600), (0, 0, 0, 0))  # alto y angosto, como un cono o una botella
+        ImageDraw.Draw(producto).rectangle((0, 0, 199, 599), fill=(200, 60, 60, 255))
+        textos = {"negocio": "Frío Rico", "oferta": "2x1", "titular": "Refréscate al doble", "mensaje": "",
+                  "llamada_accion": "Ven hoy", "contacto": ""}
+        colores = paleta("fresco", None, "")
+        puntajes = [componer_poster(1080, 1080, textos, producto, None, colores, centrado=c)[1] for c in (False, True)]
+        salida = POSTER.run(None, {**{k: v for k, v in textos.items() if v}, "foto_producto": b64(producto.convert("RGB"), "JPEG")},
+                            {"formato": "cuadrado", "estilo": "fresco"})
+        self.assertEqual(len(puntajes), 2)
+        self.assertNotEqual(salida["poster"], salida["poster_alternativo"])
+        self.assertIn("está listo", salida["resumen"])

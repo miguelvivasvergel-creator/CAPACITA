@@ -412,53 +412,40 @@ def reparar_plan(definition, options):
                 node.values.pop(campo)
 
 
-VERSIONES_POSTER = ("poster", "poster_alternativo")
 ENVIOS_DE_ARCHIVO = {"enviar_telegram", "enviar_correo", "guardar_drive"}
 
 
-def entregar_versiones(definition):
-    """Lo que la persona ve en Capacita y lo que le llega debe ser lo mismo. El póster sale en dos
-    versiones: cada envío que lleva la versión 1 (Telegram, correo, Drive) recibe un gemelo con la
-    versión 2, y las salidas se nombran poster_version_1 y poster_version_2 (en ese orden también en
-    la web, que ordena por nombre: antes «alternativo» salía primero y a Telegram llegaba la otra)."""
+def un_solo_poster(definition):
+    """El póster se entrega UNO (el mejor diseño, «poster»): lo que la persona ve en Capacita es lo que le
+    llega. Si el plan conecta «poster_alternativo» a un envío, ese envío pasa a llevar «poster» (y si otro
+    envío igual ya lo lleva, sobra y se quita); las salidas solo muestran «poster». Antes salían dos y a
+    Telegram llegaba una distinta de la que la web mostraba primero."""
     from schemas.workflows import Binding
     clave = lambda nodo: getattr(BY_VERSION.get(str(nodo.version_id)), "key", None)
     posters = {nodo.id for nodo in definition.nodes if clave(nodo) == "poster_promocional"}
     if not posters:
         return
-    ids = {nodo.id for nodo in definition.nodes}
-    nuevos = []
-    for nodo in list(definition.nodes):
-        origen = nodo.bindings.get("archivo")
-        if clave(nodo) not in ENVIOS_DE_ARCHIVO or not origen or origen.source not in posters or origen.field != "poster":
+    lleva = lambda nodo, campo: ((b := nodo.bindings.get("archivo")) is not None and b.source in posters
+                                 and b.field == campo)
+    quitar = set()
+    for nodo in definition.nodes:
+        if clave(nodo) not in ENVIOS_DE_ARCHIVO or not lleva(nodo, "poster_alternativo"):
             continue
-        ya = any(clave(otro) == clave(nodo) and (otro.bindings.get("archivo") or origen).source == origen.source
-                 and (otro.bindings.get("archivo") or origen).field == "poster_alternativo" for otro in definition.nodes)
-        if ya or len(definition.nodes) + len(nuevos) >= MAX_NODOS:
-            continue
-        gemelo = nodo.model_copy(deep=True)
-        base = f"{nodo.id[:58]}_v2"
-        gemelo.id = base if base not in ids else f"{nodo.id[:55]}_v2_{len(nuevos)}"
-        ids.add(gemelo.id)
-        gemelo.label = f"{nodo.label[:66]} (versión 2)"
-        gemelo.bindings["archivo"] = Binding(source=origen.source, field="poster_alternativo")
-        mensaje = gemelo.bindings.get("mensaje")
-        if mensaje and mensaje.source in posters:  # la leyenda del gemelo no repite el resumen
-            gemelo.bindings.pop("mensaje")
-            gemelo.values["mensaje"] = "Versión 2 del póster: elige la que más te guste."
-        for campo in ("nombre_archivo", "asunto"):
-            if isinstance(gemelo.values.get(campo), str):
-                gemelo.values[campo] = f"{gemelo.values[campo][:180]} (versión 2)"
-        nuevos.append((nodo.id, gemelo))
-    for anterior, gemelo in nuevos:
-        definition.nodes.insert(next(i for i, n in enumerate(definition.nodes) if n.id == anterior) + 1, gemelo)
-    # Salidas: las dos versiones con nombres fijos y ordenados; el resto se conserva.
-    poster = sorted(posters)[0]
+        origen = nodo.bindings["archivo"].source
+        if any(otro is not nodo and clave(otro) == clave(nodo) and lleva(otro, "poster")
+               and otro.bindings["archivo"].source == origen for otro in definition.nodes):
+            quitar.add(nodo.id)
+        else:
+            nodo.bindings["archivo"] = Binding(source=origen, field="poster")
+    usados = {b.source for nodo in definition.nodes if nodo.id not in quitar for b in nodo.bindings.values()}
+    quitar = {i for i in quitar if i not in usados}  # nunca se quita un paso del que depende otro
+    definition.nodes = [nodo for nodo in definition.nodes if nodo.id not in quitar]
     salidas = {k: b for k, b in definition.outputs.items()
-               if not (b.source in posters and b.field in VERSIONES_POSTER)}
-    for numero, campo in enumerate(VERSIONES_POSTER, 1):
-        salidas[f"poster_version_{numero}"] = Binding(source=poster, field=campo)
-    definition.outputs = dict(list(salidas.items())[-32:])
+               if b.source not in quitar and not (b.source in posters and b.field == "poster_alternativo")}
+    poster = sorted(posters)[0]
+    if not any(b.source in posters and b.field == "poster" for b in salidas.values()):
+        salidas["poster"] = Binding(source=poster, field="poster")
+    definition.outputs = salidas
 
 
 def errores_del_plan(error):
@@ -668,7 +655,7 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
                 raise HTTPException(502, "No pude armar un plan con las piezas disponibles: una parte de tu pedido "
                                          "necesita algo que Capacita aún no tiene. Pídelo por partes o de otra forma.")
             reparar_plan(proposal.definition, options)
-            entregar_versiones(proposal.definition)  # lo que ves en Capacita = lo que te llega
+            un_solo_poster(proposal.definition)  # lo que ves en Capacita = lo que te llega
             if destinatarios_no_escritos(proposal.definition, objective):
                 aviso = "No vi esa dirección de correo escrita en tu pedido, así que el correo te llega a ti. "
                 proposal.explanation = (aviso + proposal.explanation)[:1200]

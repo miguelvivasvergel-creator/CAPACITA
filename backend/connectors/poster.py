@@ -41,7 +41,6 @@ PISTAS = [("fresco", r"helad|fr[ií]o|bebida|jug|agua|smoothie|granizad|piscina|
           ("calido", r"caf[eé]|pan|pizza|asad|parrilla|horno|hamburgues|arepa|empanad|postre|torta|chocolate"),
           ("elegante", r"spa|belleza|joyer|moda|boutique|vino|perfum|barber|u[ñn]as|est[eé]tica|lujo"),
           ("natural", r"org[aá]nic|natural|verde|planta|vegan|salud|fruta|verdura|granja|vivero|eco")]
-ALTERNO = {"fresco": "elegante", "vibrante": "elegante", "elegante": "vibrante", "natural": "calido", "calido": "elegante"}
 
 FUENTES = {  # Windows (el trabajador de la demo) y Linux; si no hay ninguna, la de Pillow con tamaño.
     "negra": ["seguibl.ttf", "ariblk.ttf", "DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf"],
@@ -188,16 +187,6 @@ def paleta(estilo, logo, textos):
         if re.search(patron, textos, re.I):
             return (nombre, *map(rgb, ESTILOS[nombre]))
     return ("vibrante", *map(rgb, ESTILOS["vibrante"]))
-
-
-def alterna(principal):
-    """La segunda versión: con colores de marca, la misma marca en modo oscuro; si no, otro estilo."""
-    nombre, arriba, _, acento, _ = principal
-    if nombre == "marca":
-        resalte = arriba if luminancia(arriba) > 0.08 else acento
-        return ("marca oscura", rgb("#17171F"), rgb("#050508"), resalte, texto_sobre(resalte))
-    otro = ALTERNO.get(nombre, "elegante")
-    return (otro, *map(rgb, ESTILOS[otro]))
 
 
 # ---------- Imágenes ----------
@@ -414,7 +403,10 @@ def mejor_esquina(oferta, objeto, posicion, zona, texto_caja, limite, m):
         tapado = sum(ImageChops.multiply(recorte, alfa_sello).point(lambda v: 255 if v > 60 else 0).histogram()[255:])
         if menor is None or tapado < menor:
             mejor, menor = (cx, cy), tapado
-    return mejor or (int(limite_w - ow - m * 0.2), int(max(texto_caja[3], pie - oh)))
+    total = max(1, sum(alfa_producto.point(lambda v: 255 if v > 60 else 0).histogram()[255:]))
+    if mejor is None:
+        return (int(limite_w - ow - m * 0.2), int(max(texto_caja[3], pie - oh))), 1.0
+    return mejor, menor / total
 
 
 def componer_poster(w, h, textos, producto, logo, colores, centrado, logo_claro=False):
@@ -446,12 +438,13 @@ def componer_poster(w, h, textos, producto, logo, colores, centrado, logo_claro=
         ImageDraw.Draw(lienzo).text(((w - letra.getlength(nombre)) / 2 if centrado else m, y), nombre,
                                     font=letra, fill=(*color, 235))
         y += alto_linea(letra) + int(28 * escala)
-    tope_columna = y
+    heroe, tapado, tam_titular = 0.0, 0.0, 0
     # 2) Texto: titular grande y mensaje; en dos columnas hay más líneas porque la columna es angosta.
     lineas_titular = 3 if dos_columnas else 2
     if textos["titular"]:
         grande = int((86 if dos_columnas else 92) * escala) if producto is not None else int(100 * escala)
         letra, lineas = encajar(textos["titular"], "negra", ancho_texto, lineas_titular, grande, int(46 * escala))
+        tam_titular = getattr(letra, "size", 0)
         y = escribir(lienzo, lineas, letra, m, y, (*color, 255), centrado, ancho_centro) + int(14 * escala)
     if textos["mensaje"]:
         maximo = 4 if dos_columnas else 2
@@ -473,8 +466,10 @@ def componer_poster(w, h, textos, producto, logo, colores, centrado, logo_claro=
         con_sombra(lienzo, objeto, x, ytop)
         oferta = sello(textos["oferta"], diametro, acento, texto_acento, giro=-9 if dos_columnas else 8)
         texto_caja = (0, 0, m + ancho_texto, y) if dos_columnas else (0, 0, w, y)
-        sx, sy = mejor_esquina(oferta, objeto, (x, ytop), zona, texto_caja, (w, pie), m)
+        (sx, sy), tapado = mejor_esquina(oferta, objeto, (x, ytop), zona, texto_caja, (w, pie), m)
         lienzo.alpha_composite(oferta, (sx, sy))
+        visible = sum(objeto.getchannel("A").point(lambda v: 255 if v > 60 else 0).histogram()[255:])
+        heroe = visible / (w * h)
     else:
         libre = pie - int(30 * escala) - (y + int(30 * escala))
         oferta = sello(textos["oferta"], int(min(w * (0.62 if alto_formato else 0.5), libre * 0.95)), acento,
@@ -486,7 +481,12 @@ def componer_poster(w, h, textos, producto, logo, colores, centrado, logo_claro=
     if textos["contacto"]:
         letra, lineas = encajar(textos["contacto"], "normal", w - 2 * m, 1, int(28 * escala), int(20 * escala))
         escribir(lienzo, lineas, letra, m, pie + alto_cta + 14, (*color, 235), centrado, ancho_centro, sombra=False)
-    return lienzo.convert("RGB")
+    # Puntaje del diseño (criterios de marketing): lo que más pesa es que el producto se vea GRANDE (el
+    # héroe); que el sello monte un poco sobre él es normal en publicidad, taparlo mucho (más del 20 %) no;
+    # y el titular debe leerse grande. Sin producto, lo centrado queda más equilibrado.
+    puntaje = (300 * heroe - 40 * tapado - 200 * max(0.0, tapado - 0.2) + 0.15 * tam_titular
+               + (1 if centrado and producto is None else 0))
+    return lienzo.convert("RGB"), puntaje
 
 
 def a_base64(imagen):
@@ -518,14 +518,14 @@ def poster(http, inputs, parameters):
         logo, quitado = sin_fondo(logo, tolerancia=48)
         notas.append("limpié el fondo del logo" if quitado else "usé el logo tal cual")
     w, h = FORMATOS[formato]
-    principal = paleta(estilo, logo, " ".join(textos.values()))
-    segunda = alterna(principal)
-    a = componer_poster(w, h, textos, producto, logo, principal, centrado=False, logo_claro=logo_claro)
-    b = componer_poster(w, h, textos, producto, logo, segunda, centrado=True, logo_claro=logo_claro)
-    # Es la leyenda que acompaña la versión 1 en Telegram o el correo: en palabras de la persona.
-    resumen = (f"Versión 1 de tu póster para «{textos['negocio']}» ({textos['oferta']}). Te preparé dos versiones "
-               "para que elijas la que más te guste" + (f"; {' y '.join(notas)}." if notas else "."))
-    return {"poster": a_base64(a), "poster_alternativo": a_base64(b), "resumen": resumen}
+    colores = paleta(estilo, logo, " ".join(textos.values()))
+    # Se arman los dos diseños con los colores de la marca y se entrega SOLO el mejor (la persona recibe
+    # un póster bien hecho, no una elección). «poster_alternativo» queda en el contrato publicado.
+    disenos = sorted((componer_poster(w, h, textos, producto, logo, colores, centrado=c, logo_claro=logo_claro)
+                      for c in (False, True)), key=lambda d: d[1], reverse=True)
+    resumen = (f"Tu póster para «{textos['negocio']}» ({textos['oferta']}) está listo"
+               + (f": {' y '.join(notas)}." if notas else "."))
+    return {"poster": a_base64(disenos[0][0]), "poster_alternativo": a_base64(disenos[1][0]), "resumen": resumen}
 
 
 TEXTO = {"type": "string"}
