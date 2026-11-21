@@ -57,6 +57,7 @@ ERRORES = {"queue_full": "Ya tienes 3 ejecuciones en curso (o la cola está llen
            "not_found": "No encontré eso en tu cuenta."}
 FOTO = [("📝 Leer el texto", "Lee el texto de esta foto y envíamelo por Telegram."),
         ("🧾 Datos de la factura", "Saca los datos de esta factura (proveedor, fecha, total y artículos) y envíamelos por Telegram."),
+        ("🎨 Hacer un póster", "Con esta foto de mi producto hazme un póster promocional y envíamelo por Telegram."),
         ("✂️ Quitar el fondo", "Quítale el fondo a esta foto y envíamela por Telegram."),
         ("💬 Describirla", "Describe esta foto con detalle y envíamelo por Telegram.")]
 DOCUMENTO = [("📄 Resumir", "Resume este documento en puntos claros y envíamelo por Telegram."),

@@ -73,7 +73,10 @@ class RegistryTests(unittest.TestCase):
             ejemplo = d["examples"][0]
             self.assertTrue(Draft202012Validator(d["input_schema"]).is_valid(ejemplo["inputs"]), connector.key)
             self.assertTrue(Draft202012Validator(d["parameter_schema"]).is_valid(ejemplo["parameters"]), connector.key)
-            self.assertTrue(connector.hosts and all("/" not in host for host in connector.hosts))
+            self.assertTrue(all(host and "/" not in host for host in connector.hosts))
+            # Sin hosts = conector local (el póster): no puede hacer NINGUNA petición a internet.
+            if not connector.hosts:
+                self.assertEqual(connector.max_requests, 0, connector.key)
             ids.add(connector.version_id)
         # Una versión por fila; las versiones de un mismo conector comparten su ficha de catálogo.
         self.assertEqual(len(ids), len(CONNECTORS))

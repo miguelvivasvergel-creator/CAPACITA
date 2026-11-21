@@ -64,6 +64,20 @@ Tres fallos, corregidos por su causa general (no para este pedido):
   simular un dato. Verificado real: «50 euros hoy y hace un año» → convierte hoy (COP fijo) y avisa
   «Ojo: falta… no hay tasa histórica»; calendario «el viernes» → 2026-11-27 15:00; Santa Marta sigue en 9
   pasos sin pendientes. 341 pruebas OK.
+- **Póster promocional (tras la etiqueta `antes-del-poster` = 01c39ac):** conector revisado
+  `poster_promocional@1` (`connectors/poster.py`), local, sin red ni IA (hosts vacío, max_requests 0).
+  La IA o el planner ponen los textos; el diseño es determinista con reglas de marketing: zonas que no se
+  pisan (marca → texto → producto héroe → llamada a la acción), sello de oferta en la esquina que MENOS
+  tapa el producto (`mejor_esquina`), colores 60-30-10 sacados del logo (o del tipo de negocio), texto
+  blanco/oscuro por contraste WCAG, logo en placa si no contrasta (3:1) o si venía sobre fondo claro y el
+  póster es oscuro, foco de luz y sombra bajo el producto. Quita el fondo del logo y la foto rellenando
+  DESDE LOS BORDES (conserva los blancos internos del logo); fondo complejo → foto enmarcada. Dos
+  versiones (dos columnas / centrada, marca y marca oscura), JPG 1080×1080 o 1080×1920 (~150 KB, ~1 s).
+  Planner: instrucciones de copy (titular ≤ 6 palabras, oferta, CTA, sin inventar contacto) y outputs con
+  ambas versiones; bot: botón «🎨 Hacer un póster» al mandar una foto. Verificado: pósteres revisados a
+  ojo (helados con logo, café en historia con fondo complejo), planner real con Gemini → póster + Telegram
+  + Drive con buen copy. 348 pruebas, lint OK. **Requiere volver a ejecutar `db/15` en Supabase** (fila
+  del conector nuevo) y reiniciar backend y trabajador. No probado aún con fotos reales ni en la web.
 - Pendiente: confirmar el correo en inglés en Gmail y la prueba completa por Telegram tras reiniciar.
 
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)

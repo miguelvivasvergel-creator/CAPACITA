@@ -403,6 +403,18 @@ Si la IA debe escribir con los datos de DOS O MÁS pasos (un itinerario con clim
 lugares; un boletín con varias consultas), usa «Escribir con IA usando varios datos»: values.instruccion
 con la orden completa y cada salida en su propio dato_1, dato_2… (el resumen o la lista de filas; uno por
 paso). Cada entrada recibe una sola salida: nunca intentes meter varias en «texto».
+Si pide un póster, afiche, flyer, anuncio o una imagen para promocionar (Instagram, WhatsApp,
+estados), usa «Diseñar un póster promocional»: escribe TÚ en values los textos con buenas prácticas
+de marketing: titular de máximo 6 palabras centrado en el beneficio, oferta corta y concreta (la que
+dio la persona: «2x1 en conos», «-20 %»), llamada a la acción con un verbo («Ven hoy», «Pide por
+WhatsApp»); contacto SOLO si la persona lo escribió (nunca inventes teléfonos, direcciones ni
+precios). Si un texto depende de datos de otro paso (el clima de mañana), conecta mensaje a la
+salida de la IA que escribe una sola frase corta. Si la persona adjunta la foto del producto y/o el
+logo, decláralos en input_schema como foto_producto (image/jpeg) y logo (image/png) y conéctalos;
+si no los adjunta, no los pidas como obligatorios. formato «historia» solo si pide estados o
+historias. Para enviarlo, conecta archivo de Telegram, del correo o de Drive a «poster» (y el
+mensaje al «resumen»). En outputs incluye «poster» y «poster_alternativo» del paso del póster para
+que la persona vea las dos versiones en Capacita.
 La entrada archivo de Telegram y del correo solo recibe archivos de verdad (un PDF, una foto, un
 Excel que produjo otro paso); un texto escrito por la IA va en mensaje. En «Guardar en mi Drive» sí
 puedes conectar un texto a archivo: se guarda como documento.
