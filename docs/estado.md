@@ -78,6 +78,14 @@ Tres fallos, corregidos por su causa general (no para este pedido):
   ojo (helados con logo, café en historia con fondo complejo), planner real con Gemini → póster + Telegram
   + Drive con buen copy. 348 pruebas, lint OK. **Requiere volver a ejecutar `db/15` en Supabase** (fila
   del conector nuevo) y reiniciar backend y trabajador. No probado aún con fotos reales ni en la web.
+- **Póster: misma imagen en la web y en Telegram (tras 6419850).** Prueba de Fahida: a Telegram llegó un
+  póster distinto del que veía en la web. Causa: dos versiones; los envíos llevaban solo la 1 y la web
+  ordena las salidas por nombre (la IA las nombraba libremente y «alternativo» salía primero).
+  `planner_service.entregar_versiones` (sin IA, tras reparar el plan): cada envío de la versión 1
+  (Telegram, correo, Drive) tiene un gemelo con la versión 2 («Versión 2 del póster…») y las salidas
+  son siempre poster_version_1 y poster_version_2. Leyenda de la versión 1 en palabras de la persona.
+  Verificado con el planner real (5 pasos, ambas versiones a Telegram y Drive). 349 pruebas OK. Sin SQL
+  nuevo; reiniciar backend y trabajador.
 - Pendiente: confirmar el correo en inglés en Gmail y la prueba completa por Telegram tras reiniciar.
 
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)

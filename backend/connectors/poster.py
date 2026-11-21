@@ -512,18 +512,19 @@ def poster(http, inputs, parameters):
     if foto is not None:
         recorte, quitado = sin_fondo(foto)
         producto = recorte if quitado else enmarcar(foto, 760)
-        notas.append("producto sin fondo" if quitado else "la foto tenía un fondo complejo y va enmarcada")
+        notas.append("le quité el fondo al producto" if quitado else "la foto tenía un fondo complejo y la enmarqué")
     logo_claro = logo is not None and fondo_claro(logo)
     if logo is not None:
         logo, quitado = sin_fondo(logo, tolerancia=48)
-        notas.append("logo sin fondo" if quitado else "logo tal cual")
+        notas.append("limpié el fondo del logo" if quitado else "usé el logo tal cual")
     w, h = FORMATOS[formato]
     principal = paleta(estilo, logo, " ".join(textos.values()))
     segunda = alterna(principal)
     a = componer_poster(w, h, textos, producto, logo, principal, centrado=False, logo_claro=logo_claro)
     b = componer_poster(w, h, textos, producto, logo, segunda, centrado=True, logo_claro=logo_claro)
-    resumen = (f"Póster {w}×{h} para «{textos['negocio']}» con «{textos['oferta']}» en dos versiones "
-               f"(colores {principal[0]} y {segunda[0]})" + (f": {', '.join(notas)}." if notas else "."))
+    # Es la leyenda que acompaña la versión 1 en Telegram o el correo: en palabras de la persona.
+    resumen = (f"Versión 1 de tu póster para «{textos['negocio']}» ({textos['oferta']}). Te preparé dos versiones "
+               "para que elijas la que más te guste" + (f"; {' y '.join(notas)}." if notas else "."))
     return {"poster": a_base64(a), "poster_alternativo": a_base64(b), "resumen": resumen}
 
 

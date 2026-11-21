@@ -44,8 +44,8 @@ class PosterTests(unittest.TestCase):
             for campo in ("poster", "poster_alternativo"):
                 imagen = abrir(salida[campo])
                 self.assertEqual((imagen.format, imagen.size), ("JPEG", tamano))
-            self.assertIn("producto sin fondo", salida["resumen"])
-            self.assertIn("logo sin fondo", salida["resumen"])
+            self.assertIn("le quité el fondo al producto", salida["resumen"])
+            self.assertIn("limpié el fondo del logo", salida["resumen"])
         sin_fotos = POSTER.run(None, {"negocio": "Café Aroma", "oferta": "-20 %"}, {"formato": "cuadrado", "estilo": "calido"})
         self.assertEqual(abrir(sin_fotos["poster"]).size, (1080, 1080))
 
@@ -64,7 +64,7 @@ class PosterTests(unittest.TestCase):
         self.assertFalse(quitado)
         salida = POSTER.run(None, {"negocio": "X", "oferta": "2x1", "foto_producto": b64(ruido, "JPEG")},
                             {"formato": "cuadrado", "estilo": "fresco"})
-        self.assertIn("enmarcada", salida["resumen"])
+        self.assertIn("la enmarqué", salida["resumen"])
 
     def test_textos_limpios_sin_perder_lo_que_importa(self):
         self.assertEqual(limpio("-20 % en capuchinos", 40), "-20 % en capuchinos")
@@ -121,3 +121,34 @@ class PosterEnUnProcesoTests(unittest.TestCase):
             nodo.parameters = {**ejemplo["parameters"], **parametros[nodo.id]}
         _, orden = compile_workflow(definicion.model_dump(mode="json"), versiones)
         self.assertEqual(orden[0], "poster")
+
+
+class MismasVersionesTests(unittest.TestCase):
+    def test_cada_envio_lleva_las_dos_versiones_y_la_web_las_ve_en_orden(self):
+        """Antes la web mostraba primero «alternativo» (ordena por nombre) y a Telegram llegaba la otra."""
+        from services.planner_service import entregar_versiones
+        v = lambda k: str(REGISTRY[k].version_id)
+        definicion = WorkflowDefinition.model_validate({
+            "name": "Póster", "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+            "nodes": [{"id": "poster", "version_id": v("poster_promocional@1"), "label": "Póster",
+                       "values": {"negocio": "Frío Rico", "oferta": "2x1"}, "parameters": {}, "bindings": {}},
+                      {"id": "tg", "version_id": v("enviar_telegram@1"), "label": "Telegram", "values": {}, "parameters": {},
+                       "bindings": {"archivo": {"source": "poster", "field": "poster"},
+                                    "mensaje": {"source": "poster", "field": "resumen"}}},
+                      {"id": "drive", "version_id": v("guardar_drive@1"), "label": "Drive",
+                       "values": {"nombre_archivo": "Póster"}, "parameters": {},
+                       "bindings": {"archivo": {"source": "poster", "field": "poster"}}}],
+            "outputs": {"alternativo": {"source": "poster", "field": "poster_alternativo"},
+                        "principal": {"source": "poster", "field": "poster"}}})
+        entregar_versiones(definicion)
+        nodos = {n.id: n for n in definicion.nodes}
+        self.assertEqual([n.id for n in definicion.nodes], ["poster", "tg", "tg_v2", "drive", "drive_v2"])
+        self.assertEqual(nodos["tg_v2"].bindings["archivo"].field, "poster_alternativo")
+        self.assertNotIn("mensaje", nodos["tg_v2"].bindings)
+        self.assertIn("Versión 2", nodos["tg_v2"].values["mensaje"])
+        self.assertEqual(nodos["drive_v2"].values["nombre_archivo"], "Póster (versión 2)")
+        self.assertEqual({k: b.field for k, b in definicion.outputs.items()},
+                         {"poster_version_1": "poster", "poster_version_2": "poster_alternativo"})
+        entregar_versiones(definicion)  # repetirlo no duplica nada
+        self.assertEqual(len(definicion.nodes), 5)
+        self.assertIsNone(revision_logica(definicion))
