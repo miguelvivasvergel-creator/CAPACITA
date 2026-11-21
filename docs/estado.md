@@ -4,6 +4,27 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 21/11/2026: taller más bonito, biblioteca con búsqueda, editar/eliminar y reutilizar en el chat
+Cuatro bloques, un commit cada uno (punto para volver atrás: etiqueta `antes-del-rediseno`):
+- `b3d9a49` **Taller**: mapa por capas según las conexiones (`src/components/taller/distribucion.js`): las
+  consultas en paralelo quedan apiladas, una conexión que salta columnas reserva su carril (ninguna flecha
+  pasa detrás de un paso); tarjetas con color e ícono por tipo (consulta, IA, envío, propia) y flechas.
+- `3600dcf` **Biblioteca**: buscador por raíz de palabra sin tildes (`src/utils/buscar.js`), filtro por estado
+  (lista/probada/sin terminar), orden (recientes/A-Z), contador y «Pedírselo al chat» si no hay resultados.
+- `69fdaf4` **Editar y eliminar**: «Renombrar» (todas las versiones del grupo; ya no despublica: solo los
+  cambios de funcionamiento vuelven a borrador), «Cambiar cómo funciona» (abre el chat) y «Eliminar».
+  Eliminar una herramienta la ARCHIVA (`db/22_archivar_capacidades.sql`): deshabilita sus versiones, retira
+  su publicación y la oculta del catálogo, planner y comunidad, conservando el historial. Combinadas: archivar.
+- `c4f2422` **Chat reutiliza**: el backend busca por raíz (`search_terms` en `objective_service.py`) y el chat
+  compara por raíz (`src/components/taller/parecidas.js`): «compara mis documentos» encuentra «comparar_documentos».
+
+Validación: `npm test` 13/13, backend 360/360, lint sin avisos, build OK. Taller revisado en el navegador
+con el plan de Santa Marta. **Sin revisar en la app real**: la biblioteca (buscar, renombrar, eliminar) y el
+atajo del chat, porque necesitan sesión y backend en marcha.
+
+Pendiente: **aplicar `db/22` en Supabase** (sin él, «Eliminar» herramienta responde que falta un script SQL;
+lo demás funciona). No verificado: qué hace un asistente con horario cuando se archiva su combinada.
+
 ### Fahida — 21/11/2026: arreglos de raíz tras la prueba real del bot (sin commit; tras d944799)
 
 Prueba real por Telegram (Santa Marta): plan de 9 pasos con ✓ en todo, ejecutado y recibido en el chat.
