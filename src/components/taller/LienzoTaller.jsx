@@ -1,32 +1,48 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Icono from '../common/Icono';
-import { Background, Controls, Handle, Position, ReactFlow } from '@xyflow/react';
+import { Background, Controls, Handle, MarkerType, Position, ReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { pasosEnOrden } from '../../utils/formularioDatos';
 import { ESTADOS_NODO } from './estadosNodo';
+import { conexiones, distribuir, tipoDePaso } from './distribucion';
 
+// Cada tipo de paso tiene su ícono, su color (franja y burbuja) y una etiqueta que se entiende sola.
+const TIPOS = {
+  consulta: { icono: 'globo', etiqueta: 'Consulta datos', ayuda: 'Consulta un servicio externo' },
+  ia: { icono: 'chispa', etiqueta: 'Inteligencia artificial', ayuda: 'Usa una IA externa' },
+  accion: { icono: 'enviar', etiqueta: 'Envía o guarda', ayuda: 'Hace una acción externa (con tu aprobación)' },
+  propia: { icono: 'herramienta', etiqueta: 'Tu herramienta', ayuda: 'Herramienta creada y probada en Capacita' },
+  inicio: { icono: 'perfil', etiqueta: '' },
+  final: { icono: 'ok', etiqueta: '' },
+};
 
-// Nodo con la estética del login: tarjeta de vidrio, punto de estado con anillo y conectores redondos.
+// Tarjeta del paso: franja y burbuja del color de su tipo, título, proveedor y píldora de estado.
 function Nodo({ data }) {
   const estado = ESTADOS_NODO[data.estado] || ESTADOS_NODO.espera;
-  const extremo = data.extremo ? `nodo-taller--${data.extremo}` : '';
-  return <div className={`nodo-taller nodo-taller--${estado.tono} ${extremo} ${estado.pulso ? 'taller-pulso' : ''} ${data.seleccionado ? 'is-seleccionado' : ''}`}>
+  const tipo = TIPOS[data.clase] || TIPOS.propia;
+  const clases = ['nodo-taller', `nodo-taller--${estado.tono}`, `nodo-taller--${data.clase || 'propia'}`,
+    data.extremo ? `nodo-taller--${data.extremo}` : '', estado.pulso ? 'taller-pulso' : '', data.seleccionado ? 'is-seleccionado' : ''];
+  return <div className={clases.filter(Boolean).join(' ')} title={tipo.ayuda}>
     {data.entrada && <Handle type="target" position={Position.Left} isConnectable={false} />}
-    <p className="nodo-taller-tipo"><span className="nodo-taller-punto" aria-hidden="true" />{data.tipo}</p>
+    <div className="nodo-taller-cabeza">
+      <span className="nodo-taller-burbuja" aria-hidden="true"><Icono nombre={tipo.icono} className="h-4 w-4" /></span>
+      <span className="nodo-taller-tipo">{data.tipo}{tipo.etiqueta && <span>{tipo.etiqueta}</span>}</span>
+    </div>
     <p className="nodo-taller-titulo">{data.label}</p>
-    {data.conector && <p className={`nodo-taller-conector ${data.conector.ia ? 'is-ia' : data.conector.accion ? 'is-accion' : ''}`} title={data.conector.ia ? 'Usa una IA externa' : data.conector.accion ? 'Hace una acción externa (con tu aprobación)' : 'Consulta un servicio externo'}><Icono nombre={data.conector.ia ? 'chispa' : data.conector.accion ? 'candado' : 'globo'} className="h-3 w-3" />{data.conector.ia ? 'IA · ' : ''}{data.conector.proveedor}</p>}
+    {data.conector?.proveedor && <p className="nodo-taller-conector">{data.conector.ia ? 'IA · ' : ''}{data.conector.proveedor}</p>}
     <p className="nodo-taller-estado"><Icono nombre={estado.icono} className="h-3.5 w-3.5" />{estado.texto}</p>
     {data.salida && <Handle type="source" position={Position.Right} isConnectable={false} />}
   </div>;
 }
 const nodeTypes = { paso: Nodo };
 
-// Conexión: punteada mientras espera (como las curvas del login), animada al trabajar y sólida al terminar.
+// Conexión: punteada mientras espera, animada al trabajar, verde al terminar; siempre con flecha.
 function estiloConexion(estadoOrigen, estadoDestino) {
-  if (estadoDestino === 'running') return { stroke: '#06b6d4', strokeWidth: 2.5 };
-  if (estadoDestino === 'failed' || estadoDestino === 'interrupted') return { stroke: '#f87171', strokeWidth: 2 };
-  if (estadoOrigen === 'completed') return { stroke: '#3b82f6', strokeWidth: 2.25 };
-  return { stroke: '#a5b8e8', strokeWidth: 1.75, strokeDasharray: '5 5' };
+  if (estadoDestino === 'running') return { stroke: '#06b6d4', strokeWidth: 2.6 };
+  if (estadoDestino === 'failed' || estadoDestino === 'interrupted') return { stroke: '#f87171', strokeWidth: 2.2 };
+  if (estadoOrigen === 'completed' && estadoDestino === 'completed') return { stroke: '#10b981', strokeWidth: 2.4 };
+  if (estadoOrigen === 'completed') return { stroke: '#3b82f6', strokeWidth: 2.3 };
+  return { stroke: '#9fb3e3', strokeWidth: 1.9, strokeDasharray: '6 6' };
 }
 
 // Mini constelación para el taller vacío: tres nodos unidos por curvas punteadas.
@@ -72,25 +88,25 @@ export default function LienzoTaller({ definicion, creando, estadoCreacion, esta
   }, []);
   const { nodes: nodosBase, edges } = useMemo(() => {
     if (creando) {
-      return { nodes: [{ id: 'creando', type: 'paso', position: { x: 0, y: 0 }, data: { tipo: 'Herramienta nueva', label: creando, estado: estadoCreacion || 'creando' } }], edges: [] };
+      return { nodes: [{ id: 'creando', type: 'paso', position: { x: 0, y: 0 }, data: { tipo: 'Herramienta nueva', label: creando, estado: estadoCreacion || 'creando', clase: 'propia' } }], edges: [] };
     }
     if (!definicion) return { nodes: [], edges: [] };
     const pasos = pasosEnOrden(definicion.nodes);
+    // Por capas según las conexiones: lo que va en paralelo queda apilado y se ve qué alimenta a qué.
+    const posiciones = distribuir(definicion);
     const nodos = [
-      { id: '$input', type: 'paso', position: { x: 0, y: 40 }, data: { tipo: 'Inicio', label: 'Tus datos', estado: estados.$input || 'espera', salida: true, extremo: 'inicio' } },
-      ...pasos.map((node, index) => ({ id: node.id, type: 'paso', position: { x: (index + 1) * 270, y: index % 2 ? 90 : 0 },
-        data: { tipo: `Paso ${index + 1}`, label: node.label, estado: estados[node.id] || 'espera', entrada: true, salida: true, seleccionado: seleccionado === node.id, conector: conectores.get(node.version_id) } })),
-      { id: '$output', type: 'paso', position: { x: (pasos.length + 1) * 270, y: 40 }, data: { tipo: 'Final', label: 'Resultado', estado: estados.$output || 'espera', entrada: true, extremo: 'final' } },
+      { id: '$input', type: 'paso', position: posiciones.get('$input'), data: { tipo: 'Inicio', label: 'Tus datos', estado: estados.$input || 'espera', salida: true, extremo: 'inicio', clase: 'inicio' } },
+      ...pasos.map((node, index) => ({ id: node.id, type: 'paso', position: posiciones.get(node.id),
+        data: { tipo: `Paso ${index + 1}`, label: node.label, estado: estados[node.id] || 'espera', entrada: true, salida: true, seleccionado: seleccionado === node.id,
+          conector: conectores.get(node.version_id), clase: tipoDePaso(conectores.get(node.version_id)) } })),
+      { id: '$output', type: 'paso', position: posiciones.get('$output'), data: { tipo: 'Final', label: 'Resultado', estado: estados.$output || 'espera', entrada: true, extremo: 'final', clase: 'final' } },
     ];
-    const conexiones = new Map();
-    for (const node of definicion.nodes) {
-      const bindings = Object.values(node.bindings || {});
-      for (const binding of bindings) conexiones.set(`${binding.source}>${node.id}`, { source: binding.source, target: node.id });
-      if (!bindings.length) conexiones.set(`$input>${node.id}`, { source: '$input', target: node.id });
-    }
-    for (const binding of Object.values(definicion.outputs || {})) conexiones.set(`${binding.source}>$output`, { source: binding.source, target: '$output' });
     const activa = (edge) => estados[edge.target] === 'running';
-    return { nodes: nodos, edges: [...conexiones.entries()].map(([id, edge]) => ({ id, ...edge, type: 'smoothstep', animated: activa(edge), style: estiloConexion(estados[edge.source], estados[edge.target]) })) };
+    return { nodes: nodos, edges: [...conexiones(definicion).entries()].map(([id, edge]) => {
+      const style = estiloConexion(estados[edge.source], estados[edge.target]);
+      return { id, ...edge, type: 'default', animated: activa(edge), style,
+        markerEnd: { type: MarkerType.ArrowClosed, color: style.stroke, width: 16, height: 16 } };
+    }) };
   }, [definicion, creando, estadoCreacion, estados, seleccionado, conectores]);
   const nodes = useMemo(() => nodosBase.map((node) => (medidas[node.id] ? { ...node, measured: medidas[node.id] } : node)), [nodosBase, medidas]);
 
@@ -99,7 +115,7 @@ export default function LienzoTaller({ definicion, creando, estadoCreacion, esta
   useEffect(() => {
     const node = contenedor.current;
     if (!node) return;
-    const ajustar = () => flujo.current?.fitView({ padding: 0.08 });
+    const ajustar = () => flujo.current?.fitView({ padding: 0.12 });
     const observer = new ResizeObserver(() => requestAnimationFrame(ajustar));
     observer.observe(node); ajustar();
     return () => observer.disconnect();
@@ -120,9 +136,9 @@ export default function LienzoTaller({ definicion, creando, estadoCreacion, esta
   }
   return <div ref={contenedor} className="taller-mapa" aria-label="Taller: mapa del proceso">
     {/* El nodo en creación cambia de estado sin cambiar de tamaño: remontar evita que quede sin medir (oculto). */}
-    <ReactFlow key={definicion?.name || `${creando}:${estadoCreacion || ''}`}nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.08 }} minZoom={0.2} maxZoom={1.4}
+    <ReactFlow key={definicion?.name || `${creando}:${estadoCreacion || ''}`}nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.12 }} minZoom={0.2} maxZoom={1.4}
       nodesConnectable={false} onNodesChange={onNodesChange} onInit={(instance) => { flujo.current = instance; }} onNodeClick={(_, node) => onSeleccionar?.(node.id)} proOptions={{ hideAttribution: true }}>
-      <Background color="#c3d2f2" gap={22} size={1.4} /><Controls showInteractive={false} />
+      <Background color="#d3def5" gap={24} size={1.6} /><Controls showInteractive={false} />
     </ReactFlow>
   </div>;
 }
