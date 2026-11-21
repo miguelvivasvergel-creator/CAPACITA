@@ -409,7 +409,21 @@
 .biblioteca-seccion-icono { display:grid; width:40px; height:40px; flex-shrink:0; place-items:center; border:1px solid #dbeafe; border-radius:13px; background:linear-gradient(135deg,#eff6ff,#ecfeff); }
 .biblioteca-seccion > h2 strong { display:block; font-family:var(--fuente-titulos); font-size:17px; font-weight:800; letter-spacing:-.3px; color:#0f172a; }
 .biblioteca-seccion > h2 strong + span { display:block; margin-top:2px; font-size:12px; font-weight:500; color:#64748b; }
+/* Buscador de la biblioteca: campo ancho + estado + orden en una sola fila (se apilan en celular). */
+.biblioteca-busqueda { display:flex; flex-wrap:wrap; gap:8px; }
+.biblioteca-buscador { display:flex; flex:1 1 320px; align-items:center; gap:10px; min-height:46px; padding:0 8px 0 14px; border:1px solid #dbe5f6; border-radius:14px; background:#fff; color:#64748b; box-shadow:0 6px 18px -14px #1e3a8a55; transition:border-color .2s,box-shadow .2s; }
+.biblioteca-buscador:focus-within { border-color:#3b82f6; box-shadow:0 0 0 4px #dbeafe; }
+.biblioteca-buscador input { flex:1; min-width:0; min-height:44px; border:0; outline:0; background:transparent; font-size:14px; color:#0f172a; }
+.biblioteca-buscador input::-webkit-search-cancel-button { display:none; }
+.biblioteca-buscador button { display:grid; width:32px; height:32px; place-items:center; border-radius:10px; color:#64748b; }
+.biblioteca-buscador button:hover { background:#f1f5f9; color:#0f172a; }
+.biblioteca-selector select { min-height:46px; padding:0 34px 0 12px; border:1px solid #dbe5f6; border-radius:14px; background:#fff; font-size:13px; font-weight:600; color:#334155; cursor:pointer; }
+.biblioteca-selector select:focus { outline:0; border-color:#3b82f6; box-shadow:0 0 0 4px #dbeafe; }
+.biblioteca-resultado > p { font-size:13px; color:#64748b; }
+.biblioteca-resultado > p strong { color:#0f172a; }
 @media (max-width:767px) {
+  .biblioteca-selector { flex:1 1 140px; }
+  .biblioteca-selector select { width:100%; }
   .nav-enlaces { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); }
   .biblioteca-barra { align-items:stretch; }
   .biblioteca-filtros { width:100%; }

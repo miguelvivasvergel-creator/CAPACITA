@@ -5,11 +5,14 @@ import { mapaVersiones } from '../components/taller/solucionDirecta';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import PlanGuiado from '../components/capabilities/PlanGuiado';
+import { coincide } from '../utils/buscar';
 
 // incrustada: sección de Mi biblioteca (sin encabezado ni botón propios). pasos: 'varios' muestra
 // las combinadas; 'uno', las de un solo paso que NO son herramientas tuyas (por ejemplo, una de la
 // comunidad que ya usaste). Las de un paso con herramienta tuya ya aparecen como «Simples».
-export default function SolucionesGuiadas({ workflowId, onCambiarSeccion, incrustada = false, pasos, propias }) {
+// busqueda/estado/orden: filtros de la biblioteca (una solución guardada cuenta como «lista»);
+// onContar(pasos, n) informa cuántas pasan.
+export default function SolucionesGuiadas({ workflowId, onCambiarSeccion, incrustada = false, pasos, propias, busqueda = '', estado = 'todos', orden = 'recientes', onContar }) {
   const [page,setPage]=useState({items:[],next_cursor:null});
   const [capacidadDe,setCapacidadDe]=useState(null);
   useEffect(()=>{
@@ -20,7 +23,11 @@ export default function SolucionesGuiadas({ workflowId, onCambiarSeccion, incrus
   },[pasos]);
   const numero=row=>row.definition?.nodes?.length||0;
   const deOtro=row=>propias!=null&&capacidadDe!=null&&!propias.has(capacidadDe.get(row.definition.nodes[0]?.version_id));
-  const visibles=pasos==='varios'?page.items.filter(row=>numero(row)>1):pasos==='uno'?page.items.filter(row=>numero(row)===1&&deOtro(row)):page.items;
+  // Se busca en el nombre de la solución y en el de cada uno de sus pasos.
+  const pasa=row=>(estado==='todos'||estado==='lista')&&coincide(`${row.definition?.name||''} ${(row.definition?.nodes||[]).map(node=>node.label||'').join(' ')}`,busqueda);
+  const porPasos=pasos==='varios'?page.items.filter(row=>numero(row)>1):pasos==='uno'?page.items.filter(row=>numero(row)===1&&deOtro(row)):page.items;
+  const visibles=porPasos.filter(pasa);
+  if(orden==='az')visibles.sort((a,b)=>String(a.definition?.name||'').localeCompare(String(b.definition?.name||''),'es',{sensitivity:'base'}));
   const [saved,setSaved]=useState(null);
   const [error,setError]=useState('');
   const [busy,setBusy]=useState(true);
@@ -36,6 +43,19 @@ export default function SolucionesGuiadas({ workflowId, onCambiarSeccion, incrus
     try{const next=await api(`/workflows?limit=20&cursor=${encodeURIComponent(page.next_cursor)}`);setPage(old=>({...next,items:[...old.items,...next.items.filter(row=>!old.items.some(item=>item.id===row.id))]}));}
     catch(cause){setError(cause.message);}finally{setBusy(false);}
   }
+  // Para buscar en TODAS, se traen las páginas que falten. Las de 1 paso esperan a saber cuáles son tuyas.
+  const filtrando=busqueda.trim()!==''||estado!=='todos';
+  const faltan=!workflowId&&filtrando&&Boolean(page.next_cursor)&&!error;
+  useEffect(()=>{
+    if(!faltan)return undefined;
+    const controller=new AbortController();
+    api(`/workflows?limit=20&cursor=${encodeURIComponent(page.next_cursor)}`,{signal:controller.signal})
+      .then(next=>{if(!controller.signal.aborted)setPage(old=>({...next,items:[...old.items,...next.items.filter(row=>!old.items.some(item=>item.id===row.id))]}));})
+      .catch(cause=>{if(!controller.signal.aborted)setError(cause.message);});
+    return ()=>controller.abort();
+  },[faltan,page.next_cursor]);
+  const total=workflowId||busy||error||faltan||(pasos==='uno'&&(propias==null||capacidadDe==null))?undefined:visibles.length;
+  useEffect(()=>{if(pasos)onContar?.(pasos,total);},[pasos,total,onContar]);
   return <div className={incrustada ? 'space-y-4' : 'vista-contenedor guiado-pagina space-y-5'}>
     {!incrustada && <><EncabezadoVista icono="soluciones" etiqueta="Mi biblioteca" titulo="Solución combinada" descripcion="Varias herramientas conectadas en un proceso privado que puedes volver a usar con otros datos. Cada ejecución necesita tu confirmación."/>
       <button type="button" className="vista-boton-primario" onClick={()=>onCambiarSeccion?.('capacidades')}><Icono nombre="flecha" className="h-4 w-4 rotate-180"/>Volver a Mi biblioteca</button></>}

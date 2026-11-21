@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { listarCapacidades } from '../services/capacidades';
 import { estadoHerramientas, mapaVersiones } from '../components/taller/solucionDirecta';
 import CompartirHerramienta from '../components/taller/CompartirHerramienta';
+import { coincide } from '../utils/buscar';
 
 const ORDEN = { lista: 0, probada: 1 };
 const ETIQUETA = { lista: 'Lista · Usar ahora', probada: 'Probada, sin tu visto bueno · Usar ahora', sin: 'Sin terminar · Crearla otra vez en el chat' };
@@ -37,7 +38,8 @@ const fecha = (valor) => {
 
 // incrustada: sección de «Mi biblioteca» (sin encabezado ni botón propios). onPropias recibe los
 // ids de tus herramientas cargadas, para que la biblioteca no las repita como soluciones de 1 paso.
-export default function HerramientasGuiadas({ onCambiarSeccion, incrustada = false, onPropias }) {
+// busqueda/estado/orden: filtros de la biblioteca; onContar('simples', n) informa cuántas pasan.
+export default function HerramientasGuiadas({ onCambiarSeccion, incrustada = false, onPropias, busqueda = '', estado = 'todos', orden = 'recientes', onContar }) {
   const [page, setPage] = useState({ items: [], next_cursor: null }), [error, setError] = useState(''), [busy, setBusy] = useState(true), [revision, setRevision] = useState(0);
   // undefined mientras se consulta; null si no se pudo saber (se abren igual: el chat avisa).
   const [estados, setEstados] = useState(undefined);
@@ -74,10 +76,28 @@ export default function HerramientasGuiadas({ onCambiarSeccion, incrustada = fal
 
   // La lista aparece en cuanto llegan las herramientas; las etiquetas, cuando se sabe su estado.
   const comprobando = estados === undefined, desconocido = comprobando || estados === null;
-  const grupos = agrupar(page.items, desconocido ? null : estados);
+  // Buscar y filtrar: por nombre y descripción de cualquiera de sus versiones; el estado solo filtra
+  // cuando ya se conoce (mientras se comprueba se muestran todas).
+  const pasa = (grupo) => grupo.filas.some(({ row }) => coincide(`${row.name} ${row.description || ''}`, busqueda))
+    && (estado === 'todos' || desconocido || grupo.estado === estado);
+  const grupos = agrupar(page.items, desconocido ? null : estados).filter(pasa);
+  if (orden === 'az') grupos.sort((a, b) => a.row.name.localeCompare(b.row.name, 'es', { sensitivity: 'base' }));
   // Sin saber el estado no se esconde nada en «Sin terminar»: el chat avisa si no está lista.
   const usables = desconocido ? grupos : grupos.filter((grupo) => grupo.estado !== 'sin');
   const sinTerminar = desconocido ? [] : grupos.filter((grupo) => grupo.estado === 'sin');
+  const filtrando = busqueda.trim() !== '' || estado !== 'todos';
+  // Para buscar en TODAS, se traen las páginas que falten (la lista de una persona es corta).
+  const faltan = filtrando && Boolean(page.next_cursor) && !error;
+  useEffect(() => {
+    if (!faltan) return undefined;
+    const controller = new AbortController();
+    listarCapacidades('mine', { cursor: page.next_cursor, signal: controller.signal })
+      .then((next) => { if (!controller.signal.aborted) setPage((old) => ({ ...next, items: [...old.items, ...next.items.filter((row) => !old.items.some((item) => item.id === row.id))] })); })
+      .catch((cause) => { if (!controller.signal.aborted) setError(cause.message); });
+    return () => controller.abort();
+  }, [faltan, page.next_cursor]);
+  const total = busy || error || faltan ? undefined : grupos.length;
+  useEffect(() => { onContar?.('simples', total); }, [total, onContar]);
   const etiqueta = (estado) => (comprobando ? 'Comprobando si está lista…' : estados === null ? 'Abrir en el chat' : ETIQUETA[estado]);
   // Usable: directa en el chat, sin IA. Sin terminar (no superó sus pruebas): el chat deja
   // escrito el pedido para crearla otra vez con la IA.
@@ -107,9 +127,9 @@ export default function HerramientasGuiadas({ onCambiarSeccion, incrustada = fal
     {busy && !page.items.length && !error && <p role="status">Cargando herramientas…</p>}
     {error && <div role="alert" className="text-sm text-red-700"><p>{error}</p><button type="button" className="min-h-11 underline" onClick={() => { setError(''); setBusy(true); setEstados(undefined); setRevision((old) => old + 1); }}>Volver a consultar</button></div>}
     {!busy && !error && !page.items.length && <p className="guiado-vacio">Todavía no tienes herramientas simples. Cuéntale al chat qué necesitas y la creamos juntos.</p>}
-    {!busy && !error && page.items.length > 0 && !usables.length && <p className="guiado-vacio">Ninguna está lista todavía. Pídele al chat la que necesitas y la creamos y probamos juntos.</p>}
+    {!busy && !error && page.items.length > 0 && !usables.length && !filtrando && <p className="guiado-vacio">Ninguna está lista todavía. Pídele al chat la que necesitas y la creamos y probamos juntos.</p>}
     <ul className="guiado-lista">{usables.map(item)}</ul>
-    {sinTerminar.length > 0 && <details className="rounded-xl border border-slate-200 bg-white p-3">
+    {sinTerminar.length > 0 && <details open={filtrando} className="rounded-xl border border-slate-200 bg-white p-3">
       <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-slate-700">Sin terminar ({sinTerminar.length})</summary>
       <p className="mb-3 text-xs text-slate-500">Intentos que no superaron sus pruebas o que descartaste. No se pueden usar; tócalos para crearlos otra vez en el chat.</p>
       <ul className="guiado-lista">{sinTerminar.map(item)}</ul>
