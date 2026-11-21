@@ -134,6 +134,18 @@ def revision_logica(definition):
     # calcula debe llegar a otro paso; si no, se consulta para nada y el envío sale sin esos datos.
     usados = {b.source for node in definition.nodes for b in node.bindings.values()}
     tipo = {node.id: getattr(BY_VERSION.get(str(node.version_id)), "key", None) for node in definition.nodes}
+    # Dos pasos idénticos (misma pieza, mismos datos, opciones y conexiones) dan el mismo resultado: o sobra
+    # uno o esconden algo que no se puede hacer. Caso real: «cuánto eran 50 euros hace un año» con el mismo
+    # conversor de hoy (no hay tasas históricas): el texto habría dicho que el valor de hace un año es el de hoy.
+    firmas = {}
+    for node in definition.nodes:
+        firma = json.dumps([str(node.version_id), node.values, node.parameters,
+                            {k: [b.source, b.field] for k, b in node.bindings.items()}], sort_keys=True, default=str)
+        if firma in firmas:
+            return (f"Los pasos «{firmas[firma]}» y «{node.id}» son idénticos (misma pieza y mismos datos): dan el mismo "
+                    "resultado. Quita el que sobra. Si querías algo distinto (por ejemplo, un dato de una fecha pasada) "
+                    "y ninguna versión lo permite, no lo simules: ponlo en pendientes y dilo en explanation.")
+        firmas[firma] = node.id
     # Alertas («avísame SOLO si…»): el motor omite lo que depende de la condición cuando no se cumple. Si
     # ningún envío depende de ella, la condición no frena nada y el aviso saldría SIEMPRE. (Un envío aparte
     # sin condición puede ser legítimo: «mándame el clima y avísame solo si llueve».)
@@ -483,7 +495,8 @@ def requisitos_sin_cubrir(definition, requisitos, cobertura):
 # Pasos de IA que escriben el texto final y el campo donde va su orden (con el largo que acepta al ejecutar).
 REDACTORES = {"componer_texto": ("instruccion", 2000), "tarea_texto": ("instruccion", 1000),
               "redactar_texto": ("indicaciones", 4000)}
-MARCA_PUNTOS = "Puntos del pedido que este texto debe responder, uno por uno:"
+MARCA_PUNTOS = ("Puntos del pedido que este texto debe cubrir (responde de forma directa los que piden un dato o una "
+                "respuesta; intégralos de forma natural, sin copiar esta lista):")
 # Pasos que ya entregan un texto escrito: lo que cubren es de ellos, no del paso que recibe su texto.
 ESCRITORES = set(REDACTORES) | {"resumir_texto", "traducir_texto"}
 
@@ -514,7 +527,11 @@ def puntos_para_redactar(definition, requisitos, cobertura):
                 continue
             antes.add(actual)
             pendientes.extend(b.source for b in pasos[actual].bindings.values() if b.source != "$input")
-        puntos = [requisito for n, requisito in enumerate(requisitos, 1) if por_numero.get(n, set()) & antes]
+        # Fuera los envíos («envíalo por Telegram» es tarea del envío) y lo que solo cumple una condición
+        # («revisar si llueve» es un control, no contenido): una promoción no debe responderlos como lista.
+        puntos = [requisito for n, requisito in enumerate(requisitos, 1)
+                  if not any(clave(pasos[p]) in ACCIONES for p in por_numero.get(n, set()))
+                  and any(clave(pasos[p]) != "revisar_condicion" for p in por_numero.get(n, set()) & antes)]
         texto = orden.rstrip() + "\n\n" + MARCA_PUNTOS
         agregados = 0
         for punto in puntos:
@@ -524,6 +541,24 @@ def puntos_para_redactar(definition, requisitos, cobertura):
             texto, agregados = texto + linea, agregados + 1
         if agregados:
             node.values[campo] = texto
+
+
+PALABRA = re.compile(r"[a-z0-9@.]{4,}")
+
+
+def declarado_pendiente(requisito, pendientes):
+    """¿La IA ya dijo que ese requisito no se puede? (sus pendientes son texto libre: se comparan las
+    palabras de 4+ letras, sin tildes; basta con que la mayoría del requisito aparezca en un pendiente)."""
+    palabras = set(PALABRA.findall(_plano(requisito)))
+    return bool(palabras) and any(len(palabras & set(PALABRA.findall(_plano(p)))) >= 0.6 * len(palabras)
+                                  for p in pendientes)
+
+
+def exigibles(faltan, pendientes):
+    """Lo que falta y SÍ se debe exigir. Un requisito sin pasos que la IA ya declaró imposible en pendientes
+    no se le vuelve a exigir: hacerlo la presionaba a simular el dato (el mismo conversor de hoy para «hace
+    un año») o a bloquear todo el pedido. Los correos e idiomas siempre se exigen: tienen pieza."""
+    return [f for f in faltan if not (f[2] == "ningún paso lo cumple" and declarado_pendiente(f[1], pendientes))]
 
 
 def sin_cubrir_como_error(faltan):
@@ -538,7 +573,7 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
     verificación), paso 2 (plan) con hasta tres intentos corregidos y la revisión de que nada del pedido
     se pierda. validar(definition) devuelve {"order": [...]} o lanza HTTPException (404/409/422)."""
     selected = {row["id"] for row in options}
-    validation, feedback, usos, requisitos = None, None, {}, []
+    validation, feedback, usos, requisitos, parcial = None, None, {}, [], False
     # Gemini a veces conecta mal los puertos: se le devuelve el error exacto y se reintenta una
     # vez, dentro del mismo turno del limitador (un pedido de la persona = un intento).
     limits.start(user_id)
@@ -560,14 +595,29 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
                     continue
                 raise HTTPException(502, "La IA devolvió un plan inválido; no se guardó ni ejecutó") from None
             if not proposal.definition:
+                # «blocked» en un pedido de varias partes suele bloquear TODO por una sola parte imposible
+                # (los 50 euros de hoy sí se pueden; los de hace un año no). Una vez se le pide hacer lo
+                # posible. «create» no se toca: es el camino para crear la herramienta que falta.
+                partes = requisitos or proposal.requisitos
+                if proposal.decision == "blocked" and len(partes) > 1 and attempt < 2 and not parcial:
+                    parcial = True
+                    feedback = ("Elegiste blocked, pero el pedido tiene varias partes y algunas sí se pueden hacer con "
+                                "las versiones. Haz compose con las partes posibles y pon SOLO lo imposible en "
+                                "pendientes" + (f" ({'; '.join(proposal.pendientes)[:300]})" if proposal.pendientes else "")
+                                + ", diciéndolo en explanation. Si de verdad no se puede nada, vuelve a elegir blocked.")
+                    continue
                 break
             ajenas = {str(node.version_id) for node in proposal.definition.nodes} - selected
             if ajenas:
                 if attempt < 2:
+                    # Suele pasar cuando falta una pieza (un dato histórico, un servicio sin conector): la IA
+                    # inventa un id en vez de admitirlo. Se le dice qué hacer con esa parte.
                     feedback = ("Usaste version_id que no están en versions: " + ", ".join(sorted(ajenas))[:400]
-                                + ". Usa solo los id de versions.")
+                                + ". Usa solo los id de versions. Si ninguna versión sirve para una parte del pedido, "
+                                "quita esa parte del plan, ponla en pendientes y dilo en explanation.")
                     continue
-                raise HTTPException(502, "La propuesta incluye una versión no seleccionada; no se guardó")
+                raise HTTPException(502, "No pude armar un plan con las piezas disponibles: una parte de tu pedido "
+                                         "necesita algo que Capacita aún no tiene. Pídelo por partes o de otra forma.")
             reparar_plan(proposal.definition, options)
             if destinatarios_no_escritos(proposal.definition, objective):
                 aviso = "No vi esa dirección de correo escrita en tu pedido, así que el correo te llega a ti. "
@@ -579,8 +629,9 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
             # aparte hacía que, si el paso 1 contaba de más, el plan inventara pasos («convertir a pesos
             # mexicanos» en un pedido de euros y pesos colombianos) para llegar al número.
             exigir_usos = None if lista else usos_incompletos(proposal.definition, usos, options)
+            por_exigir = exigibles(faltan, proposal.pendientes)  # lo declarado imposible se avisa, no se exige
             logica = (revision_logica(proposal.definition) or exigir_usos
-                      or (sin_cubrir_como_error(faltan) if faltan else None))
+                      or (sin_cubrir_como_error(por_exigir) if por_exigir else None))
             if logica and attempt < 2:
                 feedback = logica
                 continue
@@ -599,7 +650,9 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
             proposal.definition = arrange_definition(proposal.definition, validation["order"])
             # Lo que no se pudo cumplir se le dice a la persona antes de aprobar, nunca se calla.
             proposal.requisitos = lista
-            pendientes = list(dict.fromkeys(proposal.pendientes + [texto for _, texto, _ in faltan]))[:30]
+            # Sin repetir: lo que la IA ya declaró con sus palabras no se agrega otra vez con las del requisito.
+            pendientes = list(dict.fromkeys(proposal.pendientes + [texto for _, texto, _ in faltan
+                                                                   if not declarado_pendiente(texto, proposal.pendientes)]))[:30]
             proposal.pendientes = pendientes
             if pendientes:
                 aviso = "Ojo: este plan no cumple todo lo que pediste. Falta: " + "; ".join(pendientes)

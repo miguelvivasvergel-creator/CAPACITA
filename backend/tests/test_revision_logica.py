@@ -220,6 +220,8 @@ class ItinerarioDeViajeTests(unittest.TestCase):
         por_version = {v(k): k for k in REGISTRY}
         for nodo in definicion.nodes:  # las opciones de ejemplo de cada conector (país, días, radio…)
             nodo.parameters = dict(REGISTRY[por_version[str(nodo.version_id)]].definition["examples"][0]["parameters"])
+            if nodo.id == "cajeros":
+                nodo.parameters["que"] = "cajero"  # con el ejemplo («farmacia») era el mismo paso que «farmacias»
         self.assertIsNone(revision_logica(definicion))
         claves = {k for _, k, _, _ in datos} | {"componer_texto@1", "guardar_drive@1", "agendar_evento@1", "enviar_telegram@1"}
         versiones = {v(k): {"status": "enabled", "publication_id": "p", "manifest": REGISTRY[k].manifest(), "profile": PROFILE,
@@ -339,3 +341,40 @@ class FechaDeHoyTests(unittest.TestCase):
         self.assertNotIn("fecha", valores["trm"])  # «hoy» se calcula al ejecutar
         self.assertEqual(valores["agenda"]["fecha"], hoy)  # obligatoria: se queda
         self.assertEqual(valores["ayer"]["fecha"], "2026-01-02")  # otra fecha pedida: se queda
+
+
+class PasosIdenticosTests(unittest.TestCase):
+    def test_dos_pasos_identicos_esconden_algo_que_no_se_puede(self):
+        conv = lambda i: (i, v("cambio_moneda@2"), {"monto": 50, "moneda_origen": "EUR", "moneda_destino": "COP"}, {})
+        ia = ("ia", v("componer_texto@1"), {"instruccion": "Compara hoy y hace un año"},
+              {"dato_1": ("hoy", "resumen"), "dato_2": ("antes", "resumen")})
+        fin = ("fin", v("enviar_telegram@1"), {}, {"mensaje": ("ia", "resultado")})
+        self.assertIn("son idénticos", revision_logica(plan(conv("hoy"), conv("antes"), ia, fin)))
+        distinto = ("antes", v("cambio_moneda@2"), {"monto": 50, "moneda_origen": "EUR", "moneda_destino": "USD"}, {})
+        self.assertIsNone(revision_logica(plan(conv("hoy"), distinto, ia, fin)))
+
+    def test_la_ia_que_escribe_no_recibe_envios_ni_condiciones_como_puntos(self):
+        from schemas.planner import Cobertura
+        from services.planner_service import puntos_para_redactar
+        requisitos = ["Revisar si llueve mañana", "Escribir la promoción 2x1", "Enviarla por Telegram"]
+        definicion = plan(CLIMA, ("cond", v("revisar_condicion@1"), {"condicion": "si llueve"}, {"dato": ("clima", "resumen")}),
+                          ("ia", v("componer_texto@1"), {"instruccion": "Promoción 2x1"}, {"dato_1": ("cond", "dato")}),
+                          ("fin", v("enviar_telegram@1"), {}, {"mensaje": ("ia", "resultado")}))
+        puntos_para_redactar(definicion, requisitos, [Cobertura(n=1, pasos=["cond"]), Cobertura(n=2, pasos=["ia"]),
+                                                     Cobertura(n=3, pasos=["ia", "fin"])])
+        instruccion = definicion.nodes[2].values["instruccion"]
+        self.assertIn("- Escribir la promoción 2x1", instruccion)
+        self.assertNotIn("Revisar si llueve", instruccion)
+        self.assertNotIn("Telegram", instruccion)
+
+
+class PendientesHonestosTests(unittest.TestCase):
+    def test_lo_que_la_ia_declaro_imposible_no_se_le_vuelve_a_exigir(self):
+        from services.planner_service import exigibles
+        faltan = [(2, "Consultar cuánto eran 50 euros en pesos hace exactamente un año", "ningún paso lo cumple"),
+                  (3, "Enviar la versión en inglés a ana@example.com", "falta el paso de correo con values.para = ana@example.com")]
+        pendientes = ["No hay tasas históricas: no puedo consultar cuánto eran 50 euros en pesos hace un año exactamente"]
+        # El imposible declarado se avisa (va a pendientes), no se exige; el correo siempre se exige.
+        self.assertEqual([n for n, _, _ in exigibles(faltan, pendientes)], [3])
+        self.assertEqual([n for n, _, _ in exigibles(faltan, [])], [2, 3])  # sin declarar, se exige
+        self.assertEqual([n for n, _, _ in exigibles(faltan, ["Algo que no tiene nada que ver"])], [2, 3])

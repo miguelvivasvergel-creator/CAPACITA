@@ -368,6 +368,12 @@ No inventes datos reales: declara entradas externas en input_schema y sus requir
 input_schema es un objeto con properties, required y additionalProperties false; usa
 tipos simples, nombres claros y una description breve en español para cada campo.
 Fija parameters según parameter_schema; values solo para constantes explícitas del objetivo.
+Lo que el pedido ya dice (ciudad, monto, moneda, idioma, fecha) va en values: nunca se lo pidas a la
+persona en input_schema. En Colombia «pesos» es COP, «dólares» USD y «euros» EUR. Nunca simules un
+dato que ninguna versión da (por ejemplo, una tasa de cambio de hace un año con el conversor de
+hoy): ponlo en pendientes y dilo en explanation. Si solo UNA PARTE no se puede, haz el resto
+(compose con lo que sí se puede) y pon esa parte en pendientes; blocked o create solo si no se puede
+hacer NADA de lo que pidió.
 Comprueba tipos, campos obligatorios y orden acíclico. Outputs referencia campos obligatorios.
 Máximo 20 pasos (nodes): si no caben, quita consultas redundantes.
 hoy es la fecha actual en Colombia: si el pedido dice una fecha relativa («el próximo viernes»,

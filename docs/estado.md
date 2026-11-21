@@ -54,6 +54,16 @@ Tres fallos, corregidos por su causa general (no para este pedido):
   siempre el día en que se planeó. Verificado real: alerta (3.461,92 vs 5.000 → no; vs 3.000 → sí), «En
   Medellín hará más calor mañana domingo 22 (27,8 vs 22,7 °C)», conversiones sin paso inventado, reenvío
   solo para «mándale a mi mamá», promoción sin negocio → pregunta. 338 pruebas OK.
+- **Más coherencia (tras 52fa9c4):** causa de raíz de los datos simulados: la lista de verificación
+  exigía de nuevo lo que la IA ya había declarado imposible en `pendientes`, y la empujaba a simularlo (el
+  mismo conversor de hoy para «hace un año») o a bloquear todo. `exigibles` ya no exige lo declarado
+  (correos e idiomas siempre); pendientes sin duplicar. `revision_logica`: dos pasos idénticos son error.
+  «blocked» en un pedido de varias partes se reintenta una vez pidiendo hacer lo posible. version_id
+  inventados → «quítalo y ponlo en pendientes» y mensaje final legible. La IA que escribe ya no recibe
+  envíos ni condiciones como puntos. Prompt: lo que el pedido ya dice va en values («pesos» = COP), nunca
+  simular un dato. Verificado real: «50 euros hoy y hace un año» → convierte hoy (COP fijo) y avisa
+  «Ojo: falta… no hay tasa histórica»; calendario «el viernes» → 2026-11-27 15:00; Santa Marta sigue en 9
+  pasos sin pendientes. 341 pruebas OK.
 - Pendiente: confirmar el correo en inglés en Gmail y la prueba completa por Telegram tras reiniciar.
 
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)
