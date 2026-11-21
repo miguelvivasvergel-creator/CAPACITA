@@ -21,6 +21,11 @@ EXECUTION_RPCS = {
     # Telegram (SQL 16): las tres primeras para la persona; las otras exigen al trabajador.
     "telegram_link_start", "telegram_link_status", "telegram_unlink",
     "telegram_link_complete", "telegram_unlink_chat", "telegram_chat_for_job",
+    # Bot completo (SQL 21): todas exigen al trabajador (check_worker) y deducen al dueño del chat.
+    "telegram_owner", "telegram_set_consent", "telegram_pending_put", "telegram_pending_take",
+    "telegram_workflows", "telegram_planner_versions", "telegram_save_and_run", "telegram_run_workflow",
+    "telegram_job_origin", "telegram_jobs", "telegram_job_result", "telegram_assistants",
+    "telegram_assistant_set_active", "telegram_assistant_run_now",
     # Asistentes recurrentes (SQL 17): las cuatro primeras para la persona; la última, el trabajador.
     "assistant_save", "assistant_list", "assistant_set_active", "assistant_delete", "assistant_enqueue_due",
     # Google (SQL 19): las cinco primeras para la persona; la última, el trabajador.

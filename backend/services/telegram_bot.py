@@ -220,6 +220,8 @@ def explicar(error):
                 return frase
         if error.status_code in (429, 502, 503):
             return detalle  # textos propios en español: cuota, IA ocupada, sin piezas…
+    if isinstance(error, ValueError) and "Ruta Supabase" in str(error):
+        return "Me falta una actualización del servidor (SQL 21). Avísale a quien administra Capacita."
     if isinstance(error, RuntimeError) and str(error) == "telegram_file_too_large":
         return "Ese archivo es muy grande para mí (máximo 3 MB; notas de voz, 2 MB)."
     return "Algo falló de mi lado y no hice nada. Inténtalo de nuevo en un momento."
@@ -258,6 +260,9 @@ async def atender(bot, rpc, session_id, to_thread, servicios=None, espera=0, esp
                 else:
                     await al_recibir(chat, evento)
             except Exception as error:  # un mensaje nunca tumba al bot
+                # Solo el tipo y nuestro código fijo (nunca el detalle, que podría traer datos del servidor).
+                codigo = str(getattr(error, "detail", "") or error) if isinstance(error, (HTTPException, RuntimeError)) else ""
+                print(f"Bot de Telegram: {type(error).__name__} {codigo[:80]}".rstrip(), flush=True)
                 try:
                     await chat.decir(explicar(error))
                 except Exception:

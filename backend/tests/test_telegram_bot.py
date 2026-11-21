@@ -278,6 +278,21 @@ class CondicionTests(unittest.TestCase):
         self.assertIn("Sin novedades", resultado["r"])
 
 
+class RutasPermitidasTests(unittest.TestCase):
+    def test_todas_las_funciones_sql_del_bot_estan_permitidas(self):
+        # Fallo real del 21/11: las funciones del SQL 21 no estaban en la lista del gateway y el bot
+        # respondía «Algo falló» a todo. La base falsa de estas pruebas no lo veía.
+        import pathlib
+        import re
+        from core.supabase import EXECUTION_RPCS
+        fuente = "".join(pathlib.Path(ruta).read_text(encoding="utf-8")
+                         for ruta in ("services/telegram_bot.py", "services/shared_worker.py"))
+        usadas = set(re.findall(r'"(telegram_[a-z_]+)"', fuente)) - {"telegram_file_too_large", "telegram_unavailable",
+                                                                     "telegram_rejected", "telegram_chat_id"}
+        self.assertTrue(usadas)
+        self.assertEqual(usadas - EXECUTION_RPCS, set())
+
+
 class OpcionesTests(unittest.TestCase):
     def test_solo_conectores_publicados_y_la_version_mas_nueva(self):
         from services.telegram_planner import opciones_y_versiones
