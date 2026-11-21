@@ -218,6 +218,15 @@ class BotTests(unittest.IsolatedAsyncioTestCase):
         extra.provider.transcribir.assert_awaited_once()
         self.assertIn("farmacias cerca de mí", planear.await_args.args[0])
 
+    async def test_notas_de_voz_cuentan_en_el_limite_por_chat(self):
+        """Transcribir usa la IA: sin cupo en la hora no se descarga ni se transcribe nada."""
+        extra = servicios()
+        extra.limite = tb.Limite(por_hora=0)
+        bot, base = Bot([mensaje(voice={"file_id": "v", "file_size": 100, "mime_type": "audio/ogg"})], archivo=b"OggS"), Base()
+        await self.atender(bot, base, extra)
+        extra.provider.transcribir.assert_not_awaited()
+        self.assertIn("muchas cosas esta hora", bot.dichos[-1]["texto"])
+
     async def test_ubicacion_arma_un_plan_valido_sin_ia(self):
         bot, base = Bot([mensaje(location={"latitude": 10.4631, "longitude": -73.2532})]), Base()
         await self.atender(bot, base)
@@ -346,3 +355,23 @@ class TextosParaLaPersonaTests(unittest.TestCase):
         self.assertEqual(tb.motivo_fallo({"error": "execution_failure"}), "hubo un error al ejecutar")
         for texto in (tb.motivo_fallo(paso(error=c)) for c in ("connector_quota", "algo_nuevo", "step_failed")):
             self.assertNotRegex(texto, r"\b[a-z]+_[a-z_]+\b")
+
+
+class CharlaTests(unittest.IsolatedAsyncioTestCase):
+    async def test_saludos_y_gracias_no_gastan_la_ia_pero_un_pedido_si_llega(self):
+        for texto, respuesta in (("hola", "Dime qué necesitas"), ("¡Buenos días!", "Dime qué necesitas"),
+                                 ("muchas", None), ("gracias!!", "Con gusto"), ("👍", "Con gusto"), ("jajaja", "Dime qué")):
+            bot, base = Bot([mensaje(texto)]), Base()
+            planear = AsyncMock(side_effect=RuntimeError("x"))
+            with patch("services.telegram_planner.planear_pedido", planear):
+                await tb.atender(bot, base, "sesion", asyncio.to_thread, servicios())
+            if respuesta is None:
+                planear.assert_awaited_once()  # «muchas» no es charla: sigue como pedido
+            else:
+                planear.assert_not_awaited()
+                self.assertIn(respuesta, bot.dichos[-1]["texto"], texto)
+        bot, base = Bot([mensaje("hola, dime el clima de mañana en Valledupar")]), Base()
+        planear = AsyncMock(side_effect=RuntimeError("x"))
+        with patch("services.telegram_planner.planear_pedido", planear):
+            await tb.atender(bot, base, "sesion", asyncio.to_thread, servicios())
+        planear.assert_awaited_once()

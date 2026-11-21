@@ -9,6 +9,7 @@ import re
 import base64
 import binascii
 import json
+import time
 
 from connectors.base import Connector, ConnectorInputError
 from connectors.fechas import contexto_de_fecha
@@ -62,8 +63,25 @@ def foto_de(inputs, campo="foto"):
     raise ConnectorInputError(campo)
 
 
+def turno(http, dormir=time.sleep):
+    """Tope global (core/cuota_ia.py) antes de que la llamada salga a Google; sin transporte real
+    (pruebas) nada sale y no se cuenta. Sin turno: «connector_quota» (día) o «connector_provider_busy»."""
+    from core.cuota_ia import CUOTA, ESPERA_MAXIMA
+    if getattr(http, "transport", None) is not None:
+        return
+    esperado = 0.0
+    while (falta := CUOTA.tomar()) != 0:
+        if falta is None:
+            raise ConnectorFailure("quota")
+        if esperado + falta > ESPERA_MAXIMA:
+            raise ConnectorFailure("provider_busy")
+        esperado += falta
+        dormir(falta)
+
+
 def preguntar(http, instruccion, partes, propiedades):
     """Una llamada a Gemini con salida JSON obligatoria. Devuelve el dict o lanza un error fijo."""
+    turno(http)
     esquema = {"type": "object", "properties": propiedades, "required": list(propiedades)}
     # 8192: un itinerario o informe largo en JSON llegaba a 4096 y fallaba con «respuesta muy larga».
     config = {"candidateCount": 1, "maxOutputTokens": 8192, "responseMimeType": "application/json",

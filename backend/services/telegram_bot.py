@@ -26,6 +26,11 @@ API = "https://api.telegram.org/bot{token}/{metodo}"
 ARCHIVOS = "https://api.telegram.org/file/bot{token}/{ruta}"
 CODIGO = re.compile(r"\b([0-9A-Fa-f]{12})\b")
 COMANDO = re.compile(r"^/([a-zA-Z_]+)(?:@\w+)?\s*(.*)$", re.S)
+# Saludos, agradecimientos y monosílabos: se contestan sin IA (no son pedidos).
+GRACIAS = r"(mil )?gracias( (por todo|amig[oa]))?|genial|perfecto|listo|ok|okay|vale|👍|🙏|❤️"
+CHARLA = re.compile(r"(?i)[¡!¿?.,\s]*(hola+|holi+|hey|buenas|buen[oa]s? (d[ií]as?|tardes?|noches?)|qu[eé] tal|"
+                    rf"{GRACIAS}|s[ií]|no|ja(ja)+|je(je)+|😊|🙂|👋)[¡!¿?.,\s]*")
+AGRADECIMIENTO = re.compile(rf"(?i)[¡!¿?.,\s]*({GRACIAS})[¡!¿?.,\s]*")
 MAX_ARCHIVO = 3_000_000  # en base64 queda bajo los 4 MB que admite una entrada de archivo (db/12)
 MAX_VOZ = 2_000_000
 ESPERA = 25  # segundos de long polling: el bot contesta al instante aunque haya un trabajo corriendo
@@ -248,9 +253,52 @@ class Limite:
         return True
 
 
+class Rafaga:
+    """Freno de inundaciones ANTES de tocar la base o la IA: el bot es público y cualquiera puede
+    escribirle miles de mensajes (vinculado o no). Por chat: 6 eventos en 10 s y 25 por minuto. Lo que
+    pasa del tope se ignora; se avisa una sola vez por minuto para no responder a cada mensaje."""
+
+    def __init__(self, por_10s=6, por_minuto=25, reloj=time.monotonic):
+        self.por_10s, self.por_minuto, self.reloj, self.vistos, self.avisado = por_10s, por_minuto, reloj, {}, {}
+
+    def permitir(self, chat_id):
+        """'si', 'avisar' (el primer rechazo del minuto) o 'no'."""
+        ahora = self.reloj()
+        if len(self.vistos) > 5000:  # memoria acotada: se olvidan los chats quietos
+            self.vistos = {c: v for c, v in self.vistos.items() if v and ahora - v[-1] < 60}
+            self.avisado = {c: t for c, t in self.avisado.items() if ahora - t < 60}
+        cola = self.vistos.setdefault(chat_id, deque())
+        while cola and ahora - cola[0] >= 60:
+            cola.popleft()
+        if len(cola) >= self.por_minuto or sum(1 for t in cola if ahora - t < 10) >= self.por_10s:
+            if ahora - self.avisado.get(chat_id, float("-inf")) >= 60:
+                self.avisado[chat_id] = ahora
+                return "avisar"
+            return "no"
+        cola.append(ahora)
+        return "si"
+
+
+MAX_EN_CURSO = 40  # chats atendiéndose a la vez; lo demás se descarta (no tumba el trabajador)
+
+
 async def atender(bot, rpc, session_id, to_thread, servicios=None, espera=0, esperar=True):
     """Procesa los mensajes y botones pendientes. Cada chat va en orden; chats distintos, en paralelo."""
     eventos = await to_thread(bot.novedades, espera)
+    rafaga = getattr(servicios, "rafaga", None) if servicios is not None else None
+    en_curso = getattr(servicios, "tareas", None) if servicios is not None else None
+    admitidos = []
+    for chat_id, evento in eventos:
+        veredicto = rafaga.permitir(chat_id) if rafaga is not None else "si"
+        if veredicto == "avisar":
+            try:
+                await to_thread(bot.responder, chat_id, "Vas muy rápido 🙂 Espera un minuto y vuelve a escribirme.")
+            except RuntimeError:
+                pass
+        if veredicto != "si" or (en_curso is not None and len(en_curso) + len(admitidos) >= MAX_EN_CURSO):
+            continue
+        admitidos.append((chat_id, evento))
+    eventos = admitidos
     candados = getattr(servicios, "candados", None) if servicios is not None else None
     if candados is None:
         candados = {}
@@ -344,6 +392,13 @@ async def al_recibir(chat, mensaje):
     pedir_texto = resto if nombre == "pedir" else (texto if nombre is None else "")
     if not pedir_texto:
         await chat.decir("No conozco ese comando. " + AYUDA_VINCULADO if nombre else AYUDA_VINCULADO)
+        return
+    if CHARLA.fullmatch(pedir_texto.strip()):
+        # «hola», «gracias», «ok», un emoji: no es un pedido. Antes pasaba por el planner (2-3 llamadas a la
+        # IA) y respondía con preguntas raras; ahora se contesta al instante y sin gastar cuota.
+        await chat.decir("¡Con gusto! 🙌" if AGRADECIMIENTO.fullmatch(pedir_texto.strip())
+                         else "¡Hola! 👋 Dime qué necesitas, por ejemplo «el clima de mañana en Valledupar» "
+                              "(o /ayuda para ver todo lo que hago).")
         return
     await pedido(chat, dueno, pedir_texto)
 
@@ -619,6 +674,12 @@ async def nota_de_voz(chat, dueno, voz):
         return
     if int(voz.get("file_size") or 0) > MAX_VOZ:
         await chat.decir(explicar(RuntimeError("telegram_file_too_large")))
+        return
+    # Transcribir también usa la IA: cuenta en el mismo límite por chat que los pedidos (antes no contaba
+    # y se podían mandar notas de voz sin tope).
+    limite = getattr(chat.servicios, "limite", None)
+    if limite is not None and not limite.permitir(chat.id):
+        await chat.decir("Ya me pediste muchas cosas esta hora. Inténtalo de nuevo más tarde.")
         return
     datos = await chat.to_thread(chat.bot.descargar, voz.get("file_id"), MAX_VOZ)
     texto = await chat.servicios.provider.transcribir(datos, str(voz.get("mime_type") or "audio/ogg"))

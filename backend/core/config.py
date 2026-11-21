@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # Herramientas personalizables (plantillas, opciones, logo) necesitan código más largo.
     GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=8192, ge=256, le=8192)
     CANDIDATE_REPAIR_LIMIT: int = Field(default=4, ge=0, le=5)
+    # Tope GLOBAL de llamadas a Gemini por proceso (API y trabajador, cada uno), además de los límites
+    # por persona: nadie agota solo la cuota gratuita del día de todos (core/cuota_ia.py).
+    GEMINI_TOPE_POR_MINUTO: int = Field(default=15, ge=1, le=1000)
+    GEMINI_TOPE_POR_DIA: int = Field(default=400, ge=1, le=100000)
     # Investigación web antes de diseñar una herramienta (Grounding with Google Search).
     # gemini-2.5-flash la tiene gratis (500/día) hasta que Google lo redirija el 01/12/2026;
     # si falla, el diseño sigue sin fuentes. Lo encontrado no se guarda (términos de Google).

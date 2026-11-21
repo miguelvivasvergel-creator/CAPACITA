@@ -25,7 +25,7 @@ from repositories.shared_execution import SharedExecutionRepository
 from repositories.builds import DEFAULT_PATH
 from services.build_worker import invoke_runner, worker_lock
 from services.execution_engine import ExecutionInfrastructureError, execute_job
-from services.telegram_bot import ESPERA, Avance, Limite, TelegramBot, atender, enviar_resultado
+from services.telegram_bot import ESPERA, Avance, Limite, Rafaga, TelegramBot, atender, enviar_resultado
 from core.config import settings
 
 
@@ -149,7 +149,7 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
         from services.candidate_generation import GenerationLimiter
         # El bot tiene su propio limitador de IA (20 pedidos por hora por chat, uno a la vez).
         servicios = SimpleNamespace(provider=GeminiProvider(), limits=GenerationLimiter(hourly_limit=20, min_gap=5),
-                                    limite=Limite(), candados={}, tareas=set())
+                                    limite=Limite(), rafaga=Rafaga(), candados={}, tareas=set())
 
     async def bot_loop():
         # Long polling en su propia tarea: el bot contesta al instante aunque haya un trabajo corriendo.

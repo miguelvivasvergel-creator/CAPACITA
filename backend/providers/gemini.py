@@ -7,6 +7,7 @@ from typing import Protocol
 import httpx
 
 from connectors.fechas import hoy_legible
+from core.cuota_ia import AGOTADA, CUOTA, ESPERA_MAXIMA, OCUPADA
 from fastapi import HTTPException
 from pydantic import ValidationError
 
@@ -182,10 +183,25 @@ class CodeGenerationProvider(Protocol):
 
 
 class GeminiProvider:
-    def __init__(self, configuration: Settings = settings, transport=None, sleep=asyncio.sleep):
+    def __init__(self, configuration: Settings = settings, transport=None, sleep=asyncio.sleep, cuota=None):
         self.configuration = configuration
         self.transport = transport
         self.sleep = sleep
+        # El tope global cuida la clave real: con un transporte inyectado (pruebas) nada sale a Google.
+        self.cuota = cuota if cuota is not None else (CUOTA if transport is None else None)
+
+    async def _turno(self):
+        """Espera un turno del tope global (como mucho ESPERA_MAXIMA s) o explica por qué no hay IA."""
+        if self.cuota is None:
+            return
+        esperado = 0.0
+        while (falta := self.cuota.tomar()) != 0:
+            if falta is None:
+                raise HTTPException(429, AGOTADA, headers={"Retry-After": "3600"})
+            if esperado + falta > ESPERA_MAXIMA:
+                raise HTTPException(429, OCUPADA, headers={"Retry-After": str(int(falta) + 1)})
+            esperado += falta
+            await self.sleep(falta)
 
     async def generate(self, definition: CapabilityDefinition) -> PythonSourceProposal:
         validate_definition(definition)
@@ -583,6 +599,7 @@ DESPUÉS elige TODAS las piezas que cumplen esos requisitos y cuántas veces se 
         dormido = 0.0
         for attempt in range(len(backoff) + 1):
             busy = False
+            await self._turno()  # cada intento real cuenta (los reintentos también gastan cuota)
             try:
                 async with httpx.AsyncClient(
                     base_url="https://generativelanguage.googleapis.com", transport=self.transport,
