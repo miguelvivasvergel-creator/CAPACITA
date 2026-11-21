@@ -47,6 +47,7 @@ import TarjetaInvestigacion from './TarjetaInvestigacion';
 import TextoConFormato from '../common/TextoConFormato';
 import { limpiarMensaje } from '../../utils/textoFormato';
 import { solucionDeVersion, solucionGuardadaDe, versionLista } from './solucionDirecta';
+import { herramientasParecidas } from './parecidas';
 
 const ESTADO_RUN = { queued: 'En cola: esperando al trabajador', running: 'Trabajando en tu solución…', completed: '¡Listo! Aquí está tu resultado', failed: 'La solución no pudo terminar', interrupted: 'El trabajo se interrumpió' };
 const activo = (status) => ['queued', 'running'].includes(status);
@@ -59,34 +60,7 @@ function leerConsentimiento(id) {
 function recordarConsentimiento(id, valor) {
   try { if (valor) localStorage.setItem(CLAVE_GEMINI(id), 'si'); else localStorage.removeItem(CLAVE_GEMINI(id)); } catch { /* vale solo en esta pestaña */ }
 }
-// Herramientas del catálogo que se parecen a lo pedido (palabras en común con su nombre y
-// descripción), para ofrecer usarlas sin IA. Solo las que el chat puede ejecutar directo.
-const VACIAS = new Set(['para', 'como', 'quiero', 'necesito', 'hazme', 'dame', 'favor', 'este', 'esta', 'esto', 'todo', 'toda',
-  'todos', 'desde', 'sobre', 'tiene', 'puedo', 'puede', 'cada', 'entre', 'hacer', 'herramienta', 'algo', 'otra', 'otro']);
-const palabrasDe = (texto) => new Set(String(texto).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  .split(/[^a-z0-9]+/).filter((palabra) => palabra.length > 3 && !VACIAS.has(palabra)));
-function herramientasParecidas(items, objetivo) {
-  // «(Adjunté un Excel como entrada.)» lo agrega el chat: no cuenta como parte del pedido.
-  const pedido = palabrasDe(objetivo.replace(/\n\(Adjunté [^)]*\)\s*$/, ''));
-  if (!pedido.size) return [];
-  const vistas = new Set();
-  const texto = (item) => `${item.name} ${item.description || ''}`.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ');
-  const candidatas = items.map((item) => {
-    const propias = palabrasDe(texto(item));
-    const comunes = [...pedido].filter((palabra) => propias.has(palabra)).length;
-    return { item, propias, puntos: comunes / pedido.size, comunes };
-  }).filter(({ item, comunes, puntos }) => comunes >= 2 && puntos >= 0.4 && solucionDeVersion(item))
-    .sort((a, b) => b.puntos - a.puntos || String(b.item.created_at || '').localeCompare(String(a.item.created_at || '')))
-    .filter(({ item }) => !vistas.has(item.capability_id) && vistas.add(item.capability_id));
-  if (!candidatas.length) return [];
-  // Si el pedido nombra algo que la mejor herramienta no hace pero el NOMBRE de otra sí («…por
-  // Telegram» → «Enviarme por Telegram»), hacen falta varias: mejor que la IA arme el proceso.
-  const sobrantes = [...pedido].filter((palabra) => !candidatas[0].propias.has(palabra));
-  const otrosNombres = items.filter((item) => item.capability_id !== candidatas[0].item.capability_id)
-    .map((item) => palabrasDe(String(item.name || '').replaceAll('_', ' ')));
-  if (sobrantes.some((palabra) => otrosNombres.some((nombre) => nombre.has(palabra)))) return [];
-  return candidatas.slice(0, 3).map(({ item }) => item);
-}
+// Herramientas parecidas a lo pedido (por raíz de palabra): ver ./parecidas.js.
 
 // Pasos que consultan un servicio externo (sello globo): version_id → proveedor («Open-Meteo»).
 const SIN_CONECTORES = new Map();
@@ -498,7 +472,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       };
       if (soloCatalogo(estado) && !recienCreadas.current.length) {
         // Reutilizar sin IA: si hay herramientas que encajan con lo que escribió, se ofrecen.
-        const atajos = herramientasParecidas(items, objetivo);
+        const atajos = herramientasParecidas(items, objetivo, solucionDeVersion);
         if (atajos.length) { agregar({ de: 'capacita', tipo: 'atajo', atajos, estado }); return; }
       }
       // Lo que sigue (planner, investigación, diseño) sí usa la IA: se pide el «Acepto».

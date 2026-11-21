@@ -2,6 +2,7 @@
 import asyncio
 import json
 import re
+import unicodedata
 
 from fastapi import HTTPException
 from jsonschema import Draft202012Validator
@@ -38,12 +39,30 @@ def quitar_librerias_instaladas(draft):
                                     for campo in ("resources", "required_permissions")})
 
 
+# Terminaciones del español, de la más larga a la más corta (igual que src/utils/buscar.js).
+SUFIJOS = ("aciones", "iciones", "amiento", "imiento", "ciones", "acion", "icion", "mente", "iendo", "ando", "adas",
+           "idas", "ados", "idos", "enes", "cion", "ada", "ida", "ado", "ido", "ar", "er", "ir", "en", "as", "es", "os",
+           "a", "e", "o", "s")
+
+
+def raiz(palabra: str) -> str:
+    """Raíz de una palabra en minúsculas: «comparar», «compara» y «comparación» → «compar».
+    Conserva sus tildes (la base las guarda así); la terminación se reconoce sin ellas."""
+    plana = "".join(c for c in unicodedata.normalize("NFD", palabra) if unicodedata.category(c) != "Mn")
+    if len(plana) == len(palabra):  # cada letra con tilde es una sola: se puede cortar en el mismo lugar
+        for sufijo in SUFIJOS:
+            if plana.endswith(sufijo) and len(plana) - len(sufijo) >= 4:
+                return palabra[:-len(sufijo)]
+    return palabra
+
+
 def search_terms(objective: str):
-    words = re.findall(r"[^\W\d_]{4,}", objective.lower(), flags=re.UNICODE)
+    words = re.findall(r"[^\W\d_]{4,}", unicodedata.normalize("NFC", objective.lower()), flags=re.UNICODE)
     words = sorted(dict.fromkeys(word for word in words if word not in STOP_WORDS), key=len, reverse=True)
     # Hasta 6 palabras clave: con 3, un pedido de varias piezas («lluvia… festivos… Telegram…
-    # calendario») solo encontraba algunas y el planner no podía combinarlas.
-    return list(dict.fromkeys([objective[:200], *words[:6]]))
+    # calendario») solo encontraba algunas y el planner no podía combinarlas. Se busca por su RAÍZ
+    # (contiene a todas sus formas): «compara mis documentos» encuentra «comparar_documento».
+    return list(dict.fromkeys([objective[:200], *(raiz(word) for word in words[:6])]))
 
 
 async def search_catalog(queries, repository: CapabilityRepository):

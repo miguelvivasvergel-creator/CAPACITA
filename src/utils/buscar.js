@@ -6,9 +6,10 @@
  */
 
 // Palabras que no dicen qué hace una herramienta: se ignoran al comparar.
-const VACIAS = new Set(['a', 'al', 'algo', 'como', 'con', 'cual', 'de', 'del', 'e', 'el', 'en', 'es', 'esa', 'ese', 'esta', 'este',
-  'hazme', 'la', 'las', 'le', 'lo', 'los', 'me', 'mi', 'mis', 'necesito', 'o', 'para', 'por', 'puedes', 'que', 'quiero', 'se', 'su',
-  'sus', 'te', 'tu', 'tus', 'u', 'un', 'una', 'uno', 'unos', 'unas', 'y', 'ya', 'yo']);
+const VACIAS = new Set(['a', 'al', 'algo', 'cada', 'como', 'con', 'cual', 'dame', 'de', 'del', 'desde', 'e', 'el', 'en', 'entre', 'es',
+  'esa', 'ese', 'eso', 'esta', 'este', 'esto', 'favor', 'hacer', 'hazme', 'herramienta', 'la', 'las', 'le', 'lo', 'los', 'me', 'mi',
+  'mis', 'necesito', 'o', 'otra', 'otro', 'para', 'por', 'puede', 'puedes', 'puedo', 'que', 'quiero', 'se', 'sobre', 'su', 'sus',
+  'te', 'tiene', 'toda', 'todo', 'todos', 'tu', 'tus', 'u', 'un', 'una', 'uno', 'unos', 'unas', 'y', 'ya', 'yo']);
 
 // De la más larga a la más corta: se quita la primera que deje una raíz de al menos 3 letras.
 const SUFIJOS = ['aciones', 'iciones', 'amiento', 'imiento', 'ciones', 'acion', 'icion', 'mente', 'iendo', 'ando', 'adas', 'idas',
@@ -33,7 +34,7 @@ export function raices(texto) {
 
 // Una raíz buscada encaja con una del texto si es su comienzo (se está escribiendo) o si comparten
 // la raíz completa (comparación ↔ comparar).
-const encaja = (buscada, delTexto) => delTexto.startsWith(buscada) || (buscada.length >= 4 && delTexto.length >= 4 && buscada.startsWith(delTexto));
+export const encaja = (buscada, delTexto) => delTexto.startsWith(buscada) || (buscada.length >= 4 && delTexto.length >= 4 && buscada.startsWith(delTexto));
 
 /** ¿El texto contiene TODAS las palabras buscadas? Una búsqueda vacía lo deja pasar todo. */
 export function coincide(texto, busqueda) {
