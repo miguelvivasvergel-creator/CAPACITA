@@ -25,7 +25,7 @@ from repositories.shared_execution import SharedExecutionRepository
 from repositories.builds import DEFAULT_PATH
 from services.build_worker import invoke_runner, worker_lock
 from services.execution_engine import ExecutionInfrastructureError, execute_job
-from services.telegram_bot import TelegramBot, atender
+from services.telegram_bot import ESPERA, Avance, Limite, TelegramBot, atender, enviar_resultado
 from core.config import settings
 
 
@@ -81,6 +81,16 @@ def needs_telegram(job):
     return any(isinstance(m, dict) and str(m.get("connector_key", "")).startswith("enviar_telegram@") for m in manifests)
 
 
+async def telegram_origin(session, identity, job):
+    """{chat_id, message_id} si el trabajo salió del bot (SQL 21) y el chat sigue vinculado al dueño."""
+    try:
+        origen = await session.rpc_raw("telegram_job_origin", p_session=identity, p_job=job["id"])
+    except Exception:
+        return {}
+    chat = origen.get("chat_id") if isinstance(origen, dict) else None
+    return origen if isinstance(chat, int) and not isinstance(chat, bool) else {}
+
+
 def needs_google(job):
     payload = job.get("payload") or {}
     manifests = [version.get("manifest") for version in (payload.get("versions") or {}).values()] + [payload.get("manifest")]
@@ -132,8 +142,32 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
 
     task = asyncio.create_task(heartbeat())
     clean_exit = False
-    bot_next = [0.0]
     assistants_next = [0.0]
+    servicios = None
+    if bot is not None:
+        from providers.gemini import GeminiProvider
+        from services.candidate_generation import GenerationLimiter
+        # El bot tiene su propio limitador de IA (20 pedidos por hora por chat, uno a la vez).
+        servicios = SimpleNamespace(provider=GeminiProvider(), limits=GenerationLimiter(hourly_limit=20, min_gap=5),
+                                    limite=Limite(), candados={}, tareas=set())
+
+    async def bot_loop():
+        # Long polling en su propia tarea: el bot contesta al instante aunque haya un trabajo corriendo.
+        # Nunca ejecuta: lo aprobado se encola y lo corre este mismo bucle de trabajos.
+        with suppress(Exception):
+            await asyncio.to_thread(bot.menu)
+        while not lost.is_set():
+            try:
+                for tarea in await atender(bot, session.rpc_raw, identity, asyncio.to_thread, servicios,
+                                           espera=ESPERA, esperar=False):
+                    servicios.tareas.add(tarea)
+                    tarea.add_done_callback(servicios.tareas.discard)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                await asyncio.sleep(30)  # Telegram nunca detiene al trabajador
+
+    bot_task = asyncio.create_task(bot_loop()) if bot is not None else None
     try:
         # Limpieza local antes de recuperar estados de la reserva anterior.
         recovery = await asyncio.to_thread(guarded_runner, recover=True)
@@ -160,13 +194,6 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
                             continue
                     except Exception:
                         assistants_next[0] = time.monotonic() + 300
-                if bot is not None and time.monotonic() >= bot_next[0]:
-                    # Telegram nunca detiene al trabajador: ante un fallo, espera un minuto.
-                    try:
-                        await atender(bot, session.rpc_raw, identity, asyncio.to_thread)
-                        bot_next[0] = time.monotonic() + 3
-                    except Exception:
-                        bot_next[0] = time.monotonic() + 60
                 await asyncio.sleep(1)
                 continue
             if needs_telegram(job):
@@ -175,6 +202,9 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
                 job["context"] = {**(job.get("context") or {}), **await google_context(session, identity, job)}
             infrastructure_failure = False
             loop = asyncio.get_running_loop()
+            origen = await telegram_origin(session, identity, job) if bot is not None else {}
+            nombre = str(((job.get("payload") or {}).get("definition") or {}).get("name") or "Tu solución")
+            avance = Avance(bot, origen["chat_id"], origen.get("message_id"), nombre) if origen.get("chat_id") else None
 
             def progress(report):
                 if lost.is_set():
@@ -182,6 +212,8 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
                 future = asyncio.run_coroutine_threadsafe(session.rpc("progress", p_session=identity,
                     p_id=job["id"], p_report=report), loop)
                 future.result(timeout=20)
+                if avance is not None:
+                    avance(report)  # salió del bot: el mismo mensaje muestra el avance paso a paso
 
             try:
                 status, report, output = await asyncio.to_thread(execute_job, job, guarded_runner,
@@ -196,6 +228,12 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
             await session.rpc("finish", p_session=identity, p_id=job["id"], p_status=status,
                               p_report=report, p_output=output)
             print(f"Trabajo {job['id']}: {status}", flush=True)
+            if avance is not None:
+                # El resultado llega al chat que lo pidió (si la solución ya lo envió por Telegram, solo se avisa).
+                with suppress(Exception):
+                    await asyncio.to_thread(avance, report, True)
+                    await enviar_resultado(bot, origen["chat_id"], nombre, status, report, output,
+                                           ya_en_telegram=needs_telegram(job))
             if infrastructure_failure:
                 raise RuntimeError("sandbox_recovery_required")
             if once:
@@ -206,6 +244,12 @@ async def serve(session, once=False, runner=invoke_runner, protocol=1, bot=None)
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+        if bot_task is not None:
+            bot_task.cancel()
+            for tarea in [bot_task, *(servicios.tareas if servicios else ())]:
+                tarea.cancel()
+                with suppress(asyncio.CancelledError, Exception):
+                    await tarea
         # En error/cancelación no liberar anticipadamente: un controlador puede
         # seguir terminando. La reserva caduca en <=60 s y los writes quedan cercados.
         if clean_exit:

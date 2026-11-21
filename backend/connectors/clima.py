@@ -63,8 +63,17 @@ def pais_de(parameters):
     return pais
 
 
+COORDENADAS = re.compile(r"^\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$")
+
+
 def ubicar(http, ciudad, pais):
     texto = " ".join(str(ciudad).split())[:80]
+    punto = COORDENADAS.match(texto)
+    if punto:  # «10.47,-73.25»: la ubicación compartida en Telegram
+        lat, lon = float(punto.group(1)), float(punto.group(2))
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ConnectorInputError("ciudad")
+        return lat, lon, "tu ubicación"
     if len(texto) < 2:
         raise ConnectorInputError("ciudad")
     data = http.get_json(GEOCODING, {"name": texto, "count": 1, "language": "es", "format": "json", "countryCode": pais})

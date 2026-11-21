@@ -157,6 +157,17 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
     input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
 
+  -- Capacidad revisar_condicion (datos de revisar_condicion@1) · Google Gemini
+  INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
+    visibility, status, input_schema, output_schema, config)
+  VALUES ('993a3177-b644-52c2-9ee8-3f8dc34b34c6'::uuid, propietario, $txt$Revisar una condición (avísame si…)$txt$, $txt$Conector de IA (Google Gemini): decide si un dato cumple una condición («el dólar pasa de 4.200», «si llueve mañana», «más de 30 °C»). Con números compara exacto sin IA. Si NO se cumple, los pasos que dependen de él no se ejecutan: sirve para alertas que solo avisan cuando pasa algo. Conecta los envíos a su salida «dato».$txt$,
+    $txt$texto$txt$, 'texto', 'texto', 'public', 'published',
+    $json${"additionalProperties":false,"properties":{"condicion":{"description":"Por ejemplo: «más de 4.200» o «si llueve»","title":"Condición","type":"string"},"dato":{"description":"Salida de otro paso (precio, clima, texto)","title":"Dato a revisar"}},"required":["dato","condicion"],"type":"object"}$json$::jsonb,
+    $json${"additionalProperties":false,"properties":{"cumple":{"title":"¿Se cumple?","type":"boolean"},"dato":{"title":"Dato (pasa tal cual si se cumple)","type":"string"},"motivo":{"title":"Por qué","type":"string"}},"required":["cumple","motivo","dato"],"type":"object"}$json$::jsonb,
+    $json${"connector":{"hosts":["generativelanguage.googleapis.com"],"key":"revisar_condicion@1","provider":"Google Gemini","provider_url":"https://ai.google.dev","seal":"conectada"},"definition":{"constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"definition_hash":"af85c8a22c1919f7d16ece124bde850fd1dc27a3225a4fc40b3a2443d28bc304","examples":[{"inputs":{"condicion":"más de 4.200","dato":"1 USD = 4.215,30 COP"},"parameters":{}}],"failure_cases":[],"format_version":1,"parameter_schema":{"additionalProperties":false,"properties":{},"required":[],"type":"object"},"required_permissions":[],"resources":[]}}$json$::jsonb)
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+    input_schema = EXCLUDED.input_schema, output_schema = EXCLUDED.output_schema, config = EXCLUDED.config;
+
   -- Capacidad enviar_telegram (datos de enviar_telegram@1) · Telegram
   INSERT INTO public.capabilities(id, owner_id, name, description, category, input_type, output_type,
     visibility, status, input_schema, output_schema, config)
@@ -728,6 +739,17 @@ BEGIN
   INSERT INTO capacita_execution.publications(version_id, owner_id, license)
   SELECT 'cc4e8715-2b14-5791-bb02-2878fecb897d'::uuid, propietario, 'MIT'
   WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = 'cc4e8715-2b14-5791-bb02-2878fecb897d'::uuid AND active);
+
+  -- Versión revisar_condicion@1
+  INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,
+    profile, connector_key)
+  VALUES ('0acef6a2-6ddc-5456-8da3-6005893e79c3'::uuid, propietario, '993a3177-b644-52c2-9ee8-3f8dc34b34c6'::uuid,
+    $json${"connector_key":"revisar_condicion@1","credential":"gemini","definition":{"category":"texto","constraints":["Envía a Google Gemini el contenido de este paso. En el nivel gratuito Google puede usarlo para mejorar sus productos: no lo uses con datos sensibles.","La IA puede equivocarse: revisa el resultado."],"description":"Conector de IA (Google Gemini): decide si un dato cumple una condición («el dólar pasa de 4.200», «si llueve mañana», «más de 30 °C»). Con números compara exacto sin IA. Si NO se cumple, los pasos que dependen de él no se ejecutan: sirve para alertas que solo avisan cuando pasa algo. Conecta los envíos a su salida «dato».","examples":[{"inputs":{"condicion":"más de 4.200","dato":"1 USD = 4.215,30 COP"},"parameters":{}}],"input_schema":{"additionalProperties":false,"properties":{"condicion":{"description":"Por ejemplo: «más de 4.200» o «si llueve»","title":"Condición","type":"string"},"dato":{"description":"Salida de otro paso (precio, clima, texto)","title":"Dato a revisar"}},"required":["dato","condicion"],"type":"object"},"input_type":"texto","name":"Revisar una condición (avísame si…)","output_schema":{"additionalProperties":false,"properties":{"cumple":{"title":"¿Se cumple?","type":"boolean"},"dato":{"title":"Dato (pasa tal cual si se cumple)","type":"string"},"motivo":{"title":"Por qué","type":"string"}},"required":["cumple","motivo","dato"],"type":"object"},"output_type":"texto","parameter_schema":{"additionalProperties":false,"properties":{},"required":[],"type":"object"},"required_permissions":[],"resources":[]},"definition_hash":"af85c8a22c1919f7d16ece124bde850fd1dc27a3225a4fc40b3a2443d28bc304","format_version":1,"hosts":["generativelanguage.googleapis.com"],"kind":"connector","provider":"Google Gemini","provider_url":"https://ai.google.dev","sends_content":true}$json$::jsonb,
+    'dc959fccfc7802f4ab948ff04f3645874c5747b619970470593549dfc59edcd9', 'af85c8a22c1919f7d16ece124bde850fd1dc27a3225a4fc40b3a2443d28bc304', 'connector-v1', 'revisar_condicion@1')
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO capacita_execution.publications(version_id, owner_id, license)
+  SELECT '0acef6a2-6ddc-5456-8da3-6005893e79c3'::uuid, propietario, 'MIT'
+  WHERE NOT EXISTS (SELECT 1 FROM capacita_execution.publications WHERE version_id = '0acef6a2-6ddc-5456-8da3-6005893e79c3'::uuid AND active);
 
   -- Versión clima_pronostico@2
   INSERT INTO capacita_execution.versions(id, owner_id, capability_id, manifest, artifact_hash, definition_hash,

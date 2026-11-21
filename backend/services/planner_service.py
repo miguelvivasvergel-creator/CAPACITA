@@ -457,32 +457,25 @@ def sin_cubrir_como_error(faltan):
             "primero consultas redundantes; si aun así no cabe, ponlo en pendientes y dilo en explanation.")[:1500]
 
 
-async def propose_plan(request, catalog, provider, limits=limiter):
-    if not request.consent_to_provider:
-        raise HTTPException(422, "Autoriza enviar el objetivo y los nombres, descripciones y contratos seleccionados a Gemini")
-    available = await planner_options(request.objective, catalog, mode=request.mode, completo=request.auto)
-    selected = set(map(str, request.version_ids))
-    options = [row for row in available["items"] if row["id"] in selected]
-    if len(options) != len(selected):
-        raise HTTPException(409, "Una versión seleccionada ya no está disponible en la búsqueda; vuelve a buscar")
-    reviewed = {str(identity): value for identity, value in request.version_hashes.items()}
-    if any(reviewed[row["id"]] != review_hash(row) for row in options):
-        raise HTTPException(409, "Los contratos o metadatos seleccionados cambiaron; vuelve a buscar y revisa antes de autorizar")
-    options = [{key: value for key, value in row.items() if key != "review_hash"} for row in options]
+async def planear(objective, options, provider, validar, user_id, auto=True, limits=limiter):
+    """Núcleo del planner, igual para la web y para el bot de Telegram: paso 1 (elegir piezas y la lista de
+    verificación), paso 2 (plan) con hasta tres intentos corregidos y la revisión de que nada del pedido
+    se pierda. validar(definition) devuelve {"order": [...]} o lanza HTTPException (404/409/422)."""
+    selected = {row["id"] for row in options}
     validation, feedback, usos, requisitos = None, None, {}, []
     # Gemini a veces conecta mal los puertos: se le devuelve el error exacto y se reintenta una
     # vez, dentro del mismo turno del limitador (un pedido de la persona = un intento).
-    limits.start(catalog.user_id)
+    limits.start(user_id)
     try:
-        if request.auto:
+        if auto:
             # Paso 1: la IA elige entre TODO lo disponible qué piezas sirven y cuántas veces.
-            options, usos, _, requisitos = await elegir_piezas(request.objective, options, provider)
+            options, usos, _, requisitos = await elegir_piezas(objective, options, provider)
             selected = {row["id"] for row in options}
-        bounded_json({"objective": request.objective, "versions": options}, 65536)
+        bounded_json({"objective": objective, "versions": options}, 65536)
         for attempt in range(3):
             try:
                 extra = ({"feedback": feedback} if feedback else {}) | ({"requisitos": requisitos} if requisitos else {})
-                raw = await provider.plan(request.objective, options, **extra)
+                raw = await provider.plan(objective, options, **extra)
                 proposal = PlannerProposal.model_validate(raw)
             except ValidationError as error:
                 # Antes se cortaba aquí sin reintentar (un plan de 13 pasos terminaba en la fábrica).
@@ -500,7 +493,7 @@ async def propose_plan(request, catalog, provider, limits=limiter):
                     continue
                 raise HTTPException(502, "La propuesta incluye una versión no seleccionada; no se guardó")
             reparar_plan(proposal.definition, options)
-            if destinatarios_no_escritos(proposal.definition, request.objective):
+            if destinatarios_no_escritos(proposal.definition, objective):
                 aviso = "No vi esa dirección de correo escrita en tu pedido, así que el correo te llega a ti. "
                 proposal.explanation = (aviso + proposal.explanation)[:1200]
             # Lista de verificación: la del paso 1 o, si no hubo, la que escribió la IA al planear.
@@ -512,7 +505,7 @@ async def propose_plan(request, catalog, provider, limits=limiter):
                 feedback = logica
                 continue
             try:
-                validation = await check_workflow(proposal.definition, catalog)
+                validation = await validar(proposal.definition)
             except HTTPException as exc:
                 if exc.status_code in {404, 409}:
                     raise HTTPException(409, "Una versión cambió o dejó de estar disponible; vuelve a buscar") from None
@@ -532,6 +525,23 @@ async def propose_plan(request, catalog, provider, limits=limiter):
                 proposal.explanation = (aviso[:600] + ". " + proposal.explanation)[:1200]
             break
     finally:
-        limits.finish(catalog.user_id)
+        limits.finish(user_id)
+    return proposal, validation
+
+
+async def propose_plan(request, catalog, provider, limits=limiter):
+    if not request.consent_to_provider:
+        raise HTTPException(422, "Autoriza enviar el objetivo y los nombres, descripciones y contratos seleccionados a Gemini")
+    available = await planner_options(request.objective, catalog, mode=request.mode, completo=request.auto)
+    selected = set(map(str, request.version_ids))
+    options = [row for row in available["items"] if row["id"] in selected]
+    if len(options) != len(selected):
+        raise HTTPException(409, "Una versión seleccionada ya no está disponible en la búsqueda; vuelve a buscar")
+    reviewed = {str(identity): value for identity, value in request.version_hashes.items()}
+    if any(reviewed[row["id"]] != review_hash(row) for row in options):
+        raise HTTPException(409, "Los contratos o metadatos seleccionados cambiaron; vuelve a buscar y revisa antes de autorizar")
+    options = [{key: value for key, value in row.items() if key != "review_hash"} for row in options]
+    proposal, validation = await planear(request.objective, options, provider, lambda d: check_workflow(d, catalog),
+                                         catalog.user_id, auto=request.auto, limits=limits)
     return {"proposal": proposal.model_dump(mode="json"), "validation": validation,
             "search_truncated": available["search_truncated"], "saved": False, "executed": False}

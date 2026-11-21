@@ -16,8 +16,17 @@ def sin_tildes(valor):
     return "".join(c for c in unicodedata.normalize("NFKD", str(valor)) if not unicodedata.combining(c)).lower()
 
 
+COORDENADAS = re.compile(r"^\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$")
+
+
 def ubicar(http, ciudad):
-    """Ciudad → (lat, lon, nombre legible) con el geocodificador de Open-Meteo."""
+    """Ciudad → (lat, lon, nombre legible) con el geocodificador de Open-Meteo («lat,lon» se usa tal cual)."""
+    punto = COORDENADAS.match(str(ciudad or ""))
+    if punto:  # la ubicación compartida en Telegram
+        lat, lon = float(punto.group(1)), float(punto.group(2))
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ConnectorInputError("ciudad")
+        return lat, lon, "tu ubicación"
     hallados = lista_de(http.get_json(GEO, {"name": ciudad, "count": "1", "language": "es", "format": "json"}), "results")
     if not hallados:
         raise ConnectorInputError("ciudad")
@@ -243,11 +252,17 @@ def cercanos(http, inputs, parameters):
     sitio = texto(inputs, "lugar", 200)
     tipo = opcion(parameters, "que", tuple(CERCANOS), "farmacia")
     radio = entero(parameters.get("radio_metros"), 200, 3000, 1000, "radio_metros")
-    hallados = lista_de(http.get_json("https://photon.komoot.io/api/", {"q": sitio, "limit": "1"}), "features")
-    coordenadas = lista_de(dic(hallados[0]) if hallados else {}, "geometry", "coordinates")
-    if len(coordenadas) < 2:
-        raise ConnectorInputError("lugar")
-    lat, lon = numero(coordenadas[1]), numero(coordenadas[0])
+    punto = COORDENADAS.match(sitio)
+    if punto:  # «10.47,-73.25»: la ubicación compartida en Telegram, sin buscar el nombre
+        lat, lon = float(punto.group(1)), float(punto.group(2))
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ConnectorInputError("lugar")
+    else:
+        hallados = lista_de(http.get_json("https://photon.komoot.io/api/", {"q": sitio, "limit": "1"}), "features")
+        coordenadas = lista_de(dic(hallados[0]) if hallados else {}, "geometry", "coordinates")
+        if len(coordenadas) < 2:
+            raise ConnectorInputError("lugar")
+        lat, lon = numero(coordenadas[1]), numero(coordenadas[0])
     clave, valor = CERCANOS[tipo]
     # La consulta solo lleva números y una etiqueta de la lista fija (nada escrito por la persona).
     consulta = f'[out:json][timeout:25];nwr(around:{radio},{lat:.6f},{lon:.6f})["{clave}"="{valor}"];out center 40;'

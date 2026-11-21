@@ -189,7 +189,11 @@ class ConnectorTests(unittest.TestCase):
         self.assertEqual(dias_humanos(["2026-11-19", "2026-11-20"], hoy), "hoy y el viernes 20 de noviembre")
         self.assertEqual(dias_humanos(["2026-11-30", "2026-12-01", "2026-12-02"], hoy),
                          "el lunes 30 de noviembre, el martes 1 y el miércoles 2 de diciembre")
-        salida = ejecutar("clima_pronostico@1", {"ciudad": "Bogotá"}, {"dias": 2, "pais": "CO"})[2]
+        # Con la fecha fija del ejemplo: con date.today() la prueba fallaba el mismo 21/11 («hoy»).
+        from unittest.mock import patch
+        import connectors.clima as clima
+        with patch.object(clima, "date", type("FechaFija", (date,), {"today": classmethod(lambda cls: hoy)})):
+            salida = ejecutar("clima_pronostico@1", {"ciudad": "Bogotá"}, {"dias": 2, "pais": "CO"})[2]
         self.assertIn("lluvia probable (50 % o más) el sábado 21 de noviembre", salida["resumen"])
         self.assertIn("Temperatura entre 9,1 y 22,4 °C.", salida["resumen"])
 
@@ -330,7 +334,8 @@ class AIConnectorTests(unittest.TestCase):
         from connectors import sending_content
         ia = [c for c in CONNECTORS if c.credential == "gemini"]
         self.assertEqual({c.key for c in ia}, {"resumir_texto", "traducir_texto", "redactar_texto", "leer_texto_foto",
-                                              "extraer_datos_foto", "tarea_texto", "componer_texto"})
+                                              "extraer_datos_foto", "tarea_texto", "componer_texto",
+                                              "revisar_condicion"})
         # Todo lo que envía contenido a un tercero exige «Acepto»: la IA, las acciones (Telegram, Google)
         # y los conectores de la biblioteca que reciben tu texto completo (ortografía y traducción).
         self.assertEqual({c.key for c in CONNECTORS if c.sends_content},

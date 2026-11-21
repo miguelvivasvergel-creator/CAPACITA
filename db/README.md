@@ -52,3 +52,13 @@ encuentra el texto esperado, cancela todo. Los reportes siguen en 64 KiB.
 `execution_workflow_save` (db/08); el resto de la función queda igual y conserva sus permisos. Debe
 coincidir con `MAX_NODOS` en `backend/schemas/workflows.py`. Sin aplicarlo, un plan de 13 a 20 pasos
 se propone pero falla al guardarse (`node_limit`). Termina con una comprobación (`tope_20 = true`).
+
+`21_telegram_bot.sql`: **pendiente de aplicar por Fahida** (después de 16, 17 y 20). Bot completo:
+columna `gemini_consent` en `telegram_links`, tabla privada `telegram_pending` (botones y conversaciones,
+vencen en 30 min) y funciones del trabajador (`check_worker`; el dueño sale SIEMPRE del chat vinculado):
+pedir y aprobar (`telegram_save_and_run`, `telegram_run_workflow`), avance (`telegram_job_origin`),
+`telegram_jobs`/`telegram_job_result`, `telegram_assistants` y `telegram_planner_versions` (mismo filtro
+de visibilidad que db/17). Sin él, el bot solo vincula y desvincula.
+
+`15_conectores_iniciales.sql` **regenerado** con el conector `revisar_condicion@1` (alertas «avísame si…»).
+Volver a ejecutarlo: no duplica filas, solo agrega el conector nuevo.

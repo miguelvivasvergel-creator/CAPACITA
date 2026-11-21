@@ -4,6 +4,27 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)
+
+- **Arquitectura:** el bot es su propia tarea en el trabajador (`bot_loop`, long polling de 25 s): contesta
+  aunque haya un trabajo corriendo. Nunca ejecuta: propone y lo aprobado se encola con funciones SQL 21
+  del trabajador que deducen al dueño del chat vinculado (mismo filtro de visibilidad que db/17).
+- **Funciones** (`services/telegram_bot.py`): pedir en lenguaje normal con el MISMO planner de la web
+  (`planner_service.planear`, extraído de `propose_plan`, con la lista de verificación) y botones Aprobar/
+  Cancelar; consentimiento de Gemini una vez (/permitir); /soluciones (pide los datos que falten);
+  fotos y archivos (≤ 3 MB, tipo por firma; sin texto ofrece acciones); notas de voz
+  (`GeminiProvider.transcribir`); ubicación → farmacias, cajeros, clima… sin IA (coordenadas «lat,lon»
+  en `lugares_cercanos` y en el clima); /asistentes (pausar, reanudar, ejecutar ya); /historial; menú de
+  comandos; avance en vivo editando un mensaje (`Avance`) y resultado al chat (`enviar_resultado`).
+- **Alertas con condición:** conector `revisar_condicion@1` (números exactos sin IA; si no, sí/no con IA);
+  si no se cumple, `workflow_engine` omite lo que depende de él y el trabajo termina «sin novedades».
+- **Seguridad:** solo chats privados vinculados; botones = id de `telegram_pending` (vence 30 min, se
+  consume al tocarlo, clave de idempotencia); vincular solo con «/start CÓDIGO»; todo texto escapado.
+- **Para probar:** aplicar `db/20` (si falta), `db/21` y volver a ejecutar `db/15`; reiniciar backend y
+  trabajador. Validación: 320 pruebas OK (bot y base simulados), lint y build OK. **Sin probar con
+  Telegram, Gemini ni Supabase reales.** Se fijó la fecha en `test_forecast_summary_names_the_days`
+  (fallaba el 21/11 por usar la fecha real).
+
 ### Fahida — 20/11/2026: lista de verificación del pedido y tope de 20 pasos (tras b112fc9)
 
 - **Fallo:** en el viaje a Santa Marta se perdió la versión en inglés para la amiga. Dos causas

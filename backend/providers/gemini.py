@@ -1,5 +1,6 @@
 """Una llamada acotada a Gemini; no ejecuta código ni habilita candidatos."""
 import asyncio
+import base64
 import json
 from typing import Protocol
 
@@ -477,6 +478,30 @@ DESPUÉS elige TODAS las piezas que cumplen esos requisitos y cuántas veces se 
         if not isinstance(data, dict) or not isinstance(data.get("piezas"), list):
             raise HTTPException(502, "Gemini devolvió una selección inválida")
         return data
+
+    async def transcribir(self, audio: bytes, tipo: str = "audio/ogg") -> str:
+        """Texto de una nota de voz del bot de Telegram (solo viaja el audio que la persona autorizó).
+        Lo que diga el audio es el pedido de la persona: después pasa por el planner como un texto más."""
+        configuration = self.configuration
+        if not configuration.GEMINI_API_KEY.get_secret_value():
+            raise HTTPException(503, "Configura GEMINI_API_KEY en backend/.env")
+        mime = tipo if tipo in {"audio/ogg", "audio/mpeg", "audio/mp4", "audio/wav", "audio/x-wav", "audio/aac"} else "audio/ogg"
+        payload = {
+            "systemInstruction": {"parts": [{"text": "Transcribe la nota de voz tal como se dijo, en su idioma, sin "
+                                                     "agregar ni resumir nada. Si no se entiende, responde vacío."}]},
+            "contents": [{"role": "user", "parts": [{"inline_data": {"mime_type": mime,
+                                                                     "data": base64.b64encode(audio).decode()}}]}],
+            "generationConfig": {"candidateCount": 1, "maxOutputTokens": 1024,
+                                 **({"thinkingConfig": {"thinkingBudget": 256}}
+                                    if configuration.GEMINI_MODEL.startswith("gemini-2.5") else {})},
+        }
+        body = await self._send(payload, configuration.GEMINI_MODEL, configuration.GEMINI_TIMEOUT_SECONDS)
+        try:
+            partes = body["candidates"][0]["content"]["parts"]
+            texto = "".join(str(parte.get("text", "")) for parte in partes if not parte.get("thought", False))
+        except (KeyError, IndexError, TypeError, AttributeError):
+            return ""
+        return " ".join(texto.split())[:2000]
 
     async def _structured(self, instruction: str, content: dict, schema: dict, *, enforce_schema=True) -> str:
         configuration = self.configuration

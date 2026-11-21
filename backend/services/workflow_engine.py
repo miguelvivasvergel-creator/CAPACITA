@@ -63,6 +63,23 @@ def salida_suplente(identity, version_id, error, definition):
     return salida
 
 
+def es_condicion(version_id):
+    from connectors import BY_VERSION
+    return getattr(BY_VERSION.get(str(version_id)), "key", None) == "revisar_condicion"
+
+
+def dependientes(identity, definition):
+    """Todos los pasos que usan, directa o indirectamente, la salida de `identity`."""
+    alcanzados, pendientes = set(), [identity]
+    while pendientes:
+        actual = pendientes.pop()
+        for node in definition.nodes:
+            if node.id not in alcanzados and any(b.source == actual for b in node.bindings.values()):
+                alcanzados.add(node.id)
+                pendientes.append(node.id)
+    return alcanzados
+
+
 def summary(output):
     """El reporte (64 KiB) muestra los archivos como tamaño; el contenido viaja solo entre pasos."""
     return {key: f"📎 archivo ({len(value) * 3 // 4 // 1024} KB)" if isinstance(value, str) and len(value) > 2000 else value
@@ -91,8 +108,14 @@ def execute_workflow(job, runner, progress=None):
             except Exception:
                 raise ExecutionInfrastructureError("workflow_checkpoint_failed") from None
 
+    omitidos = set()
     for index, identity in enumerate(order):
         node, step = nodes[identity], steps[index]
+        if identity in omitidos:
+            # Depende de una condición que no se cumplió («avísame si…»): no se ejecuta ni envía nada.
+            step.update(status="skipped", omitido=True)
+            checkpoint()
+            continue
         version = payload["versions"][str(node.version_id)]
         manifest = version["manifest"]
         inputs = dict(node.values)
@@ -137,7 +160,14 @@ def execute_workflow(job, runner, progress=None):
             return "failed", report | {"error": "workflow_step_failed", "failed_step": identity}, None
         step.update(status="completed", output=summary(output))
         outputs[identity] = output
+        if es_condicion(node.version_id) and output.get("cumple") is False:
+            omitidos |= dependientes(identity, definition)
+            report["condicion"] = {"paso": identity, "cumple": False, "motivo": str(output.get("motivo") or "")[:300]}
         checkpoint()
-    result = {field: outputs[binding.source][binding.field] for field, binding in definition.outputs.items()}
+    # Lo que salía de pasos omitidos lleva el motivo (la solución terminó bien, solo que «sin novedades»).
+    motivo = (report.get("condicion") or {}).get("motivo", "")
+    result = {field: (outputs[binding.source][binding.field] if binding.source not in omitidos
+                      else f"Sin novedades: no se cumplió la condición. {motivo}".strip())
+              for field, binding in definition.outputs.items()}
     bounded_json(result, DATA_BYTES)
     return "completed", report, result
