@@ -28,10 +28,14 @@ def festivos(http, inputs, parameters):
                       "nombre": str(item.get("localName") or item.get("name") or "Festivo")[:120]})
     if not filas:
         raise ConnectorInputError("pais_sin_datos")
-    hoy = date.today().isoformat()
-    proximo = next((fila for fila in filas if fila["fecha"] >= hoy), None)
+    from connectors.fechas import hoy_colombia
+    hoy = hoy_colombia().isoformat()
+    # Los próximos tres (no solo uno): «¿el lunes es festivo?» o «¿cuándo es el siguiente puente?» se
+    # responden con el resumen, que es lo que el plan suele conectar a la IA que escribe.
+    proximos = [fila for fila in filas if fila["fecha"] >= hoy][:3]
     resumen = f"{pais} {anio}: {len(filas)} festivos." + (
-        f" Próximo: {proximo['nombre']}, {proximo['dia_semana']} {proximo['fecha']}." if proximo else "")
+        " Próximos: " + "; ".join(f"{f['nombre']}, {f['dia_semana']} {f['fecha']}" for f in proximos) + "."
+        if proximos else " Ya no quedan festivos este año.")
     return {"festivos": filas, "total": len(filas), "resumen": resumen}
 
 

@@ -697,8 +697,8 @@ async def asistentes(chat):
     for item in items[:8]:
         nombre = item.get("name") or "Asistente"
         estado = "🟢 activo" if item.get("active") else "⏸ en pausa"
-        lineas.append(f"• <b>{e(nombre)}</b> — {estado}" + (f" · próximo: {e(str(item.get('next_run_at'))[:16])}"
-                                                           if item.get("active") else ""))
+        proximo = cuando(item.get("next_run_at")) if item.get("active") else ""
+        lineas.append(f"• <b>{e(nombre)}</b> — {estado}" + (f" · próximo: {e(proximo)}" if proximo else ""))
         acciones.append((f"{'⏸ Pausar' if item.get('active') else '▶️ Reanudar'} {nombre[:30]}",
                          {"tipo": "asistente", "id": item["id"], "que": "pausar" if item.get("active") else "reanudar"}))
         acciones.append((f"⚡ Ejecutar ya {nombre[:30]}", {"tipo": "asistente", "id": item["id"], "que": "ahora"}))
@@ -721,7 +721,7 @@ async def historial(chat):
         await chat.decir("Aún no hay ejecuciones en tu cuenta.")
         return
     lineas = ["🕘 <b>Tus últimas ejecuciones</b>"]
-    lineas += [f"{ESTADOS.get(i.get('status'), '•')} {e(i.get('name') or 'Solución')} · {e(str(i.get('created_at'))[:16])}"
+    lineas += [f"{ESTADOS.get(i.get('status'), '•')} {e(i.get('name') or 'Solución')} · {e(cuando(i.get('created_at')))}"
                for i in items]
     terminadas = [i for i in items if i.get("status") == "completed"][:5]
     await chat.opciones("\n".join(lineas), [(f"Ver: {(i.get('name') or 'Solución')[:40]}", {"tipo": "resultado", "id": i["id"]})
@@ -729,6 +729,52 @@ async def historial(chat):
 
 
 # ---------- Avance y resultado (los usa el trabajador mientras ejecuta) ----------
+
+def cuando(valor):
+    """Fecha de la base (UTC, ISO) en hora de Colombia y legible: «23/11 07:00». Antes salía
+    «2026-11-23T12:00» y un asistente de las 7 a. m. parecía programado a las 12."""
+    from datetime import datetime
+    from connectors.fechas import COLOMBIA
+    try:
+        fecha = datetime.fromisoformat(str(valor).replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    if fecha.tzinfo is not None:
+        fecha = fecha.astimezone(COLOMBIA)
+    return fecha.strftime("%d/%m %H:%M")
+
+
+# Los mismos textos que la web (ChatTaller.jsx): la persona nunca ve un código interno.
+FALLOS = {"connector_provider_unavailable": "el servicio externo no respondió; intenta de nuevo en unos minutos",
+          "connector_not_found": "el servicio externo no tiene datos para eso",
+          "connector_provider_busy": "el servicio externo está recibiendo muchas consultas; espera un minuto",
+          "connector_provider_rejected": "el servicio externo rechazó la consulta; revisa los datos",
+          "connector_invalid_response": "el servicio externo respondió algo que no pude leer",
+          "connector_not_configured": "ese paso necesita una clave de servicio que no está configurada",
+          "connector_quota": "se alcanzó el tope de usos de IA por hora; intenta más tarde",
+          "output_contract": "el resultado no tuvo el formato esperado",
+          "sandbox_unavailable": "el entorno de ejecución no está disponible",
+          "intermediate_output_limit": "los datos entre pasos salieron demasiado grandes"}
+DETALLES_IA = {"contenido_bloqueado": "la IA no quiso procesar ese contenido (lo marcó como sensible)",
+               "respuesta_muy_larga": "la respuesta de la IA salía demasiado larga",
+               "telegram_no_vinculado": "primero conecta tu Telegram en Capacita → Configuración",
+               "google_no_vinculado": "primero conecta tu cuenta de Google en Capacita → Configuración",
+               "cupo_traduccion": "se acabó el cupo gratuito de traducción de hoy"}
+
+
+def motivo_fallo(report):
+    report = report or {}
+    paso = next((s for s in report.get("steps") or [] if s.get("status") == "failed"), None) or {}
+    codigo, detalle, etiqueta = paso.get("error") or report.get("error"), paso.get("detail"), paso.get("label")
+    if codigo == "connector_input" and detalle in DETALLES_IA:
+        return DETALLES_IA[detalle]
+    if codigo in ("connector_input", "input_contract") and etiqueta:
+        dato = f"«{str(detalle).replace('_', ' ')}»" if detalle else "los datos"
+        return f"revisa {dato} en el paso «{etiqueta}»"
+    if codigo in FALLOS:
+        return FALLOS[codigo] + (f" (paso «{etiqueta}»)" if etiqueta else "")
+    return f"falló el paso «{etiqueta}»" if etiqueta else "hubo un error al ejecutar"
+
 
 def texto_avance(nombre, report):
     lineas = [f"⏳ <b>{e(nombre)}</b>"]
@@ -765,9 +811,8 @@ async def enviar_resultado(bot, chat_id, nombre, estado, report, output, ya_en_t
     from connectors.telegram import formatear
     from services.ajuste_contratos import texto_legible
     if estado != "completed":
-        motivo = (report or {}).get("error") or "error"
-        await to_thread(bot.responder, chat_id, f"❌ No se pudo terminar «{nombre}» ({motivo}). Revisa el detalle en "
-                                                "Capacita → Resultados o pídemelo de nuevo.")
+        await to_thread(bot.responder, chat_id, f"❌ No se pudo terminar «{nombre}»: {motivo_fallo(report)}. "
+                                                "Revisa el detalle en Capacita → Resultados o pídemelo de nuevo.")
         return
     condicion = (report or {}).get("condicion") or {}
     if condicion and condicion.get("cumple") is False:

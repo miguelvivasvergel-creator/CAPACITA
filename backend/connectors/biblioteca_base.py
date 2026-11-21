@@ -95,9 +95,34 @@ def dic(valor):
     return valor if isinstance(valor, dict) else {}
 
 
+# Campos que son enlaces o imágenes: sirven en «resultados», no en el resumen que lee una persona o la IA.
+SIN_RESUMEN = ("mapa", "enlace", "imagen", "pagina", "url", "foto", "icono", "codigo")
+EN_RESUMEN = 5
+
+
+UNIDADES = {"_m": " m", "_km": " km"}
+
+
+def linea_de(fila):
+    partes = []
+    for k, v in fila.items():
+        if k.startswith(SIN_RESUMEN) or not isinstance(v, (str, int, float)) or isinstance(v, bool):
+            continue
+        valor = str(v).strip()
+        if valor and not valor.startswith(("http://", "https://")):
+            partes.append(valor + next((u for sufijo, u in UNIDADES.items() if k.endswith(sufijo)), ""))
+    return corto(" · ".join(partes), 200)
+
+
 def respuesta(filas, encontrado, vacio):
-    """Lista estándar. encontrado: función(total) → texto del resumen."""
-    return {"resumen": encontrado(len(filas)) if filas else vacio, "total": len(filas), "resultados": filas}
+    """Lista estándar. encontrado: función(total) → texto del resumen, al que se suman los primeros
+    resultados. El plan suele conectar «resumen» (es el texto) y antes solo nombraba el primero: en la
+    prueba de Santa Marta pidieron 3 restaurantes, a la IA le llegó uno y rellenó los otros dos."""
+    if not filas:
+        return {"resumen": vacio, "total": 0, "resultados": filas}
+    lineas = [f"{n}. {linea}" for n, linea in enumerate((linea_de(f) for f in filas[:EN_RESUMEN]), 1) if linea]
+    resumen = encontrado(len(filas)) + ("\n" + "\n".join(lineas) if lineas else "")
+    return {"resumen": resumen, "total": len(filas), "resultados": filas}
 
 
 def pesos(valor, decimales=2):

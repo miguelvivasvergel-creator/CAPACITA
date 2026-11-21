@@ -303,8 +303,8 @@ class RutasPermitidasTests(unittest.TestCase):
         from core.supabase import EXECUTION_RPCS
         fuente = "".join(pathlib.Path(ruta).read_text(encoding="utf-8")
                          for ruta in ("services/telegram_bot.py", "services/shared_worker.py"))
-        usadas = set(re.findall(r'"(telegram_[a-z_]+)"', fuente)) - {"telegram_file_too_large", "telegram_unavailable",
-                                                                     "telegram_rejected", "telegram_chat_id"}
+        # Solo los nombres pasados a sql(…)/rpc(…): los códigos de error («telegram_no_vinculado») no son funciones.
+        usadas = set(re.findall(r'(?:sql|rpc|rpc_raw)\(\s*"(telegram_[a-z_]+)"', fuente))
         self.assertTrue(usadas)
         self.assertEqual(usadas - EXECUTION_RPCS, set())
 
@@ -325,3 +325,24 @@ class OpcionesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TextosParaLaPersonaTests(unittest.TestCase):
+    def test_fechas_en_hora_de_colombia(self):
+        self.assertEqual(tb.cuando("2026-11-23T12:00:00+00:00"), "23/11 07:00")
+        self.assertEqual(tb.cuando("2026-11-23T12:00:00Z"), "23/11 07:00")
+        self.assertEqual(tb.cuando(None), "")
+        self.assertEqual(tb.cuando("no es fecha"), "")
+
+    def test_un_fallo_nunca_muestra_codigos_internos(self):
+        paso = lambda **x: {"steps": [{"label": "Clima", "status": "completed"}, {"label": "Enviar", "status": "failed", **x}],
+                            "error": "workflow_step_failed"}
+        self.assertEqual(tb.motivo_fallo(paso(error="connector_provider_unavailable")),
+                         "el servicio externo no respondió; intenta de nuevo en unos minutos (paso «Enviar»)")
+        self.assertIn("conecta tu Telegram", tb.motivo_fallo(paso(error="connector_input", detail="telegram_no_vinculado")))
+        self.assertEqual(tb.motivo_fallo(paso(error="input_contract", detail="radio_metros")),
+                         "revisa «radio metros» en el paso «Enviar»")
+        self.assertEqual(tb.motivo_fallo(paso(error="algo_nuevo")), "falló el paso «Enviar»")
+        self.assertEqual(tb.motivo_fallo({"error": "execution_failure"}), "hubo un error al ejecutar")
+        for texto in (tb.motivo_fallo(paso(error=c)) for c in ("connector_quota", "algo_nuevo", "step_failed")):
+            self.assertNotRegex(texto, r"\b[a-z]+_[a-z_]+\b")

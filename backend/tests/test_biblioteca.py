@@ -215,3 +215,18 @@ class BibliotecaTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ResumenDeListasTests(unittest.TestCase):
+    def test_el_resumen_nombra_los_primeros_resultados_no_solo_uno(self):
+        """El plan suele conectar «resumen» a la IA que escribe: si solo nombra el primero, la IA rellena."""
+        from connectors.biblioteca_base import respuesta
+        filas = [{"nombre": f"Restaurante {n}", "direccion": "", "distancia_m": n * 100, "mapa": "https://osm.org/x"}
+                 for n in range(1, 8)]
+        salida = respuesta(filas, lambda n: f"{n} lugares.", "Nada.")
+        lineas = salida["resumen"].split("\n")
+        self.assertEqual(lineas[0], "7 lugares.")
+        self.assertEqual(lineas[1:4], ["1. Restaurante 1 · 100 m", "2. Restaurante 2 · 200 m", "3. Restaurante 3 · 300 m"])
+        self.assertEqual(len(lineas), 6)  # como mucho 5 en el resumen; la lista completa sigue en «resultados»
+        self.assertNotIn("http", salida["resumen"])
+        self.assertEqual(respuesta([], lambda n: "x", "Nada."), {"resumen": "Nada.", "total": 0, "resultados": []})

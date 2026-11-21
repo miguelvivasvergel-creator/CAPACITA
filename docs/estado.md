@@ -21,8 +21,18 @@ Tres fallos, corregidos por su causa general (no para este pedido):
 - **Relleno inventado** («Restaurante adicional disponible en la zona»): `lugares_cercanos` ya no devuelve
   lugares sin nombre, y el protocolo común de la IA prohíbe completar cantidades con elementos genéricos
   (dice cuántos encontró) y exige contestar directo cada pregunta o decir que el dato no alcanza.
-- Validación: 323 pruebas OK. **Sin probar con Telegram ni Gemini reales.** Sin cambios de SQL ni de
-  contratos; reiniciar backend y trabajador. Pendiente: confirmar que llegó el correo en inglés.
+- Validación: 323 pruebas OK. Sin cambios de SQL ni de contratos; reiniciar backend y trabajador.
+- **Revisión para la sustentación (mismo día, tras 36ff7ef):** causa real de los restaurantes de relleno: el
+  plan conecta `resumen` y el de toda lista de la biblioteca solo nombraba el primero. `respuesta()` ahora
+  suma los 5 primeros (sin enlaces, con unidad «m»/«km»); festivos lista los 3 próximos (hoy de Colombia).
+  Bot: fechas de /asistentes e /historial en hora de Colombia («23/11 07:00», antes UTC ISO) y fallos
+  explicados como en la web (`motivo_fallo`, nunca «workflow_step_failed»). Prueba de rutas SQL permitidas
+  ya no confunde códigos de error con funciones.
+- **Verificado con servicios reales (sin enviar nada):** planner con Gemini sobre el pedido de Santa Marta →
+  9 pasos, sin pendientes, la IA que escribe recibe los 6 puntos; consultas reales (Open-Meteo, Nager,
+  cambio, Overpass) + Gemini → «No, el lunes no es festivo», 3 restaurantes reales, cifras exactas. 326
+  pruebas, lint y build OK; sin secretos en el repo; privacidad (`visible_to`, 404) revisada.
+- Pendiente: confirmar el correo en inglés en Gmail y la prueba completa por Telegram tras reiniciar.
 
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)
 
