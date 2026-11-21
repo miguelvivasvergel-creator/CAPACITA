@@ -122,7 +122,7 @@ class EleccionDePiezasTests(unittest.IsolatedAsyncioTestCase):
                                {"id": ids["Traducir un texto con IA"], "usos": 3, "para_que": "italiano, francés, portugués"},
                                {"id": ids["Enviar por correo"], "usos": 3, "para_que": "un correo por idioma"},
                                {"id": "inventado", "usos": 1, "para_que": "no existe"}], "falta": ""}
-        elegidas, usos, falta = await elegir_piezas("carta en tres idiomas a tres correos", opciones, SimpleNamespace(select=select))
+        elegidas, usos, falta, _ = await elegir_piezas("carta en tres idiomas a tres correos", opciones, SimpleNamespace(select=select))
         self.assertEqual([row["name"] for row in elegidas], ["Redactar un texto con IA", "Traducir un texto con IA", "Enviar por correo"])
         self.assertEqual(sorted(usos.values()), [1, 3, 3])
         self.assertEqual(falta, "")
@@ -139,15 +139,18 @@ class EleccionDePiezasTests(unittest.IsolatedAsyncioTestCase):
         async def select(objetivo, catalogo):
             return {"piezas": [{"id": v(clave), "usos": 2 if clave.startswith("lugares") else 1, "para_que": ""}
                                for clave in claves if not clave.startswith(("componer", "festivos"))], "falta": ""}
-        elegidas, usos, _ = await elegir_piezas("viaje", opciones, SimpleNamespace(select=select))
+        elegidas, usos, _, _ = await elegir_piezas("viaje", opciones, SimpleNamespace(select=select))
         self.assertEqual(usos[v("componer_texto@1")], 1)  # clima + 2 lugares: tres datos que juntar
         self.assertNotIn(v("tarea_texto@1"), usos)  # la reemplaza: no suma un paso (máximo 12)
         self.assertIn("Escribir con IA usando varios datos", [row["name"] for row in elegidas])
+        # …pero sigue disponible sin cantidad obligatoria: podía ser otra parte del pedido (la versión en inglés).
+        opcional = next(row for row in elegidas if row["id"] == v("tarea_texto@1"))
+        self.assertNotIn("usos", opcional)
 
         async def uno(objetivo, catalogo):
             return {"piezas": [{"id": v("clima_pronostico@2"), "usos": 1, "para_que": ""},
                                {"id": v("tarea_texto@1"), "usos": 1, "para_que": ""}], "falta": ""}
-        _, usos, _ = await elegir_piezas("promo", opciones, SimpleNamespace(select=uno))
+        _, usos, _, _ = await elegir_piezas("promo", opciones, SimpleNamespace(select=uno))
         self.assertNotIn(v("componer_texto@1"), usos)  # un solo dato: basta «Pedirle algo»
 
     async def test_respaldo_falta_y_cuota(self):
@@ -224,6 +227,43 @@ class ItinerarioDeViajeTests(unittest.TestCase):
                      for k in claves}
         _, orden = compile_workflow(definicion.model_dump(mode="json"), versiones)
         self.assertEqual(orden.index("itinerario"), 8)  # después de las 8 consultas, antes de los envíos
+
+
+class ListaDeVerificacionTests(unittest.TestCase):
+    """Nada del pedido se pierde en silencio, sea cual sea el pedido: cada requisito necesita sus pasos."""
+    REQUISITOS = ["Consultar el clima", "Escribir el itinerario", "Escribir una versión corta en inglés",
+                  "Enviar la versión en inglés a ana@example.com"]
+
+    def cobertura(self, *pares):
+        from schemas.planner import Cobertura
+        return [Cobertura(n=n, pasos=list(pasos)) for n, pasos in pares]
+
+    def test_la_version_en_ingles_que_falta_se_detecta(self):
+        from services.planner_service import requisitos_sin_cubrir
+        sin_ingles = plan(CLIMA, ("ia", v("componer_texto@1"), {"instruccion": "Itinerario"}, {"dato_1": ("clima", "dias")}),
+                          ("correo", v("enviar_correo@2"), {"asunto": "Viaje", "para": "ana@example.com"},
+                           {"mensaje": ("ia", "resultado")}))
+        faltan = requisitos_sin_cubrir(sin_ingles, self.REQUISITOS, self.cobertura(
+            (1, ["clima"]), (2, ["ia"]), (3, ["ia"]), (4, ["correo"])))
+        self.assertEqual([n for n, _, _ in faltan], [3, 4])
+        self.assertIn("ingles", faltan[0][2])
+
+    def test_plan_completo_pasa(self):
+        from services.planner_service import requisitos_sin_cubrir
+        completo = plan(CLIMA, ("ia", v("componer_texto@1"), {"instruccion": "Itinerario"}, {"dato_1": ("clima", "dias")}),
+                        ("ingles", v("tarea_texto@1"), {"instruccion": "Versión corta en inglés para Ana"}, {"texto": ("ia", "resultado")}),
+                        ("correo", v("enviar_correo@2"), {"asunto": "Trip", "para": "ana@example.com"},
+                         {"mensaje": ("ingles", "resultado")}))
+        self.assertEqual(requisitos_sin_cubrir(completo, self.REQUISITOS, self.cobertura(
+            (1, ["clima"]), (2, ["ia"]), (3, ["ingles"]), (4, ["correo"]))), [])
+        # Un requisito sin pasos o un correo escrito en el pedido que nadie envía se detectan.
+        faltan = requisitos_sin_cubrir(completo, self.REQUISITOS + ["Enviar copia a pepe@example.com"],
+                                       self.cobertura((1, ["clima"]), (2, ["ia"]), (3, ["ingles"]), (4, ["correo"]), (5, ["correo"])))
+        self.assertEqual([(n, "pepe@example.com" in motivo) for n, _, motivo in faltan], [(5, True)])
+        faltan = requisitos_sin_cubrir(completo, self.REQUISITOS, self.cobertura((1, ["clima"]), (2, ["ia"]), (4, ["correo"])))
+        self.assertEqual([(n, motivo) for n, _, motivo in faltan], [(3, "ningún paso lo cumple")])
+        # Sin cobertura (la IA no la llenó) no se acusa todo: solo se revisan correos e idiomas del plan.
+        self.assertEqual(requisitos_sin_cubrir(completo, self.REQUISITOS, []), [])
 
 
 class SinDatoTests(unittest.TestCase):

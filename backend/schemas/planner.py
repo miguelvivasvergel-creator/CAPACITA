@@ -1,8 +1,8 @@
 """Propuestas, nunca aprobaciones ni resultados de ejecución."""
 from typing import Annotated, Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-from schemas.workflows import WorkflowDefinition
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from schemas.workflows import MAX_NODOS, WorkflowDefinition
 
 
 class PlannerSearch(BaseModel):
@@ -33,6 +33,16 @@ class PlannerRequest(PlannerSearch):
         return self
 
 
+MAX_REQUISITOS = 30
+
+
+class Cobertura(BaseModel):
+    """Qué pasos del plan cumplen el requisito número n (1, 2, 3… de la lista de requisitos)."""
+    model_config = ConfigDict(extra="ignore")
+    n: int = Field(ge=1, le=MAX_REQUISITOS)
+    pasos: list[str] = Field(default_factory=list, max_length=MAX_NODOS)
+
+
 class PlannerProposal(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     decision: Literal["reuse", "compose", "create", "clarify", "blocked"]
@@ -40,6 +50,28 @@ class PlannerProposal(BaseModel):
     questions: list[str] = Field(default_factory=list, max_length=3)
     missing: list[str] = Field(default_factory=list, max_length=12)
     definition: WorkflowDefinition | None = None
+    # Lista de verificación: cada cosa que pidió la persona (un dato, un texto, un idioma, un envío y su
+    # destino) y qué pasos la cumplen. El backend la revisa: nada del pedido se pierde en silencio, y lo
+    # que no se pudo incluir va en pendientes para decírselo a la persona.
+    requisitos: list[str] = Field(default_factory=list)
+    cobertura: list[Cobertura] = Field(default_factory=list)
+    pendientes: list[str] = Field(default_factory=list)
+
+    @field_validator("requisitos", "pendientes", mode="before")
+    @classmethod
+    def lista_corta(cls, valor):
+        # La IA a veces escribe frases largas o de más: se recortan en vez de rechazar todo el plan.
+        if not isinstance(valor, list):
+            return []
+        return [str(item).strip()[:300] for item in valor if str(item).strip()][:MAX_REQUISITOS]
+
+    @field_validator("cobertura", mode="before")
+    @classmethod
+    def cobertura_corta(cls, valor):
+        if not isinstance(valor, list):
+            return []
+        return [item for item in valor if isinstance(item, dict) and isinstance(item.get("n"), int)
+                and not isinstance(item.get("n"), bool) and 1 <= item["n"] <= MAX_REQUISITOS][:MAX_REQUISITOS]
 
     @model_validator(mode="after")
     def consistent(self):

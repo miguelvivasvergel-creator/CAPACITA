@@ -47,3 +47,8 @@ las versiones de la fábrica; el SQL 11 la amplía al perfil toolbox y retira
 archivos (entradas, salidas y casos: 64 KiB → 4 MB; foto del trabajo 350 KB → 8 MB; payload
 400 KB → 9 MB). Toma la definición viva de cada función y solo cambia el número; si no
 encuentra el texto esperado, cancela todo. Los reportes siguen en 64 KiB.
+
+`20_limite_20_pasos.sql`: **pendiente de aplicar por Fahida**. Sube de 12 a 20 los pasos que admite
+`execution_workflow_save` (db/08); el resto de la función queda igual y conserva sus permisos. Debe
+coincidir con `MAX_NODOS` en `backend/schemas/workflows.py`. Sin aplicarlo, un plan de 13 a 20 pasos
+se propone pero falla al guardarse (`node_limit`). Termina con una comprobación (`tope_20 = true`).

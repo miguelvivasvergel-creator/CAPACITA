@@ -42,14 +42,35 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             return await propose_plan(self.request, self.catalog, self.provider, GenerationLimiter())
 
     async def test_plan_outside_the_schema_is_retried_with_the_exact_error(self):
-        demasiados = {**self.definition, 'nodes': [{**self.definition['nodes'][0], 'id': f'p{n}'} for n in range(13)]}
+        demasiados = {**self.definition, 'nodes': [{**self.definition['nodes'][0], 'id': f'p{n}'} for n in range(21)]}
         self.provider.plan.side_effect = [
-            {'decision': 'compose', 'explanation': 'Trece pasos', 'definition': demasiados, 'questions': [], 'missing': []},
+            {'decision': 'compose', 'explanation': 'Veintiún pasos', 'definition': demasiados, 'questions': [], 'missing': []},
             {'decision': 'compose', 'explanation': 'Ahora sí', 'definition': self.definition, 'questions': [], 'missing': []}]
         result = await self.propose()
         self.assertEqual(result['proposal']['explanation'], 'Ahora sí')
         feedback = self.provider.plan.await_args_list[1].kwargs['feedback']
-        self.assertIn('Máximo 12 pasos', feedback)
+        self.assertIn('Máximo 20 pasos', feedback)
+
+    async def test_lo_que_falta_del_pedido_se_corrige_o_se_avisa(self):
+        # La lista de verificación del paso 1 llega al plan; si el plan no la cumple, se le devuelve a la IA
+        # y, si sigue sin cumplirla, la persona lo ve en la explicación y en pendientes (nunca en silencio).
+        otra = {'id': str(uuid4()), 'name': 'Otra herramienta', 'input_schema': {'type': 'object', 'properties': {}}}
+        self.options = {'items': [self.options['items'][0], otra], 'search_truncated': False}
+        self.request = PlannerRequest(objective='Limpia el texto y envía el resultado en inglés a ana@example.com',
+            auto=True, consent_to_provider=True, version_ids=[row['id'] for row in self.options['items']],
+            version_hashes={row['id']: review_hash(row) for row in self.options['items']})
+        requisitos = ['Limpiar el texto', 'Enviar el resultado en inglés a ana@example.com']
+        self.provider.select = AsyncMock(return_value={'requisitos': requisitos, 'falta': '',
+                                                       'piezas': [{'id': self.identity, 'usos': 1, 'para_que': 'limpiar'}]})
+        result = await self.propose()
+        llamadas = self.provider.plan.await_args_list
+        self.assertEqual(len(llamadas), 3)
+        self.assertEqual(llamadas[0].kwargs['requisitos'], requisitos)
+        self.assertIn('ana@example.com', llamadas[1].kwargs['feedback'])
+        propuesta = result['proposal']
+        self.assertEqual(propuesta['requisitos'], requisitos)
+        self.assertEqual(propuesta['pendientes'], [requisitos[1]])
+        self.assertTrue(propuesta['explanation'].startswith('Ojo: este plan no cumple todo lo que pediste'))
 
     async def test_auto_selects_pieces_first_and_creates_when_something_is_missing(self):
         # Paso 1: la IA ve todo el catálogo y elige; al paso 2 (plan) solo llegan las elegidas, con sus usos.

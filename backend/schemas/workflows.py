@@ -25,13 +25,18 @@ class WorkflowNode(BaseModel):
     y: float = Field(default=0, ge=-10000, le=10000, allow_inf_nan=False)
 
 
+# Pasos por solución. Debe coincidir con db/20_limite_20_pasos.sql (execution_workflow_save): un pedido
+# completo (datos + textos en varios idiomas + envíos) llegaba a 14 pasos y con 12 se perdían partes.
+MAX_NODOS = 20
+
+
 class WorkflowDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     format_version: Literal[1] = 1
     name: str = Field(min_length=3, max_length=80)
     description: str = Field(default="", max_length=500)
     input_schema: dict
-    nodes: list[WorkflowNode] = Field(min_length=1, max_length=12)
+    nodes: list[WorkflowNode] = Field(min_length=1, max_length=MAX_NODOS)
     outputs: dict[Port, Binding] = Field(min_length=1, max_length=32)
 
 

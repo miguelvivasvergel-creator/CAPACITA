@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from repositories.candidates import CandidateRepository
 from repositories.shared_execution import SharedExecutionRepository
 from schemas.planner import PlannerProposal
+from schemas.workflows import MAX_NODOS
 from services.ajuste_contratos import ajustar_objeto
 from services.build_validation import validate_manifest
 from services.candidate_generation import limiter
@@ -261,7 +262,7 @@ async def elegir_piezas(objective, options, provider):
     """Paso 1: la IA ve el catálogo completo en versión corta (nombre, qué hace, qué recibe y qué
     entrega) y elige qué piezas sirven y cuántas veces. Devuelve (opciones elegidas con sus usos,
     usos por id, lo que falta). Si la selección falla, se sigue con las primeras 12 (respaldo)."""
-    respaldo = options[:12], {}, ""
+    respaldo = options[:12], {}, "", []
     if len(options) <= 1 or not hasattr(provider, "select"):
         return respaldo
     corto = [{"id": row["id"], "nombre": row.get("name", ""), "hace": str(row.get("description") or "")[:240],
@@ -283,18 +284,23 @@ async def elegir_piezas(objective, options, provider):
         identidad, cantidad = pieza["id"], pieza.get("usos")
         if not isinstance(cantidad, int) or isinstance(cantidad, bool):
             cantidad = 1
-        usos[identidad] = max(1, min(12, usos.get(identidad, 0) + cantidad))
+        usos[identidad] = max(1, min(MAX_NODOS, usos.get(identidad, 0) + cantidad))
         para_que[identidad] = str(pieza.get("para_que") or "")[:300]
     falta = str(eleccion.get("falta") or "").strip()[:1000]
+    # La lista de verificación del pedido (cada dato, texto, idioma y envío): el plan debe cubrirla.
+    requisitos = [str(r).strip()[:300] for r in (eleccion.get("requisitos") or []) if str(r).strip()][:30]
     if not usos:
         # Sin piezas (un pedido que no es una tarea, como «intenta de nuevo», o algo que no se
         # entendió): decide el paso 2 con el respaldo, que puede preguntar (clarify) o proponer crear.
         return respaldo
-    agregar_componer(usos, para_que, por_id)
-    recortar_usos(usos)
+    # Lo que deja de exigirse (para caber en MAX_PASOS) sigue disponible, sin cantidad obligatoria.
+    opcionales = (agregar_componer(usos, para_que, por_id) or set()) | recortar_usos(usos)
     elegidas = [por_id[identidad] | {"usos": usos[identidad], "para_que": para_que[identidad]}
-                for identidad in list(usos)[:12]]
-    return elegidas, {row["id"]: row["usos"] for row in elegidas}, falta
+                for identidad in list(usos)[:MAX_PASOS]]
+    exigidas = {row["id"]: row["usos"] for row in elegidas}
+    elegidas += [por_id[identidad] | {"para_que": para_que.get(identidad, "")}
+                 for identidad in opcionales if identidad not in exigidas]
+    return elegidas, exigidas, falta, requisitos
 
 
 def agregar_componer(usos, para_que, por_id):
@@ -312,24 +318,28 @@ def agregar_componer(usos, para_que, por_id):
     componer = next((identidad for identidad in por_id if clave(identidad) == "componer_texto"), None)
     if datos < 2 or not componer:
         return
-    # Reemplaza (no suma) al «Pedirle algo» o «Redactar» de un solo uso: el plan tiene máximo 12 pasos
-    # y con el viaje la IA ya había elegido 12; uno más hacía inválido el plan.
+    # El «Pedirle algo» o «Redactar» de un solo uso probablemente era el que iba a juntar los datos: ya no
+    # se exige (no suma un paso: hay un máximo), pero sigue disponible. Antes se borraba, y si era otra parte
+    # del pedido (la versión en inglés para la amiga) esa parte se perdía en silencio.
     sobra = next((identidad for identidad in usos if clave(identidad) in {"tarea_texto", "redactar_texto"}
                   and usos[identidad] == 1), None)
     if sobra:
         usos.pop(sobra)
-        para_que.pop(sobra, None)
     usos[componer] = 1
     para_que[componer] = "Juntar en un solo texto los datos de los otros pasos"
+    return {sobra} if sobra else set()
 
 
-MAX_PASOS = 12  # WorkflowDefinition y db/08 (save_private_workflow) admiten hasta 12 pasos
+MAX_PASOS = MAX_NODOS  # WorkflowDefinition y db/20 (execution_workflow_save)
 
 
 def recortar_usos(usos):
     """Si la IA eligió más usos de los que caben (cinco idiomas × tres envíos), el plan no se podía
     armar y usos_incompletos exigía pasos imposibles. Se baja de a uno la pieza más repetida hasta
-    que quepan; si aun así sobran piezas de un uso, se quitan las últimas elegidas."""
+    que quepan; si aun así sobran piezas de un uso, se quitan las últimas elegidas. Solo se deja de
+    EXIGIR: lo quitado se devuelve y sigue disponible para el plan, y la lista de verificación
+    (requisitos_sin_cubrir) avisa si por eso queda algo del pedido sin cumplir."""
+    quitadas = set()
     while sum(usos.values()) > MAX_PASOS:
         mayor = max(usos, key=usos.get)
         if usos[mayor] > 1:
@@ -339,6 +349,8 @@ def recortar_usos(usos):
         clave = lambda identidad: getattr(BY_VERSION.get(identidad), "key", None)
         prescindibles = [i for i in usos if clave(i) not in ACCIONES | {"componer_texto"}] or list(usos)
         usos.pop(prescindibles[-1])
+        quitadas.add(prescindibles[-1])
+    return quitadas
 
 
 def reparar_plan(definition, options):
@@ -365,8 +377,8 @@ def errores_del_plan(error):
         lugar = ".".join(str(parte) for parte in detalle.get("loc", ()))
         frases.append(f"{lugar}: {detalle.get('msg', '')}")
     texto = "; ".join(frases)
-    if "nodes" in texto and "at most 12" in texto:
-        texto += (". Máximo 12 pasos: quita consultas redundantes (por ejemplo, si ya conviertes el monto no hace "
+    if "nodes" in texto and f"at most {MAX_PASOS}" in texto:
+        texto += (f". Máximo {MAX_PASOS} pasos: quita consultas redundantes (por ejemplo, si ya conviertes el monto no hace "
                   "falta otro paso de TRM) o junta los textos en un solo paso de IA.")
     return texto[:1500]
 
@@ -385,6 +397,66 @@ def usos_incompletos(definition, usos, options):
             "con su propio id y conectado a lo que le corresponde (por ejemplo, cada traducción a su correo).")
 
 
+CORREO = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+# Idiomas que un requisito puede pedir (sin tildes) y cómo pueden aparecer en el plan.
+IDIOMAS = {"ingles": ("ingles", "english"), "frances": ("frances", "french", "francais"),
+           "italiano": ("italiano", "italian"), "portugues": ("portugues", "portuguese"),
+           "aleman": ("aleman", "german", "deutsch"), "chino": ("chino", "chinese", "mandarin"),
+           "japones": ("japones", "japanese"), "coreano": ("coreano", "korean"), "ruso": ("ruso", "russian"),
+           "arabe": ("arabe", "arabic"), "neerlandes": ("neerlandes", "holandes", "dutch")}
+
+
+def _plano(texto):
+    return unicodedata.normalize("NFD", str(texto)).encode("ascii", "ignore").decode().lower()
+
+
+def requisitos_sin_cubrir(definition, requisitos, cobertura):
+    """Lista de verificación revisada sin IA, válida para cualquier pedido: cada requisito debe tener al
+    menos un paso real que lo cumpla; si nombra un correo, entre sus pasos debe estar el envío con ese
+    «para»; si nombra un idioma, ese idioma debe aparecer en sus pasos o en los que les dan el texto.
+    Devuelve [(n, requisito, qué falta)]."""
+    pasos = {node.id: node for node in definition.nodes}
+    por_numero = {}
+    for item in cobertura:
+        por_numero.setdefault(item.n, set()).update(p for p in item.pasos if p in pasos)
+    if not por_numero:
+        # La IA no llenó cobertura: no se acusa todo de faltar; se revisan correos e idiomas en el plan entero.
+        por_numero = {n: set(pasos) for n in range(1, len(requisitos) + 1)}
+    correos_del_plan = {str(node.values.get("para") or "").lower() for node in definition.nodes
+                        if getattr(BY_VERSION.get(str(node.version_id)), "key", None) == "enviar_correo"}
+    faltan = []
+    for n, requisito in enumerate(requisitos, 1):
+        cubren = por_numero.get(n, set())
+        if not cubren:
+            faltan.append((n, requisito, "ningún paso lo cumple"))
+            continue
+        # Los pasos que lo cumplen y los anteriores que les dan datos (la traducción antes del correo).
+        cadena, pendientes = set(), list(cubren)
+        while pendientes:
+            actual = pendientes.pop()
+            if actual in cadena or actual not in pasos:
+                continue
+            cadena.add(actual)
+            pendientes.extend(b.source for b in pasos[actual].bindings.values() if b.source != "$input")
+        for correo in CORREO.findall(requisito):
+            if correo.lower() not in correos_del_plan:
+                faltan.append((n, requisito, f"falta el paso de correo con values.para = {correo}"))
+        texto_req = _plano(requisito)
+        contenido = _plano(json.dumps([[pasos[p].label, pasos[p].parameters, pasos[p].values] for p in cadena],
+                                      ensure_ascii=False, default=str))
+        for idioma, formas in IDIOMAS.items():
+            if re.search(rf"\b{idioma}\b", texto_req) and not any(forma in contenido for forma in formas):
+                faltan.append((n, requisito, f"ningún paso escribe o traduce en {idioma}"))
+    return faltan
+
+
+def sin_cubrir_como_error(faltan):
+    lineas = "; ".join(f"requisito {n} «{texto}»: {motivo}" for n, texto, motivo in faltan[:8])
+    return ("El plan no cumple todo lo que pidió la persona: " + lineas + ". Agrega los pasos que faltan (cada uno con "
+            "su id, conectado a lo que le corresponde) y ponlos en cobertura. Si no caben en 20 pasos, quita "
+            "primero consultas redundantes; si aun así no cabe, ponlo en pendientes y dilo en explanation.")[:1500]
+
+
 async def propose_plan(request, catalog, provider, limits=limiter):
     if not request.consent_to_provider:
         raise HTTPException(422, "Autoriza enviar el objetivo y los nombres, descripciones y contratos seleccionados a Gemini")
@@ -397,20 +469,20 @@ async def propose_plan(request, catalog, provider, limits=limiter):
     if any(reviewed[row["id"]] != review_hash(row) for row in options):
         raise HTTPException(409, "Los contratos o metadatos seleccionados cambiaron; vuelve a buscar y revisa antes de autorizar")
     options = [{key: value for key, value in row.items() if key != "review_hash"} for row in options]
-    validation, feedback, usos = None, None, {}
+    validation, feedback, usos, requisitos = None, None, {}, []
     # Gemini a veces conecta mal los puertos: se le devuelve el error exacto y se reintenta una
     # vez, dentro del mismo turno del limitador (un pedido de la persona = un intento).
     limits.start(catalog.user_id)
     try:
         if request.auto:
             # Paso 1: la IA elige entre TODO lo disponible qué piezas sirven y cuántas veces.
-            options, usos, _ = await elegir_piezas(request.objective, options, provider)
+            options, usos, _, requisitos = await elegir_piezas(request.objective, options, provider)
             selected = {row["id"] for row in options}
         bounded_json({"objective": request.objective, "versions": options}, 65536)
         for attempt in range(3):
             try:
-                raw = await (provider.plan(request.objective, options, feedback=feedback) if feedback
-                             else provider.plan(request.objective, options))
+                extra = ({"feedback": feedback} if feedback else {}) | ({"requisitos": requisitos} if requisitos else {})
+                raw = await provider.plan(request.objective, options, **extra)
                 proposal = PlannerProposal.model_validate(raw)
             except ValidationError as error:
                 # Antes se cortaba aquí sin reintentar (un plan de 13 pasos terminaba en la fábrica).
@@ -431,7 +503,11 @@ async def propose_plan(request, catalog, provider, limits=limiter):
             if destinatarios_no_escritos(proposal.definition, request.objective):
                 aviso = "No vi esa dirección de correo escrita en tu pedido, así que el correo te llega a ti. "
                 proposal.explanation = (aviso + proposal.explanation)[:1200]
-            logica = revision_logica(proposal.definition) or usos_incompletos(proposal.definition, usos, options)
+            # Lista de verificación: la del paso 1 o, si no hubo, la que escribió la IA al planear.
+            lista = requisitos or proposal.requisitos
+            faltan = requisitos_sin_cubrir(proposal.definition, lista, proposal.cobertura) if lista else []
+            logica = (revision_logica(proposal.definition) or usos_incompletos(proposal.definition, usos, options)
+                      or (sin_cubrir_como_error(faltan) if faltan else None))
             if logica and attempt < 2:
                 feedback = logica
                 continue
@@ -447,6 +523,13 @@ async def propose_plan(request, catalog, provider, limits=limiter):
                     raise HTTPException(502, "La propuesta no cumple los contratos del workflow; revisa el objetivo") from None
                 raise
             proposal.definition = arrange_definition(proposal.definition, validation["order"])
+            # Lo que no se pudo cumplir se le dice a la persona antes de aprobar, nunca se calla.
+            proposal.requisitos = lista
+            pendientes = list(dict.fromkeys(proposal.pendientes + [texto for _, texto, _ in faltan]))[:30]
+            proposal.pendientes = pendientes
+            if pendientes:
+                aviso = "Ojo: este plan no cumple todo lo que pediste. Falta: " + "; ".join(pendientes)
+                proposal.explanation = (aviso[:600] + ". " + proposal.explanation)[:1200]
             break
     finally:
         limits.finish(catalog.user_id)

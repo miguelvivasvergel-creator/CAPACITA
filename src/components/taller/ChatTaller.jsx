@@ -529,6 +529,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         setPendientes(proposal.questions); agregar({ de: 'capacita', tipo: 'preguntas', preguntas: proposal.questions });
       } else if (proposal.definition) {
         setPlan(proposal.definition); setCreando('');
+        // Lista de verificación: cada cosa que pidió la persona y si el plan la cumple (antes de aprobar).
+        if (proposal.requisitos?.length > 1) agregar({ de: 'capacita', tipo: 'requisitos', requisitos: proposal.requisitos, pendientes: proposal.pendientes || [] });
         agregar({ de: 'capacita', tipo: 'plan', definicion: proposal.definition });
         empezarDatos(proposal.definition);
       } else if (proposal.decision === 'create') {
@@ -781,6 +783,17 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         <div className="mt-3 border-t border-slate-200 pt-3">
           <button type="button" disabled={ocupado} onClick={() => { agregar({ de: 'tu', tipo: 'texto', texto: 'Ninguna me sirve: quiero algo nuevo' }); continuar({ ...mensaje.estado, saltarAtajo: true }); }} className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50">Ninguna me sirve: armar algo nuevo con la IA</button>
         </div>
+      </div>;
+      case 'requisitos': return <div className={tarjeta}>
+        <p className="font-semibold">Revisé tu pedido punto por punto</p>
+        <ul className="mt-2 space-y-1 text-sm">{mensaje.requisitos.map((requisito, index) => {
+          const falta = mensaje.pendientes.includes(requisito);
+          return <li key={index} className={`flex gap-2 rounded-lg px-2 py-1 ${falta ? 'bg-amber-50 text-amber-900' : ''}`}>
+            <span aria-hidden="true">{falta ? '⚠️' : '✓'}</span>
+            <span className="break-words">{requisito}{falta && <span className="sr-only"> (no incluido en el plan)</span>}</span>
+          </li>;
+        })}</ul>
+        {mensaje.pendientes.length > 0 && <p className="mt-2 text-xs text-amber-900">Lo marcado con ⚠️ no quedó en el plan. Puedes reintentar, quitar otra parte del pedido o dividirlo en dos soluciones.</p>}
       </div>;
       case 'faltan': return <div className={tarjeta}>
         <p className="font-semibold"><Icono nombre="herramienta" className="mr-1 inline h-4 w-4 align-[-3px]" />Me falta una herramienta para resolverlo</p>

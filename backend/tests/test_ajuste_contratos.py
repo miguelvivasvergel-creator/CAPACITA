@@ -45,21 +45,22 @@ class AjusteTests(unittest.TestCase):
 
 
 class RecortarUsosTests(unittest.TestCase):
-    def test_nunca_pide_mas_de_doce_pasos_ni_quita_los_envios(self):
-        from services.planner_service import recortar_usos
+    def test_nunca_pide_mas_del_maximo_ni_quita_los_envios(self):
+        from services.planner_service import MAX_PASOS, recortar_usos
         v = lambda clave: str(REGISTRY[clave].version_id)
-        usos = {v("traducir_texto@1"): 5, v("enviar_correo@2"): 5, v("redactar_texto@1"): 1, v("clima_pronostico@2"): 1,
+        usos = {v("traducir_texto@1"): 9, v("enviar_correo@2"): 9, v("redactar_texto@1"): 1, v("clima_pronostico@2"): 1,
                 v("festivos_pais@2"): 1}
-        recortar_usos(usos)
-        self.assertLessEqual(sum(usos.values()), 12)
-        self.assertGreaterEqual(usos[v("enviar_correo@2")], 4)
-        sueltos = {v(k): 1 for k in ("clima_pronostico@2", "festivos_pais@2", "calidad_aire@1", "amanecer_atardecer@1",
-                                     "trm_colombia@2", "cambio_moneda@2", "lugares_cercanos@1", "buscar_lugar@1",
-                                     "componer_texto@1", "guardar_drive@1", "agendar_evento@1", "enviar_telegram@1",
-                                     "wikipedia_resumen@1")}
-        recortar_usos(sueltos)
-        self.assertEqual(len(sueltos), 12)
-        self.assertTrue({v("componer_texto@1"), v("enviar_telegram@1"), v("agendar_evento@1")} <= set(sueltos))
+        quitadas = recortar_usos(usos)
+        self.assertEqual(MAX_PASOS, 20)
+        self.assertLessEqual(sum(usos.values()), MAX_PASOS)
+        self.assertGreaterEqual(usos[v("enviar_correo@2")], 8)
+        self.assertEqual(quitadas, set())  # solo bajó repeticiones: ninguna pieza dejó de estar disponible
+        # 21 piezas de un uso y el envío: no caben en 20; se quitan las últimas, nunca el envío.
+        sueltos = {f"pieza-{n}": 1 for n in range(21)} | {v("enviar_telegram@1"): 1}
+        quitadas = recortar_usos(sueltos)
+        self.assertEqual(sum(sueltos.values()), MAX_PASOS)
+        self.assertIn(v("enviar_telegram@1"), sueltos)
+        self.assertEqual(quitadas, {"pieza-19", "pieza-20"})  # se devuelven: siguen disponibles y se avisa si falta
 
 
 class RepararPlanTests(unittest.TestCase):

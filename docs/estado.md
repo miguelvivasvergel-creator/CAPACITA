@@ -4,6 +4,25 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 20/11/2026: lista de verificación del pedido y tope de 20 pasos (tras b112fc9)
+
+- **Fallo:** en el viaje a Santa Marta se perdió la versión en inglés para la amiga. Dos causas
+  generales: `agregar_componer` BORRABA el «Pedirle algo» de un uso (era la versión en inglés) y
+  `recortar_usos` quitaba piezas en silencio para caber en 12 pasos; nada comprobaba al final que cada
+  indicación quedara cubierta.
+- **Ahora, para cualquier pedido:** el paso 1 (`select`) separa el pedido en `requisitos` (cada dato,
+  texto, idioma, envío con su destino, fecha y monto); el plan recibe la lista y devuelve `cobertura`
+  (qué pasos cumplen cada uno). `requisitos_sin_cubrir` lo revisa sin IA: requisito sin pasos, correo
+  escrito en el pedido sin su envío con ese «para», idioma pedido que ningún paso (ni los anteriores
+  que le dan el texto) escribe. Se le devuelve a la IA y, si tras 3 intentos sigue faltando, va en
+  `pendientes` y la explicación empieza con «Ojo: este plan no cumple todo…». Las piezas que dejan de
+  exigirse siguen disponibles sin cantidad. El chat muestra «Revisé tu pedido punto por punto» con ✓/⚠️.
+- **Tope subido de 12 a 20 pasos** (Fahida lo autorizó): `MAX_NODOS` en `schemas/workflows.py`, planner,
+  prompts de Gemini y editor manual (`Workflows.jsx`). **Requiere aplicar `db/20_limite_20_pasos.sql`** en
+  Supabase (`execution_workflow_save`); sin él, los planes de 13 a 20 pasos fallan al guardarse
+  (`node_limit`). Lo que aún no quepa se avisa en `pendientes`, nunca se pierde en silencio.
+- Validación: 307 pruebas OK, lint y build OK. **Sin probar con Gemini real ni con el SQL 20 aplicado.**
+
 ### Fahida — 20/11/2026: robustez de la IA y de la ejecución (sin commit; tras 5c5cfca)
 
 Revisión de punta a punta (plan → validación → ejecución) por clases de error, no casos sueltos:
