@@ -32,6 +32,15 @@ Tres fallos, corregidos por su causa general (no para este pedido):
   9 pasos, sin pendientes, la IA que escribe recibe los 6 puntos; consultas reales (Open-Meteo, Nager,
   cambio, Overpass) + Gemini → «No, el lunes no es festivo», 3 restaurantes reales, cifras exactas. 326
   pruebas, lint y build OK; sin secretos en el repo; privacidad (`visible_to`, 404) revisada.
+- **Protección de la IA (mismo día, 425b1bc):** tope GLOBAL por proceso (`core/cuota_ia.py`,
+  `GEMINI_TOPE_POR_MINUTO=15`, `GEMINI_TOPE_POR_DIA=400` en backend/.env) en los dos únicos caminos a
+  Gemini (`GeminiProvider._send`, cada intento real; `connectors/ia.py preguntar`): si el minuto está lleno
+  espera ≤ 20 s, si no, 429 claro; agotado el día, «llegó al tope de hoy» (en ejecución: connector_quota /
+  connector_provider_busy, ya traducidos). Con transporte falso (pruebas) no cuenta. Bot: notas de voz
+  dentro del límite por chat (antes sin tope), freno de ráfagas antes de la base (`Rafaga`: 6/10 s y
+  25/min por chat, un solo aviso), máximo 40 chats a la vez, y saludos/gracias sin IA (`CHARLA`).
+  Revisado sin cambios: la web bloquea el doble clic (lock + clave de idempotencia estable) y los
+  objetivos tienen 10–2000 caracteres. 334 pruebas OK.
 - Pendiente: confirmar el correo en inglés en Gmail y la prueba completa por Telegram tras reiniciar.
 
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)
