@@ -164,3 +164,33 @@ class UnSoloPosterTests(unittest.TestCase):
         self.assertEqual(len(puntajes), 2)
         self.assertNotEqual(salida["poster"], salida["poster_alternativo"])
         self.assertIn("está listo", salida["resumen"])
+
+
+class LogosComoVienenTests(unittest.TestCase):
+    """Cada logo según cómo venga (caso real: logo blanco sobre el turquesa de la marca se destrozaba)."""
+
+    def test_logo_sobre_el_color_de_la_marca_se_conserva_y_da_el_color_del_poster(self):
+        from connectors.poster import preparar_logo
+        logo = Image.new("RGB", (400, 300), (120, 200, 208))  # turquesa de marca
+        ImageDraw.Draw(logo).text((60, 120), "POSITANO soft cream", fill=(255, 255, 255))
+        listo, marca, propia, nota = preparar_logo(logo.convert("RGBA"))
+        self.assertTrue(propia)
+        self.assertEqual(marca, (120, 200, 208))
+        self.assertEqual(listo.getpixel((listo.width // 2, 5))[:3], (120, 200, 208))  # el fondo se conserva
+        self.assertEqual(listo.getpixel((0, 0))[3], 0)  # esquinas redondeadas
+        self.assertIn("color de tu marca", nota)
+
+    def test_logo_sobre_blanco_pierde_el_fondo_y_uno_transparente_queda_igual(self):
+        from connectors.poster import preparar_logo
+        _, marca, propia, nota = preparar_logo(logo_con_letras_blancas().convert("RGBA"))
+        self.assertEqual((marca, propia, nota), (None, False, "limpié el fondo del logo"))
+        transparente = Image.new("RGBA", (300, 200), (0, 0, 0, 0))
+        ImageDraw.Draw(transparente).ellipse((50, 50, 250, 150), fill=(210, 30, 40, 255))
+        self.assertEqual(preparar_logo(transparente)[2:], (False, "usé tu logo con su transparencia"))
+
+    def test_el_fondo_nunca_queda_en_luminosidad_media(self):
+        from connectors.poster import fondo_legible, luminancia, mezclar
+        for arriba, abajo in (((120, 200, 208), (60, 120, 130)), ((0, 198, 251), (0, 82, 212))):
+            a, b = fondo_legible(arriba, abajo)
+            self.assertFalse(0.1 < luminancia(mezclar(a, b, 0.35)) < 0.42)
+        self.assertEqual(fondo_legible((255, 244, 214), (255, 230, 180)), ((255, 244, 214), (255, 230, 180)))  # claro: igual

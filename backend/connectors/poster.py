@@ -105,6 +105,18 @@ def encajar(texto, tipo, ancho, max_lineas, grande, chico):
     return letra, lineas
 
 
+def fondo_legible(arriba, abajo):
+    """Un fondo de luminosidad MEDIA es el peor para leer: ni el texto blanco ni el oscuro destacan
+    (pasaba con el turquesa de una marca). Si cae en esa franja se profundiza el MISMO tono hasta que
+    el texto blanco resalte con holgura; los fondos claros o ya profundos no se tocan."""
+    for _ in range(12):
+        luz = luminancia(mezclar(arriba, abajo, 0.35))
+        if not 0.1 < luz < 0.42:
+            break
+        arriba, abajo = mezclar(arriba, (6, 6, 12), 0.12), mezclar(abajo, (4, 4, 8), 0.12)
+    return arriba, abajo
+
+
 def alto_linea(letra):
     caja = letra.getbbox("ÁÉgjpqy")
     return int((caja[3] - caja[1]) * 1.12)
@@ -173,17 +185,24 @@ def color_de_marca(logo):
     return cuenta.most_common(1)[0][0] if sum(cuenta.values()) > 30 else None
 
 
-def paleta(estilo, logo, textos):
+def paleta(estilo, logo, textos, marca_fondo=None):
     """(nombre, arriba, abajo, acento, texto_acento). Con logo: colores de la marca (60-30-10)."""
     if estilo != "automatico":
         return (estilo, *map(rgb, ESTILOS[estilo]))
+    candidatos = [rgb("#FFE45C"), (255, 255, 255), rgb("#00E5A0"), rgb("#FF4D6D")]
+    if marca_fondo:
+        # El logo venía sobre el color de la marca (blanco sobre turquesa): ese color es el fondo del
+        # póster, un poco más profundo abajo para que el texto blanco se lea; el logo va en su placa.
+        arriba, abajo = mezclar(marca_fondo, (6, 6, 12), 0.15), mezclar(marca_fondo, (6, 6, 12), 0.6)
+        medio = mezclar(arriba, abajo, 0.5)
+        acento = max(candidatos, key=lambda c: contraste(c, medio))
+        return ("marca", arriba, abajo, acento, texto_sobre(acento))
     marca = color_de_marca(logo) if logo is not None else None
     if marca:
         # El color de la marca va de ACENTO (sello y botón), nunca de fondo: un logo rojo sobre un fondo
         # rojo desaparece. Fondo: un tono muy oscuro de la misma marca (aspecto premium y on-brand).
         arriba, abajo = mezclar(marca, (6, 6, 12), 0.72), mezclar(marca, (4, 4, 8), 0.9)
         medio = mezclar(arriba, abajo, 0.5)
-        candidatos = [rgb("#FFE45C"), (255, 255, 255), rgb("#00E5A0"), rgb("#FF4D6D")]
         acento = marca if contraste(marca, medio) >= 3.0 else max(candidatos, key=lambda c: contraste(c, medio))
         return ("marca", arriba, abajo, acento, texto_sobre(acento))
     for nombre, patron in PISTAS:
@@ -253,6 +272,52 @@ def sin_fondo(imagen, tolerancia=40):
     resultado = imagen.copy()
     resultado.putalpha(ImageChops.multiply(mascara, alfa))
     return recortar(resultado), True
+
+
+def fondo_del_borde(imagen, tolerancia=40):
+    """(color mediano del borde, ¿es parejo?) de la imagen."""
+    chica = imagen.convert("RGB")
+    chica.thumbnail((420, 420))
+    w, h = chica.size
+    colores = [chica.getpixel((x, y)) for x in range(0, w, max(1, w // 60)) for y in (0, h - 1)] + \
+              [chica.getpixel((x, y)) for y in range(0, h, max(1, h // 60)) for x in (0, w - 1)]
+    fondo = tuple(sorted(c[i] for c in colores)[len(colores) // 2] for i in range(3))
+    parejos = sum(max(abs(c[i] - fondo[i]) for i in range(3)) <= tolerancia for c in colores)
+    return fondo, parejos >= 0.7 * len(colores)
+
+
+def saturacion(color):
+    return colorsys.rgb_to_hls(*(c / 255 for c in color[:3]))[2]
+
+
+def placa_propia(imagen, fondo):
+    """El logo con SU fondo, recortado a su dibujo con aire alrededor y esquinas redondeadas (como el
+    ícono de una app): nada del diseño se borra ni se deshilacha."""
+    base = imagen.convert("RGB")
+    canales = ImageChops.difference(base, Image.new("RGB", base.size, fondo)).split()
+    distancia = ImageChops.lighter(ImageChops.lighter(canales[0], canales[1]), canales[2])
+    caja = distancia.point(lambda v: 255 if v > 40 else 0).getbbox() or (0, 0, base.width, base.height)
+    aire = int(max(caja[2] - caja[0], caja[3] - caja[1]) * 0.14)
+    caja = (max(0, caja[0] - aire), max(0, caja[1] - aire), min(base.width, caja[2] + aire), min(base.height, caja[3] + aire))
+    placa = base.crop(caja).convert("RGBA")
+    mascara = Image.new("L", placa.size, 0)
+    ImageDraw.Draw(mascara).rounded_rectangle((0, 0, placa.width - 1, placa.height - 1), int(min(placa.size) * 0.18), fill=255)
+    placa.putalpha(mascara)
+    return placa
+
+
+def preparar_logo(imagen):
+    """(logo listo, color de marca de su fondo o None, ¿lleva su propia placa?, nota para la persona).
+    Con transparencia: tal cual. Sobre blanco o un claro neutro: se le quita el fondo. Sobre un color
+    (blanco sobre turquesa) o un fondo complejo: ese fondo ES parte del logo y se conserva en su placa."""
+    if sum(imagen.getchannel("A").histogram()[:200]) > 0.03 * imagen.width * imagen.height:
+        return recortar(imagen), None, False, "usé tu logo con su transparencia"
+    fondo, parejo = fondo_del_borde(imagen)
+    if parejo and luminancia(fondo) > 0.7 and saturacion(fondo) < 0.2:
+        logo, quitado = sin_fondo(imagen, tolerancia=48)
+        return logo, None, False, "limpié el fondo del logo" if quitado else "usé el logo tal cual"
+    marca = fondo if parejo and saturacion(fondo) > 0.2 and 0.05 < luminancia(fondo) < 0.85 else None
+    return placa_propia(imagen, fondo), marca, True, "conservé tu logo con el color de tu marca"
 
 
 def enmarcar(imagen, lado):
@@ -384,7 +449,17 @@ def fondo_claro(imagen):
     return luminancia(tuple(sorted(c[i] for c in borde)[len(borde) // 2] for i in range(3))) > 0.6
 
 
-def poner_logo(lienzo, logo, x, y, fondo, era_claro=False):
+def poner_logo(lienzo, logo, x, y, fondo, era_claro=False, propia=False):
+    if propia:  # su propia placa: sombra suave y un borde fino claro para que se destaque del fondo
+        capa = Image.new("RGBA", lienzo.size, (0, 0, 0, 0))
+        capa.alpha_composite(silueta(logo, 120), (int(x), int(y) + 10))
+        lienzo.alpha_composite(capa.filter(ImageFilter.GaussianBlur(14)))
+        lienzo.alpha_composite(logo, (int(x), int(y)))
+        borde = Image.new("RGBA", logo.size, (0, 0, 0, 0))
+        ImageDraw.Draw(borde).rounded_rectangle((1, 1, logo.width - 2, logo.height - 2), int(min(logo.size) * 0.18),
+                                                outline=(255, 255, 255, 150), width=3)
+        lienzo.alpha_composite(borde, (int(x), int(y)))
+        return
     if necesita_placa(logo, fondo) or (era_claro and luminancia(fondo) < 0.2):
         placa = Image.new("RGBA", (logo.width + 40, logo.height + 28), (0, 0, 0, 0))
         ImageDraw.Draw(placa).rounded_rectangle((0, 0, placa.width - 1, placa.height - 1), 24,
@@ -423,11 +498,12 @@ def mejor_esquina(oferta, objeto, posicion, zona, texto_caja, limite, m):
     return mejor, menor / total
 
 
-def componer_poster(w, h, textos, producto, logo, colores, centrado, logo_claro=False):
+def componer_poster(w, h, textos, producto, logo, colores, centrado, logo_claro=False, logo_propio=False):
     """Un póster con ZONAS que no se pisan: marca → texto → héroe (producto + sello) → llamada a la acción.
     centrado=False: dos columnas de anuncio (texto a la izquierda, producto grande a la derecha).
     centrado=True: todo centrado, el producto grande abajo del titular y el sello en su esquina."""
     _, arriba, abajo, acento, texto_acento = colores
+    arriba, abajo = fondo_legible(arriba, abajo)
     lienzo = fondo_degradado(w, h, arriba, abajo)
     m = int(w * 0.065)
     alto_formato = h > w
@@ -443,8 +519,10 @@ def componer_poster(w, h, textos, producto, logo, colores, centrado, logo_claro=
     # 1) Marca arriba.
     y = m
     if logo is not None:
-        marca = ajustado(logo, w * (0.26 if dos_columnas else 0.3), w * 0.12)
-        poner_logo(lienzo, marca, (w - marca.width) // 2 if centrado else m, y, mezclar(arriba, abajo, 0.1), logo_claro)
+        alto_logo = w * (0.2 if logo_propio else 0.13)  # con su placa necesita más alto para leerse
+        marca = ajustado(logo, w * (0.3 if dos_columnas else 0.34), alto_logo)
+        poner_logo(lienzo, marca, (w - marca.width) // 2 if centrado else m, y, mezclar(arriba, abajo, 0.1), logo_claro,
+                   logo_propio)
         y += marca.height + int(34 * escala)
     else:
         letra = fuente("negrita", int(34 * escala))
@@ -528,14 +606,16 @@ def poster(http, inputs, parameters):
         producto = recorte if quitado else enmarcar(foto, 760)
         notas.append("le quité el fondo al producto" if quitado else "la foto tenía un fondo complejo y la enmarqué")
     logo_claro = logo is not None and fondo_claro(logo)
+    marca_fondo, logo_propio = None, False
     if logo is not None:
-        logo, quitado = sin_fondo(logo, tolerancia=48)
-        notas.append("limpié el fondo del logo" if quitado else "usé el logo tal cual")
+        logo, marca_fondo, logo_propio, nota = preparar_logo(logo)
+        notas.append(nota)
     w, h = FORMATOS[formato]
-    colores = paleta(estilo, logo, " ".join(textos.values()))
+    colores = paleta(estilo, logo, " ".join(textos.values()), marca_fondo)
     # Se arman los dos diseños con los colores de la marca y se entrega SOLO el mejor (la persona recibe
     # un póster bien hecho, no una elección). «poster_alternativo» queda en el contrato publicado.
-    disenos = sorted((componer_poster(w, h, textos, producto, logo, colores, centrado=c, logo_claro=logo_claro)
+    disenos = sorted((componer_poster(w, h, textos, producto, logo, colores, centrado=c, logo_claro=logo_claro,
+                                      logo_propio=logo_propio)
                       for c in (False, True)), key=lambda d: d[1], reverse=True)
     resumen = (f"Tu póster para «{textos['negocio']}» ({textos['oferta']}) está listo"
                + (f": {' y '.join(notas)}." if notas else "."))

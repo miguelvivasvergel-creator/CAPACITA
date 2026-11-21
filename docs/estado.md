@@ -92,6 +92,14 @@ Tres fallos, corregidos por su causa general (no para este pedido):
   resta mucho; titular grande suma). `planner_service.un_solo_poster` reemplaza a los gemelos: un envío
   del alternativo pasa a llevar «poster» o se quita si ya hay otro igual; las salidas muestran solo
   «poster». Contrato sin cambios (no requiere db/15 otra vez). 350 pruebas OK; revisado a ojo.
+- **Póster con archivos reales de Fahida (logo blanco sobre turquesa + dos conos):** el logo se
+  destrozaba (se le quitaba el fondo de color, «SOFT CREAM» se borraba) y el póster no usaba el color de
+  la marca. Reglas generales (371e1e1 y siguiente): el color del logo va de acento, no de fondo; placa
+  blanca u oscura según el contraste real del logo; `preparar_logo`: transparente → tal cual; sobre
+  blanco/claro neutro → sin fondo; sobre un color o fondo complejo → se conserva en su placa redondeada
+  y ese color es el fondo del póster; `fondo_legible`: un fondo de luminosidad media se profundiza en
+  el mismo tono (texto blanco nítido). Revisado a ojo con los archivos reales y 4 tipos de logo. 353
+  pruebas OK. Sin SQL nuevo; reiniciar backend y trabajador.
 - Pendiente: confirmar el correo en inglés en Gmail y la prueba completa por Telegram tras reiniciar.
 
 ### Fahida — 21/11/2026: bot de Telegram completo (tras 82b1ed5)
