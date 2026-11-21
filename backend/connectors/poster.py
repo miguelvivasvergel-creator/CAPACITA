@@ -179,10 +179,13 @@ def paleta(estilo, logo, textos):
         return (estilo, *map(rgb, ESTILOS[estilo]))
     marca = color_de_marca(logo) if logo is not None else None
     if marca:
-        oscuro = mezclar(marca, (8, 8, 16), 0.55)
-        candidatos = [rgb("#FFE45C"), (255, 255, 255), rgb("#FF4D6D"), rgb("#00E5A0")]
-        acento = max(candidatos, key=lambda c: contraste(c, mezclar(marca, oscuro, 0.5)))
-        return ("marca", marca, oscuro, acento, texto_sobre(acento))
+        # El color de la marca va de ACENTO (sello y botón), nunca de fondo: un logo rojo sobre un fondo
+        # rojo desaparece. Fondo: un tono muy oscuro de la misma marca (aspecto premium y on-brand).
+        arriba, abajo = mezclar(marca, (6, 6, 12), 0.72), mezclar(marca, (4, 4, 8), 0.9)
+        medio = mezclar(arriba, abajo, 0.5)
+        candidatos = [rgb("#FFE45C"), (255, 255, 255), rgb("#00E5A0"), rgb("#FF4D6D")]
+        acento = marca if contraste(marca, medio) >= 3.0 else max(candidatos, key=lambda c: contraste(c, medio))
+        return ("marca", arriba, abajo, acento, texto_sobre(acento))
     for nombre, patron in PISTAS:
         if re.search(patron, textos, re.I):
             return (nombre, *map(rgb, ESTILOS[nombre]))
@@ -350,14 +353,24 @@ def ajustado(imagen, max_w, max_h):
 # ---------- Composición ----------
 
 def necesita_placa(logo, fondo):
-    """¿El logo se perdería sobre ese fondo? (más del 12 % de su dibujo sin contraste suficiente)."""
+    """¿El logo se perdería sobre ese fondo? (más del 3 % de su dibujo sin contraste suficiente)."""
     chico = logo.copy()
     chico.thumbnail((90, 90))
     visibles = [p for p in pixeles(chico) if p[3] > 160]
     if not visibles:
         return False
     flojos = sum(1 for p in visibles if contraste(p, fondo) < 3.0)  # 3:1, el mínimo para gráficos (WCAG)
-    return flojos > 0.05 * len(visibles)
+    return flojos > 0.03 * len(visibles)
+
+
+def color_de_placa(logo):
+    """Placa blanca u oscura: la que más contraste da con los colores REALES del logo (una placa blanca
+    detrás de un logo blanco lo borraba igual que el fondo)."""
+    chico = logo.copy()
+    chico.thumbnail((90, 90))
+    visibles = [p for p in pixeles(chico) if p[3] > 160] or [(0, 0, 0, 255)]
+    mediana = lambda fondo: sorted(contraste(p, fondo) for p in visibles)[len(visibles) // 2]
+    return max([(255, 255, 255), (22, 22, 30)], key=mediana)
 
 
 def fondo_claro(imagen):
@@ -374,7 +387,8 @@ def fondo_claro(imagen):
 def poner_logo(lienzo, logo, x, y, fondo, era_claro=False):
     if necesita_placa(logo, fondo) or (era_claro and luminancia(fondo) < 0.2):
         placa = Image.new("RGBA", (logo.width + 40, logo.height + 28), (0, 0, 0, 0))
-        ImageDraw.Draw(placa).rounded_rectangle((0, 0, placa.width - 1, placa.height - 1), 24, fill=(255, 255, 255, 240))
+        ImageDraw.Draw(placa).rounded_rectangle((0, 0, placa.width - 1, placa.height - 1), 24,
+                                               fill=(*color_de_placa(logo), 240))
         lienzo.alpha_composite(placa, (int(x - 20), int(y - 14)))
     lienzo.alpha_composite(logo, (int(x), int(y)))
 
