@@ -224,3 +224,24 @@ class ItinerarioDeViajeTests(unittest.TestCase):
                      for k in claves}
         _, orden = compile_workflow(definicion.model_dump(mode="json"), versiones)
         self.assertEqual(orden.index("itinerario"), 8)  # después de las 8 consultas, antes de los envíos
+
+
+class SinDatoTests(unittest.TestCase):
+    """Una consulta que falla y solo alimenta a una IA no tumba la solución; con un envío directo sí."""
+
+    def test_suplente_solo_si_lo_usa_una_ia(self):
+        from services.workflow_engine import salida_suplente
+        con_ia = plan(CLIMA, ("ia", v("componer_texto@1"), {"instruccion": "Itinerario"}, {"dato_1": ("clima", "dias")}),
+                      ("fin", v("enviar_telegram@1"), {}, {"mensaje": ("ia", "resultado")}))
+        suplente = salida_suplente("clima", v("clima_pronostico@2"), "connector_provider_unavailable", con_ia)
+        self.assertIn("Dato no disponible: el servicio no respondió", suplente["dias"])
+        directo = plan(CLIMA, ("fin", v("enviar_telegram@1"), {}, {"mensaje": ("clima", "resumen")}))
+        self.assertIsNone(salida_suplente("clima", v("clima_pronostico@2"), "connector_provider_unavailable", directo))
+        # Si el texto termina en un correo con destinatario elegido (clientes, terceros), no se sigue:
+        # la persona aprobó el plan, no un texto con «dato no disponible».
+        a_otros = plan(CLIMA, ("ia", v("componer_texto@1"), {"instruccion": "Carta"}, {"dato_1": ("clima", "dias")}),
+                       ("fin", v("enviar_correo@2"), {"asunto": "Hola", "para": "cliente@example.com"},
+                        {"mensaje": ("ia", "resultado")}))
+        self.assertIsNone(salida_suplente("clima", v("clima_pronostico@2"), "connector_provider_unavailable", a_otros))
+        # La IA misma (o un envío) que falla nunca se reemplaza.
+        self.assertIsNone(salida_suplente("ia", v("componer_texto@1"), "connector_error", con_ia))

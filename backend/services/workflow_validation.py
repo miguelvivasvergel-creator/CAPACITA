@@ -6,6 +6,8 @@ from types import SimpleNamespace
 from fastapi import HTTPException
 from jsonschema import Draft202012Validator
 
+from services.ajuste_contratos import primer_error
+
 from connectors import BY_VERSION, PROFILE as CONNECTOR_PROFILE, from_manifest
 from schemas.workflows import WorkflowDefinition
 from services.build_validation import validate_manifest
@@ -114,7 +116,9 @@ def compile_workflow(raw, versions, inputs=None):
             raise HTTPException(409, "La versión no coincide con sus contratos")
         manifests[node.id] = manifest
         if not Draft202012Validator(manifest.definition.parameter_schema).is_valid(node.parameters):
-            raise HTTPException(422, f"Opciones incompatibles en el paso {node.id}")
+            # El campo y lo que se esperaba: con «Opciones incompatibles» a secas la IA no sabía qué corregir.
+            campo, esperado = primer_error(manifest.definition.parameter_schema, node.parameters)
+            raise HTTPException(422, f"Opciones incompatibles en el paso {node.id}: «{campo}» debe ser {esperado}")
         dependencies[node.id] = {binding.source for binding in node.bindings.values() if binding.source != "$input"}
     if any(dep not in nodes for dependencies_ in dependencies.values() for dep in dependencies_):
         raise HTTPException(422, "Una conexión apunta a un paso inexistente")
@@ -148,10 +152,13 @@ def compile_workflow(raw, versions, inputs=None):
             raise HTTPException(422, f"El paso {node.id} no tiene la entrada "
                                      f"{', '.join(sorted(supplied - set(schema.get('properties', {}))))}")
         for field, value in node.values.items():
-            if not Draft202012Validator(schema.get("properties", {}).get(field, {})).is_valid(value):
-                raise HTTPException(422, "Un valor fijo no cumple el contrato")
+            spec = schema.get("properties", {}).get(field, {})
+            if not Draft202012Validator(spec).is_valid(value):
+                _, esperado = primer_error(spec, value)
+                raise HTTPException(422, f"En el paso {node.id}, el valor fijo de «{field}» debe ser {esperado}")
         if not node.bindings and not Draft202012Validator(schema).is_valid(node.values):
-            raise HTTPException(422, "Las entradas fijas no cumplen el contrato completo")
+            campo, esperado = primer_error(schema, node.values)
+            raise HTTPException(422, f"En el paso {node.id}, las entradas fijas no cumplen el contrato: «{campo}» debe ser {esperado}")
         for field, binding in node.bindings.items():
             # Un destinatario (u otra entrada solo de la persona) nunca sale de otro paso: una página,
             # un Excel o la IA no pueden decidir a quién le escribe la persona.

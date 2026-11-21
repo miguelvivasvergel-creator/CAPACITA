@@ -10,6 +10,7 @@ Los errores son códigos fijos: nunca incluyen la respuesta del proveedor ni dat
 import ipaddress
 import json
 import socket
+import time
 from urllib.parse import urlsplit
 
 import httpx
@@ -53,12 +54,31 @@ def _reject_constant(_):
     raise ValueError("nonfinite_json")
 
 
+ESPERAS = (1.5, 4.0)  # segundos antes del 2.º y 3.er intento
+SIN_EFECTOS = {"generativelanguage.googleapis.com"}  # POST sin efectos fuera: se puede repetir
+# Tope de toda la petición con sus reintentos: tras un tiempo agotado (45 s) cabe a lo sumo uno más,
+# para que una consulta lenta no deje a la persona esperando minutos.
+ESPERA_TOTAL = 50
+FALLAS = {401: "provider_rejected", 403: "provider_rejected", 404: "not_found",
+          429: "provider_busy",  # límite de frecuencia del proveedor
+          400: "provider_rejected", 422: "provider_rejected"}
+
+
+def _espera(cabecera, normal):
+    """Respeta Retry-After si el proveedor pide esperar poco (hasta 10 s); si no, la pausa normal."""
+    try:
+        return min(max(float(cabecera), 0.5), 10.0) if cabecera else normal
+    except ValueError:
+        return normal
+
+
 class SafeHttp:
     """auth: (host, cabecera, valor) de la clave del sistema; solo viaja a ese host exacto."""
 
-    def __init__(self, hosts, max_requests, transport=None, resolver=socket.getaddrinfo, auth=None):
+    def __init__(self, hosts, max_requests, transport=None, resolver=socket.getaddrinfo, auth=None, sleep=time.sleep,
+                 clock=time.monotonic):
         self.hosts, self.remaining = frozenset(hosts), max_requests
-        self.transport, self.resolver = transport, resolver
+        self.transport, self.resolver, self.sleep, self.clock = transport, resolver, sleep, clock
         self._auth = auth
         self.calls = 0
 
@@ -112,28 +132,44 @@ class SafeHttp:
                 url = f"https://{parts.hostname}/bot{self._auth[2]}/" + url[len(base):]
             else:
                 headers[self._auth[1]] = self._auth[2]
+        # Reintentos de lo pasajero (antes una sola respuesta «ocupado» de Open-Meteo, OpenStreetMap o
+        # Gemini tumbaba toda la solución). Sin duplicar envíos: en un envío solo se repite el 429 (el
+        # proveedor pide esperar y no hizo nada) y no poder conectar; 5xx y tiempo agotado solo en
+        # lecturas (GET) o en la IA, que no tiene efectos fuera (un 503 de Gmail no garantiza que no
+        # saliera). Todo con un tope de ESPERA_TOTAL. No gastan el tope de peticiones del conector.
+        lectura = method == "GET" or parts.hostname in SIN_EFECTOS
+        inicio = self.clock()
+        for intento in range(len(ESPERAS) + 1):
+            pausa_normal = ESPERAS[min(intento, len(ESPERAS) - 1)]
+            espera, falla = None, None
+            try:
+                with httpx.Client(transport=self.transport, timeout=TIMEOUT_SECONDS, follow_redirects=False,
+                                  headers=headers) as client:
+                    with client.stream(method, url, params=params, content=content, data=data, files=files) as response:
+                        codigo = response.status_code
+                        if codigo == 200:
+                            cuerpo = bytearray()
+                            for chunk in response.iter_bytes():
+                                cuerpo.extend(chunk)
+                                if len(cuerpo) > MAX_RESPONSE_BYTES:
+                                    raise ConnectorFailure("invalid_response")
+                        else:
+                            falla = FALLAS.get(codigo, "provider_unavailable")
+                            if codigo == 429 or (lectura and codigo in (500, 502, 503, 504)):
+                                espera = _espera(response.headers.get("Retry-After"), pausa_normal)
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout):
+                falla, espera = "provider_unavailable", pausa_normal
+            except httpx.TimeoutException:
+                falla, espera = "provider_unavailable", (pausa_normal if lectura else None)
+            except httpx.HTTPError:
+                raise ConnectorFailure("provider_unavailable") from None
+            if falla is None:
+                break
+            # Sin más intentos, sin permiso para repetir o sin tiempo: se informa la falla de este intento.
+            if espera is None or intento >= len(ESPERAS) or self.clock() - inicio + espera > ESPERA_TOTAL:
+                raise ConnectorFailure(falla)
+            self.sleep(espera)
         try:
-            with httpx.Client(transport=self.transport, timeout=TIMEOUT_SECONDS, follow_redirects=False,
-                              headers=headers) as client:
-                with client.stream(method, url, params=params, content=content, data=data, files=files) as response:
-                    if response.status_code in (401, 403):
-                        raise ConnectorFailure("provider_rejected")
-                    if response.status_code == 404:
-                        raise ConnectorFailure("not_found")
-                    if response.status_code == 429:
-                        raise ConnectorFailure("provider_busy")  # límite de frecuencia del proveedor
-                    if response.status_code in (400, 422):
-                        raise ConnectorFailure("provider_rejected")
-                    if response.status_code != 200:
-                        raise ConnectorFailure("provider_unavailable")
-                    data = bytearray()
-                    for chunk in response.iter_bytes():
-                        data.extend(chunk)
-                        if len(data) > MAX_RESPONSE_BYTES:
-                            raise ConnectorFailure("invalid_response")
-        except httpx.HTTPError:
-            raise ConnectorFailure("provider_unavailable") from None
-        try:
-            return json.loads(bytes(data), parse_constant=_reject_constant)
+            return json.loads(bytes(cuerpo), parse_constant=_reject_constant)
         except (ValueError, RecursionError):
             raise ConnectorFailure("invalid_response") from None

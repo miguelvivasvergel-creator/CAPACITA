@@ -9,6 +9,8 @@ import time
 
 from jsonschema import Draft202012Validator
 
+from services.ajuste_contratos import ajustar_objeto, primer_error
+
 from connectors import PROFILE, ConnectorInputError, from_manifest
 from core.config import settings
 from services.connector_broker import TOKEN_EN_RUTA, ConnectorFailure, SafeHttp
@@ -58,10 +60,16 @@ def run_connector(job, transport=None, resolver=None, credentials=None, budget=N
         return "failed", report | {"error": "connector_mismatch"}, None
     report |= {"artifact_hash": connector.artifact_hash, "provider": connector.provider}
     definition = connector.definition
-    inputs, parameters = payload.get("inputs"), payload.get("parameters")
+    # Lo que llega de otros pasos o de la IA casi bien («300», «Cajeros», una lista donde va texto)
+    # se ajusta al contrato antes de validarlo; las opciones que faltan toman su valor por defecto.
+    inputs = ajustar_objeto(definition["input_schema"], payload.get("inputs"), quitar_extra=False)
+    parameters = ajustar_objeto(definition["parameter_schema"], payload.get("parameters") or {}, defaults=True,
+                                quitar_extra=False)
     for schema, value in ((definition["input_schema"], inputs), (definition["parameter_schema"], parameters)):
         if not isinstance(value, dict) or not Draft202012Validator(schema).is_valid(value):
-            return "failed", report | {"error": "input_contract"}, None
+            # Qué campo revisar (su nombre, nunca el valor): el chat lo dice en vez de un error genérico.
+            campo = primer_error(schema, value)[0] if isinstance(value, dict) else "entrada"
+            return "failed", report | {"error": "input_contract", "detail": campo[:40]}, None
     auth = None
     contexto = dict(job.get("context") or {})
     if connector.credential == "google":

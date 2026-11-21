@@ -234,9 +234,10 @@ class ConnectorTests(unittest.TestCase):
 
     def test_invalid_inputs_never_reach_provider(self):
         vistas = []
-        estado, reporte, _ = run_connector(trabajo(REGISTRY["festivos_pais@1"], {"anio": "2026"}, {"pais": "CO"}),
+        estado, reporte, _ = run_connector(trabajo(REGISTRY["festivos_pais@1"], {"anio": "dos mil"}, {"pais": "CO"}),
                                            transport=transporte(vistas=vistas), resolver=PUBLICA)
-        self.assertEqual((estado, reporte["error"], vistas), ("failed", "input_contract", []))
+        # «2026» como texto ya se ajusta a número; lo que no es un número se rechaza diciendo el campo.
+        self.assertEqual((estado, reporte["error"], reporte["detail"], vistas), ("failed", "input_contract", "anio", []))
 
     def test_bad_provider_output_fails_contract(self):
         malo = dict(RESPUESTAS, **{"date.nager.at": {"no": "lista"}})
@@ -437,6 +438,56 @@ class FechasTests(unittest.TestCase):
             self.assertEqual(leer_hora(texto), esperado, texto)
 
 
+class ReintentosTests(unittest.TestCase):
+    def http(self, respuestas, metodo_visto=None, reloj=None):
+        llamadas = []
+
+        def handler(request):
+            llamadas.append(request.method)
+            codigo, cabeceras = respuestas[min(len(llamadas) - 1, len(respuestas) - 1)]
+            return httpx.Response(codigo, headers=cabeceras, json={"ok": True})
+        esperas = []
+        cliente = SafeHttp(["api.open-meteo.com"], 1, transport=httpx.MockTransport(handler), resolver=PUBLICA,
+                           sleep=esperas.append, **({"clock": reloj} if reloj else {}))
+        return cliente, llamadas, esperas
+
+    def test_un_envio_con_503_no_se_repite_pero_con_429_si(self):
+        # Un 503 de Gmail no garantiza que el correo no saliera; un 429 sí dice «no hice nada, espera».
+        cliente, llamadas, _ = self.http([(503, {}), (200, {})])
+        with self.assertRaises(ConnectorFailure) as error:
+            cliente.post_json("https://api.open-meteo.com/x", {"a": 1})
+        self.assertEqual((error.exception.code, llamadas), ("provider_unavailable", ["POST"]))
+        cliente, llamadas, _ = self.http([(429, {}), (200, {})])
+        self.assertEqual(cliente.post_json("https://api.open-meteo.com/x", {"a": 1}), {"ok": True})
+        self.assertEqual(llamadas, ["POST", "POST"])
+
+    def test_tope_total_de_espera(self):
+        # Si ya pasó casi todo el tope (una consulta lenta), no se espera otra vez: se informa.
+        tiempos = iter([0.0, 50.5])  # (en las pruebas las pausas valen 0: ver tests/__init__.py)
+        cliente, llamadas, esperas = self.http([(503, {}), (200, {})], reloj=lambda: next(tiempos))
+        with self.assertRaises(ConnectorFailure):
+            cliente.get_json("https://api.open-meteo.com/v1/forecast")
+        self.assertEqual((len(llamadas), esperas), (1, []))
+
+    def test_ocupado_se_reintenta_y_respeta_retry_after(self):
+        cliente, llamadas, esperas = self.http([(503, {}), (429, {"Retry-After": "2"}), (200, {})])
+        self.assertEqual(cliente.get_json("https://api.open-meteo.com/v1/forecast"), {"ok": True})
+        self.assertEqual((len(llamadas), esperas[1]), (3, 2.0))
+        self.assertEqual(cliente.calls, 1)  # los reintentos no gastan el tope del conector
+
+    def test_un_envio_con_error_500_no_se_repite(self):
+        cliente, llamadas, _ = self.http([(500, {}), (200, {})])
+        with self.assertRaises(ConnectorFailure):
+            cliente.post_json("https://api.open-meteo.com/x", {"a": 1})
+        self.assertEqual(llamadas, ["POST"])
+
+    def test_sigue_ocupado_tras_los_reintentos(self):
+        cliente, llamadas, _ = self.http([(503, {})])
+        with self.assertRaises(ConnectorFailure) as error:
+            cliente.get_json("https://api.open-meteo.com/v1/forecast")
+        self.assertEqual((error.exception.code, len(llamadas)), ("provider_unavailable", 3))
+
+
 class TextoComoArchivoTests(unittest.TestCase):
     def test_texto_en_archivo_se_suma_al_mensaje(self):
         import base64
@@ -495,6 +546,27 @@ def ejecutar_tg(inputs, chat=555, vistas=None, ok=True):
                          credentials=TOKEN_TG)
 
 
+class RecorteTelegramTests(unittest.TestCase):
+    def test_recorta_al_final_de_una_linea_con_aviso(self):
+        from connectors.telegram import RECORTADO, recortar
+        texto = "\n".join(f"- **Lugar {n}** · a {n * 10} m" for n in range(200))
+        corto = recortar(texto, 1000)
+        self.assertLessEqual(len(corto), 1000)
+        self.assertTrue(corto.endswith(RECORTADO))
+        self.assertTrue(corto[:-len(RECORTADO)].rstrip().endswith(" m"))  # ninguna línea ni negrita a medias
+        self.assertEqual(recortar("Hola", 1000), "Hola")
+        self.assertEqual(recortar("Hola", 1000, siempre=True), "Hola" + RECORTADO)
+
+
+class RepartirTests(unittest.TestCase):
+    def test_los_cortos_quedan_completos_y_el_largo_usa_lo_que_sobra(self):
+        from connectors.ia import repartir
+        datos = repartir([(1, "x" * 50000), (2, "clima: soleado")], 30000)
+        self.assertEqual(datos[1], (2, "clima: soleado"))
+        self.assertGreater(len(datos[0][1]), 29000)
+        self.assertLessEqual(sum(len(valor) for _, valor in datos), 30000 + 20)
+
+
 class TelegramTests(unittest.TestCase):
     def test_token_goes_only_in_the_path_and_chat_comes_from_context(self):
         vistas = []
@@ -504,7 +576,7 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(json.loads(vistas[0].content)["chat_id"], 555)
         cuerpo = json.loads(vistas[0].content)
         self.assertEqual(cuerpo["parse_mode"], "HTML")
-        self.assertTrue(cuerpo["text"].startswith("<b>Capacita</b>\n\nTu informe está listo"))
+        self.assertIn("<b>Capacita</b>\n┈┈┈┈┈┈┈┈┈┈\n\nTu informe está listo", cuerpo["text"])
         # Lo que llega de otros pasos se escapa: no puede inyectar formato ni enlaces.
         vistas = []
         ejecutar_tg({"mensaje": 'Hola <b>x</b> <a href="https://evil.example">clic</a>'}, vistas=vistas)
@@ -520,6 +592,14 @@ class TelegramTests(unittest.TestCase):
         # Una entrada «chat_id» no existe en el contrato: no se puede apuntar a otra persona.
         estado, reporte, _ = ejecutar_tg({"mensaje": "hola", "chat_id": 999})
         self.assertEqual(reporte["error"], "input_contract")
+
+    def test_very_long_message_is_trimmed_not_failed(self):
+        vistas = []
+        largo = "\n".join(f"- Línea {n} del itinerario con algo de texto" for n in range(800))  # ~33.000 caracteres
+        estado, reporte, salida = ejecutar_tg({"mensaje": largo}, vistas=vistas)
+        self.assertEqual(estado, "completed", reporte)
+        self.assertLessEqual(len(vistas), 5)  # nunca más que el tope del conector
+        self.assertIn("Mensaje recortado", json.loads(vistas[-1].content)["text"])
 
     def test_file_with_caption_and_long_text_in_chunks(self):
         vistas = []

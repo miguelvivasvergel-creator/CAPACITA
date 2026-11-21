@@ -4,6 +4,49 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 20/11/2026: robustez de la IA y de la ejecución (sin commit; tras 5c5cfca)
+
+Revisión de punta a punta (plan → validación → ejecución) por clases de error, no casos sueltos:
+- **Reintentos de lo pasajero** (`connector_broker`): 429/503 y no poder conectar se reintentan 2 veces
+  (1,5 s y 4 s, respeta Retry-After ≤ 10 s); 500/502/504 y tiempo agotado solo en lecturas (GET) o la
+  IA, para no duplicar envíos. No gastan el tope de peticiones. Gemini (planner): el 429 por minuto
+  espera lo que indica Google (≤ 25 s) y reintenta; la cuota diaria se informa; 502/504 también.
+- **Ajuste a contratos** (`services/ajuste_contratos.py`): «300» → 300, «Cajeros» → «cajero», «usd» →
+  «USD», listas a texto legible, opciones faltantes con su default. En el planner (`reparar_plan`,
+  antes de revisar) y al ejecutar cada conector; al ejecutar NO se quitan entradas desconocidas (se
+  siguen rechazando: nadie apunta un envío a otra persona). Errores con campo y valor esperado
+  («Opciones incompatibles en el paso X: «que» debe ser una de: …»), también `input_contract.detail`.
+- **Consulta caída no tumba la solución** (`workflow_engine.salida_suplente`): si falla una consulta de
+  datos sin credenciales y TODO lo que usa su resultado es una IA que escribe, sigue con «Dato no
+  disponible: <motivo>» y la IA lo menciona; nunca con envíos, guardados, la IA misma ni herramientas
+  propias. Reporte `avisos` y aviso en la tarjeta del resultado.
+- **Textos largos**: IA con 8192 tokens de salida; componer recorta cada dato a su parte; Telegram
+  recorta con aviso en vez de fallar y nunca pasa de 5 envíos.
+- **Planner**: `recortar_usos` (nunca más de 12 pasos; no quita envíos ni componer); «blocked» ya no
+  abre la fábrica: tarjeta con reintentar / crear herramienta.
+- **Correcciones tras revisar el diff** (mismo día): «300.000» se leía 300 (ahora punto de miles como en
+  Colombia: 300000; «1.500,50» → 1500.5; «1,500» se deja sin convertir por dudoso). El «dato no
+  disponible» ya no sigue si el texto termina, directo o tras otros pasos, en un correo con
+  destinatario elegido (`llega_a_otra_persona`: entradas `solo_persona`). Los envíos solo se reintentan
+  con 429 o sin conexión (un 503 de Gmail no garantiza que no saliera). Tope de espera: 50 s por
+  petición del broker con sus reintentos y 30 s de pausas por llamada de Gemini; un 429 ilegible no se
+  espera. Telegram recorta en un final de línea. `componer` deja completos los datos cortos y recorta
+  solo los largos (`repartir`).
+- Validación: 304 pruebas OK, lint y build OK. **Sin probar con servicios reales.** Sin cambios de
+  contrato (no requiere db/15); reiniciar backend y trabajador.
+
+### Fahida — 20/11/2026: Telegram con formato bonito según el contenido (sin commit; tras 5c5cfca)
+
+- Fahida confirmó que el itinerario Valledupar → Cartagena funcionó completo (Drive, calendario y
+  Telegram); se hizo el commit `5c5cfca` con todo lo anterior.
+- `telegram_html` (`connectors/formato.py`): íconos por sección según el título (📅 día, ✈️ viaje,
+  🌤️ clima, 🌅 atardecer, 💵 dinero, 💊 farmacias, 🏧 cajeros, 🍽️ comida, 💡 consejos…), viñetas ▫️,
+  números 1️⃣…🔟, tablas como tarjetas por fila («▸ **Droguería** · Tipo: Farmacia · Distancia: 120 m»),
+  citas largas desplegables (`blockquote expandable`) y encabezado/pie con separador. Académico sin
+  ningún emoji; formal solo con íconos en los títulos. El estilo se elige una vez por mensaje para
+  que sus trozos se vean iguales. El contenido sigue escapado (los íconos los pone Capacita).
+- Validación: 287 pruebas OK. **Sin probar en Telegram real.** Reiniciar trabajador para verlo.
+
 ### Fahida — 20/11/2026: juntar varios datos en una sola IA y chat más legible (sin commit)
 
 - **Causa del fallo del itinerario Valledupar → Cartagena:** cada entrada de un paso recibe UNA sola

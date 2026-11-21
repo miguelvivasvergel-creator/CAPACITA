@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from repositories.candidates import CandidateRepository
 from repositories.shared_execution import SharedExecutionRepository
 from schemas.planner import PlannerProposal
+from services.ajuste_contratos import ajustar_objeto
 from services.build_validation import validate_manifest
 from services.candidate_generation import limiter
 from services.objective_service import search_catalog, search_terms
@@ -290,6 +291,7 @@ async def elegir_piezas(objective, options, provider):
         # entendió): decide el paso 2 con el respaldo, que puede preguntar (clarify) o proponer crear.
         return respaldo
     agregar_componer(usos, para_que, por_id)
+    recortar_usos(usos)
     elegidas = [por_id[identidad] | {"usos": usos[identidad], "para_que": para_que[identidad]}
                 for identidad in list(usos)[:12]]
     return elegidas, {row["id"]: row["usos"] for row in elegidas}, falta
@@ -319,6 +321,41 @@ def agregar_componer(usos, para_que, por_id):
         para_que.pop(sobra, None)
     usos[componer] = 1
     para_que[componer] = "Juntar en un solo texto los datos de los otros pasos"
+
+
+MAX_PASOS = 12  # WorkflowDefinition y db/08 (save_private_workflow) admiten hasta 12 pasos
+
+
+def recortar_usos(usos):
+    """Si la IA eligió más usos de los que caben (cinco idiomas × tres envíos), el plan no se podía
+    armar y usos_incompletos exigía pasos imposibles. Se baja de a uno la pieza más repetida hasta
+    que quepan; si aun así sobran piezas de un uso, se quitan las últimas elegidas."""
+    while sum(usos.values()) > MAX_PASOS:
+        mayor = max(usos, key=usos.get)
+        if usos[mayor] > 1:
+            usos[mayor] -= 1
+            continue
+        # Nunca se quitan los envíos ni la IA que junta los datos: son lo que la persona pidió recibir.
+        clave = lambda identidad: getattr(BY_VERSION.get(identidad), "key", None)
+        prescindibles = [i for i in usos if clave(i) not in ACCIONES | {"componer_texto"}] or list(usos)
+        usos.pop(prescindibles[-1])
+
+
+def reparar_plan(definition, options):
+    """Arreglos seguros antes de revisar el plan, con los contratos de cada pieza: opciones que faltan
+    con su valor por defecto, «Cajeros» → «cajero», «300» → 300, entradas que la pieza no tiene fuera y,
+    si un campo tiene valor fijo y además conexión, gana la conexión. Lo que no se puede arreglar sin
+    adivinar se deja: la validación lo explica y la IA lo corrige en el siguiente intento."""
+    contratos = {str(row["id"]): row for row in options}
+    for node in definition.nodes:
+        row = contratos.get(str(node.version_id))
+        if not row:
+            continue
+        entrada = row.get("input_schema") or {}
+        node.parameters = ajustar_objeto(row.get("parameter_schema") or {}, dict(node.parameters or {}), defaults=True)
+        if entrada.get("additionalProperties") is False:
+            node.bindings = {campo: b for campo, b in node.bindings.items() if campo in entrada.get("properties", {})}
+        node.values = ajustar_objeto(entrada, {k: v for k, v in node.values.items() if k not in node.bindings})
 
 
 def errores_del_plan(error):
@@ -390,6 +427,7 @@ async def propose_plan(request, catalog, provider, limits=limiter):
                                 + ". Usa solo los id de versions.")
                     continue
                 raise HTTPException(502, "La propuesta incluye una versión no seleccionada; no se guardó")
+            reparar_plan(proposal.definition, options)
             if destinatarios_no_escritos(proposal.definition, request.objective):
                 aviso = "No vi esa dirección de correo escrita en tu pedido, así que el correo te llega a ti. "
                 proposal.explanation = (aviso + proposal.explanation)[:1200]

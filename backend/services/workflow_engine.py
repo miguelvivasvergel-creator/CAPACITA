@@ -5,6 +5,64 @@ from services.contract_validation import DATA_BYTES
 from services.workflow_validation import bounded_json, compile_workflow
 
 
+ESCRIBEN = {"redactar_texto", "tarea_texto", "resumir_texto", "traducir_texto", "componer_texto"}
+MOTIVOS = {"connector_provider_unavailable": "el servicio no respondió", "connector_provider_busy": "el servicio estaba ocupado",
+           "connector_not_found": "no encontró resultados", "connector_input": "no reconoció el dato pedido",
+           "input_contract": "el dato pedido no tenía el formato esperado",
+           "connector_invalid_response": "el servicio respondió algo inesperado"}
+
+
+def llega_a_otra_persona(inicio, definition):
+    """¿Lo que sale de estos pasos termina, directo o tras otros pasos, en un envío con destinatario
+    elegido (el correo «para»: entradas solo_persona)? Un texto con «dato no disponible» puede llegar al
+    Telegram, al Drive o al correo de la propia persona, pero nunca a clientes o terceros sin que ella
+    lo vea antes: la aprobación es del plan, no de ese texto."""
+    from connectors import BY_VERSION
+
+    pendientes, vistos = list(inicio), set()
+    while pendientes:
+        actual = pendientes.pop()
+        if actual in vistos:
+            continue
+        vistos.add(actual)
+        nodo = next((n for n in definition.nodes if n.id == actual), None)
+        if nodo is not None and getattr(BY_VERSION.get(str(nodo.version_id)), "solo_persona", ()):
+            return True
+        pendientes.extend(n.id for n in definition.nodes
+                          if any(b.source == actual for b in n.bindings.values()))
+    return False
+
+
+def salida_suplente(identity, version_id, error, definition):
+    """Si falla una CONSULTA de datos (sin credenciales: clima, lugares, festivos…) y todo lo que usa su
+    resultado es una IA que escribe, la solución sigue con «dato no disponible» y la IA lo menciona en
+    una frase (antes: una caída de OpenStreetMap cancelaba el itinerario entero). Nunca con envíos,
+    guardados, la IA misma ni herramientas propias: ahí un dato faltante sí debe detener todo.
+    Devuelve la salida suplente o None."""
+    from connectors import BY_VERSION
+
+    conector = BY_VERSION.get(version_id)
+    if conector is None or conector.credential or conector.sends_content:
+        return None
+    usos = [(node, campo, binding) for node in definition.nodes for campo, binding in node.bindings.items()
+            if binding.source == identity]
+    if not usos or any(getattr(BY_VERSION.get(str(node.version_id)), "key", None) not in ESCRIBEN for node, _, _ in usos):
+        return None
+    if any(binding.source == identity for binding in definition.outputs.values()):
+        return None
+    if llega_a_otra_persona({node.id for node, _, _ in usos}, definition):
+        return None
+    aviso = f"(Dato no disponible: {MOTIVOS.get(error, 'la consulta falló')}. Menciónalo en una frase sin inventarlo.)"
+    salida = {}
+    for node, campo, binding in usos:
+        # Lo que recibe la IA: un texto (o un dato sin tipo) lleva el aviso para que lo mencione.
+        destino = BY_VERSION[str(node.version_id)].definition["input_schema"].get("properties", {}).get(campo, {})
+        if destino.get("type") not in ("string", None):
+            return None
+        salida[binding.field] = aviso
+    return salida
+
+
 def summary(output):
     """El reporte (64 KiB) muestra los archivos como tamaño; el contenido viaja solo entre pasos."""
     return {key: f"📎 archivo ({len(value) * 3 // 4 // 1024} KB)" if isinstance(value, str) and len(value) > 2000 else value
@@ -65,6 +123,14 @@ def execute_workflow(job, runner, progress=None):
             step.update(status="failed", error=details.get("error", "step_failed"))
             if details.get("detail"):
                 step["detail"] = details["detail"]  # qué dato revisar (código fijo, nunca el valor)
+            suplente = salida_suplente(identity, str(node.version_id), step["error"], definition)
+            if suplente is not None:
+                # Sigue sin ese dato: el paso queda marcado y el aviso va en el reporte.
+                step["sin_dato"] = True
+                report.setdefault("avisos", []).append(identity)
+                outputs[identity] = suplente
+                checkpoint()
+                continue
             for later in steps[index + 1:]:
                 later["status"] = "skipped"
             checkpoint()

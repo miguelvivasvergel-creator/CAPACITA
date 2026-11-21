@@ -11,6 +11,7 @@ por sección) o general (la identidad de Capacita).
 """
 import html
 import re
+import unicodedata
 
 TITULO = re.compile(r"^(#{1,6})\s+(.+?)\s*#*$")
 VINETA = re.compile(r"^[-*•]\s+(.*)$")
@@ -286,25 +287,92 @@ def texto_plano(texto):
 
 
 # ---------- Telegram (HTML limitado: b, i, blockquote) ----------
+# Telegram no tiene tablas ni colores: el estilo se da con íconos por sección, números con emoji y
+# tablas como tarjetas por fila. Lo académico va sin emojis y lo formal solo con íconos de sección. Los íconos los
+# pone Capacita según el título; el contenido sigue escapado y nunca agrega etiquetas propias.
 
-def telegram_html(texto):
+ICONOS = [  # (raíces sin tildes en el título, ícono): gana la primera que aparezca
+    (("dia ", "dia ", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"), "📅"),
+    (("viaje", "vacaciones", "escapada"), "✈️"),
+    (("clima", "tiempo", "lluvia", "temperatura", "pronostico"), "🌤️"),
+    (("atardecer", "amanecer", "puesta de sol"), "🌅"),
+    (("aire",), "🍃"),
+    (("festivo", "feriado", "celebraci"), "🎉"),
+    (("dinero", "presupuesto", "pesos", "dolar", "trm", "cambio", "costo", "precio", "gasto"), "💵"),
+    (("farmacia", "salud", "medic"), "💊"),
+    (("cajero", "banco"), "🏧"),
+    (("comida", "restaurante", "almuerzo", "cena", "desayuno", "gastronom", "menu"), "🍽️"),
+    (("hotel", "alojamiento", "hospedaje"), "🏨"),
+    (("playa", "isla", "mar "), "🏖️"),
+    (("transporte", "llegada", "regreso", "vuelo", "bus ", "traslado"), "🚌"),
+    (("promo", "oferta", "descuento", "2x1"), "🔥"),
+    (("consejo", "tip", "recomend", "importante", "nota", "ten en cuenta"), "💡"),
+    (("contacto", "emergencia", "telefono"), "📞"),
+    (("horario", "hora", "agenda", "cronograma"), "🕒"),
+    (("lugar", "visitar", "ruta", "mapa", "recorrido", "servicios"), "📍"),
+    (("resumen", "conclusi", "itinerario", "plan"), "🗒️"),
+]
+NUMEROS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+SOBRIOS = {"academico", "formal"}
+
+
+def _sin_tildes(texto):
+    return unicodedata.normalize("NFD", str(texto)).encode("ascii", "ignore").decode().lower()
+
+
+def icono_de(titulo, nivel):
+    plano = _sin_tildes(sin_marcas(titulo)) + " "
+    for raices, icono in ICONOS:
+        if any(raiz in plano for raiz in raices):
+            return icono
+    return "🔹" if nivel <= 2 else "▸"
+
+
+def estilo_telegram(texto):
+    return elegir_estilo("", texto)
+
+
+def telegram_html(texto, estilo=None):
+    estilo = estilo or estilo_telegram(texto)
+    # Académico: sin ningún emoji. Formal (un informe, un presupuesto): íconos solo en los títulos.
+    sobrio = estilo in SOBRIOS
     partes = []
     for tipo, datos in bloques(texto):
         if tipo == "titulo":
-            partes.append(f"<b>{en_linea(datos[1])}</b>")
+            nivel, titulo = datos
+            marca = "" if estilo == "academico" else icono_de(titulo, nivel) + " "
+            partes.append(f"{marca}<b>{en_linea(titulo)}</b>")
         elif tipo == "parrafo":
             partes.append("\n".join(en_linea(x) for x in datos))
         elif tipo == "lista":
-            partes.append("\n".join("• " + en_linea(x) for x in datos))
+            partes.append("\n".join(("• " if sobrio else "▫️ ") + en_linea(x) for x in datos))
         elif tipo == "numerada":
-            partes.append("\n".join(f"{n}. {en_linea(x)}" for n, x in enumerate(datos, 1)))
+            partes.append("\n".join((f"{n}." if sobrio or n > len(NUMEROS) else NUMEROS[n - 1]) + " " + en_linea(x)
+                                    for n, x in enumerate(datos, 1)))
         elif tipo == "cita":
-            partes.append("<blockquote>" + "\n".join(en_linea(x) for x in datos) + "</blockquote>")
+            cuerpo = "\n".join(en_linea(x) for x in datos)
+            # Una cita larga se despliega al tocarla: no ocupa toda la pantalla del celular.
+            partes.append(("<blockquote expandable>" if len(cuerpo) > 400 else "<blockquote>") + cuerpo + "</blockquote>")
         elif tipo == "tabla":
-            partes.append(_filas_tabla(datos, en_linea, lambda x: f"<b>{x}</b>", "• "))
+            partes.append(tabla_telegram(datos, sobrio))
         else:
-            partes.append("———")
+            partes.append("┈┈┈┈┈┈┈┈┈┈")
     return "\n\n".join(partes)
+
+
+def tabla_telegram(datos, sobrio=False):
+    """Cada fila como una tarjeta: la primera celda en negrita y las demás con su encabezado."""
+    encabezado, filas = datos
+    tarjetas = []
+    for fila in filas:
+        if not fila:
+            continue
+        primera = f"{'•' if sobrio else '▸'} <b>{en_linea(fila[0])}</b>"
+        resto = [(encabezado[i] if encabezado and i < len(encabezado) else "", celda) for i, celda in enumerate(fila[1:], 1)]
+        detalle = " · ".join(f"{en_linea(nombre)}: {en_linea(celda)}" if nombre else en_linea(celda)
+                             for nombre, celda in resto if str(celda).strip())
+        tarjetas.append(primera + (f"\n    {detalle}" if detalle else ""))
+    return "\n".join(tarjetas)
 
 
 def trozos(texto, maximo):

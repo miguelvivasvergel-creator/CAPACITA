@@ -91,8 +91,34 @@ class GeminiProviderTests(unittest.IsolatedAsyncioTestCase):
                 await self.provider(handle).generate(self.definition)
             self.assertEqual(caught.exception.status_code, 503)
             self.assertNotIn("test-only-secret", caught.exception.detail)
-            # Solo "servicio ocupado" se reintenta (2 pausas cortas); lo demás nunca.
-            self.assertEqual(len(calls), 3 if status == 500 else 1)
+            # "Servicio ocupado" se reintenta (3 pausas cortas); un 429 que no se puede leer podría ser la
+            # cuota diaria y no se espera a ciegas; lo demás nunca.
+            self.assertEqual(len(calls), 4 if status == 500 else 1)
+
+    async def test_daily_quota_is_not_retried_but_per_minute_waits_what_google_says(self):
+        from providers.gemini import espera_429
+        diaria = {"error": {"details": [{"violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel"}]},
+                                        {"retryDelay": "3s"}]}}
+        minuto = {"error": {"details": [{"violations": [{"quotaId": "GenerateRequestsPerMinutePerProjectPerModel"}]},
+                                        {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "17s"}]}}
+        self.assertIsNone(espera_429(json.dumps(diaria).encode()))
+        self.assertEqual(espera_429(json.dumps(minuto).encode()), 18)
+        self.assertIsNone(espera_429(json.dumps({"error": {"details": [{"retryDelay": "90s"}]}}).encode()))
+        self.assertIsNone(espera_429(b"no es json"))
+
+    async def test_las_pausas_de_una_llamada_tienen_tope(self):
+        # Dos esperas de 18 s pasan del tope de 30 s: la segunda no se hace y se informa.
+        calls, pauses = [], []
+        async def sleep(seconds):
+            pauses.append(seconds)
+        minuto = {"error": {"details": [{"retryDelay": "17s"}]}}
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(429, json=minuto)
+        with self.assertRaises(HTTPException) as caught:
+            await GeminiProvider(self.configuration, httpx.MockTransport(handle), sleep=sleep).generate(self.definition)
+        self.assertEqual((len(calls), pauses), (2, [18]))
+        self.assertIn("muy ocupado", caught.exception.detail)
 
     async def test_malformed_blocked_truncated_and_oversized_responses_fail(self):
         for body in ({}, response(finish="MAX_TOKENS"), {"candidates": None}, response(source="")):

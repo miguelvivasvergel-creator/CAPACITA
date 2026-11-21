@@ -20,7 +20,33 @@ from services.contract_validation import validate_definition
 MAX_RESPONSE_BYTES = 262144
 # Solo "servicio ocupado" de Google (500/503) se reintenta, con pausas cortas.
 # Cuota, configuración y tiempo agotado nunca se reintentan.
-BUSY_BACKOFF_SECONDS = (2, 5)
+BUSY_BACKOFF_SECONDS = (2, 5, 10)
+MAX_ESPERA_429 = 25  # segundos: más que eso no se espera (la persona ve el aviso y reintenta)
+# Tope de todas las pausas de UNA llamada: el planner hace varias seguidas y, sin tope, un pedido en el
+# chat podía quedar minutos sin respuesta (tres esperas de 26 s por cada llamada).
+MAX_ESPERA_TOTAL = 30
+
+
+def espera_429(cuerpo):
+    """Segundos a esperar si el 429 es el límite POR MINUTO (Google indica retryDelay); None si es la
+    cuota diaria o si pide esperar demasiado."""
+    try:
+        error = json.loads(cuerpo).get("error", {})
+    except (ValueError, AttributeError, TypeError):
+        return None  # sin poder leerla podría ser la cuota diaria: se informa en vez de esperar a ciegas
+    detalles = error.get("details") or []
+    texto = json.dumps(detalles)
+    if "PerDay" in texto or "per_day" in texto.lower():
+        return None
+    for detalle in detalles:
+        demora = str((detalle or {}).get("retryDelay") or "")
+        if demora.endswith("s"):
+            try:
+                segundos = float(demora[:-1])
+            except ValueError:
+                break
+            return segundos + 1 if segundos <= MAX_ESPERA_429 else None
+    return 5.0
 # Lo que hay dentro de cada archivo de muestra (public/muestras): sin esto, Gemini inventaba
 # columnas («TotalVentas») que la hoja de prueba no tiene y la herramienta fallaba siempre.
 MUESTRAS_INFO = """Archivos de muestra con que se prueban los ejemplos: MUESTRA:foto es una foto JPEG
@@ -508,6 +534,7 @@ Elige TODAS las piezas que hacen falta para cumplir el pedido COMPLETO y cuánta
     async def _send(self, payload: dict, model: str, timeout: float, *, retry=True) -> dict:
         key = self.configuration.GEMINI_API_KEY.get_secret_value()
         backoff = BUSY_BACKOFF_SECONDS if retry else ()
+        dormido = 0.0
         for attempt in range(len(backoff) + 1):
             busy = False
             try:
@@ -519,12 +546,17 @@ Elige TODAS las piezas que hacen falta para cumplir el pedido COMPLETO y cuánta
                         "POST", f"/v1beta/models/{model}:generateContent",
                         headers={"x-goog-api-key": key}, json=payload,
                     ) as response:
+                        pausa = None
                         if response.status_code == 429:
-                            raise HTTPException(503, "Gemini alcanzó su cuota. Revisa el nivel gratuito; no se reintentó la generación")
+                            # El nivel gratuito tiene límite POR MINUTO (se libera en segundos: se espera y
+                            # se reintenta) y POR DÍA (eso sí es cuota agotada: se informa).
+                            pausa = espera_429(await response.aread())
+                            if pausa is None or attempt >= len(backoff):
+                                raise HTTPException(503, "Gemini alcanzó su cuota. Revisa el nivel gratuito; no se reintentó la generación")
                         if response.status_code in {400, 401, 403, 404}:
                             raise HTTPException(503, "Gemini rechazó la configuración. Revisa clave, acceso y modelo del backend")
-                        busy = response.status_code in {500, 503} and attempt < len(backoff)
-                        if response.status_code in {500, 503} and not busy:
+                        busy = (response.status_code in {500, 502, 503, 504} or pausa is not None) and attempt < len(backoff)
+                        if response.status_code in {500, 502, 503, 504} and not busy:
                             raise HTTPException(503, "Gemini está muy ocupado en este momento. Intenta de nuevo en un minuto; no se generó nada")
                         if response.status_code != 200 and not busy:
                             raise HTTPException(503, "Gemini no está disponible; no se generó un candidato válido")
@@ -537,7 +569,11 @@ Elige TODAS las piezas que hacen falta para cumplir el pedido COMPLETO y cuánta
                 raise HTTPException(503, "No se pudo conectar con Gemini; no se reintentó la generación") from None
             if not busy:
                 break
-            await self.sleep(backoff[attempt])
+            espera = pausa if pausa is not None else backoff[attempt]
+            if dormido + espera > MAX_ESPERA_TOTAL:
+                raise HTTPException(503, "Gemini está muy ocupado en este momento. Intenta de nuevo en un minuto; no se generó nada")
+            dormido += espera
+            await self.sleep(espera)
         try:
             body = json.loads(data)
             if not isinstance(body, dict):

@@ -151,7 +151,26 @@ class TelegramFormatoTests(unittest.TestCase):
         self.assertIn("<b>Plan semanal Sabor Vallenato</b>", salida)
         self.assertIn("<b>mucho calor</b>", salida)
         self.assertIn("<blockquote>¡Combate el calor", salida)
-        self.assertIn("• Jueves · Soleado · Bebidas frías", salida)
+        # Promoción: íconos por sección y la tabla como tarjetas (la primera celda en negrita).
+        self.assertIn("🗒️ <b>Plan semanal Sabor Vallenato</b>", salida)
+        self.assertIn("📅 <b>Jueves · 34 °C</b>", salida)
+        self.assertIn("▸ <b>Jueves</b>\n    Clima: Soleado · Promoción: Bebidas frías", salida)
+
+    def test_telegram_sober_for_academic_and_icons_for_trips(self):
+        academico = telegram_html("## Marco teórico\n- Autores citados en APA\n1. Hipótesis", estilo="academico")
+        self.assertEqual(academico, "<b>Marco teórico</b>\n\n• Autores citados en APA\n\n1. Hipótesis")
+        viaje = telegram_html("## Día 1: llegada\n## Presupuesto\n## Farmacias cerca\n## Atardecer\n1. Murallas\n2. Getsemaní")
+        for esperado in ("📅 <b>Día 1: llegada</b>", "💵 <b>Presupuesto</b>", "💊 <b>Farmacias cerca</b>",
+                         "🌅 <b>Atardecer</b>", "1️⃣ Murallas\n2️⃣ Getsemaní"):
+            self.assertIn(esperado, viaje)
+        self.assertIn("<blockquote expandable>", telegram_html("> " + "texto largo " * 50))
+
+    def test_telegram_message_has_header_and_footer_in_one_style(self):
+        from connectors.telegram import formatear
+        salida = formatear("## Día 1\n- Playa", estilo="general")
+        self.assertTrue(salida.startswith("✨ <b>Capacita</b>"))
+        self.assertTrue(salida.endswith("<i>Enviado por Capacita a tu chat.</i>"))
+        self.assertTrue(formatear("Hola", estilo="academico").startswith("<b>Capacita</b>"))
 
     def test_chunks_keep_tags_balanced(self):
         texto = "\n".join(f"- **Línea {n}** con algo de texto para llenar" for n in range(400))

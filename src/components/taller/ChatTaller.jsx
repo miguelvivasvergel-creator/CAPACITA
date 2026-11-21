@@ -141,7 +141,10 @@ const ERRORES = {
 function explicarError(report) {
   const paso = report?.steps?.find((step) => step.status === 'failed');
   if (paso?.error === 'connector_input' && DETALLES_IA[paso.detail]) return DETALLES_IA[paso.detail];
-  if (paso?.error === 'connector_input') return `Revisa ${DATO[paso.detail] || 'los datos'} en el paso «${paso.label}»`;
+  // input_contract trae el campo que no encajó (su nombre, nunca el valor): se nombra en vez de un error genérico.
+  if (paso?.error === 'connector_input' || (paso?.error === 'input_contract' && paso.detail)) {
+    return `Revisa ${DATO[paso.detail] || (paso.detail ? `«${etiquetaLegible(paso.detail)}»` : 'los datos')} en el paso «${paso.label}»`;
+  }
   const codigo = paso?.error || report?.error;
   return ERRORES[codigo] || (paso ? `Falló el paso «${paso.label}»` : codigo);
 }
@@ -531,10 +534,11 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       } else if (proposal.decision === 'create') {
         agregar({ de: 'capacita', tipo: 'faltan', faltan: proposal.missing });
       } else {
-        // El planner a veces marca "blocked" cuando solo falta una herramienta. El
-        // diseñador tiene sus propios controles y bloquea si de verdad hace falta algo externo.
+        // "blocked": la IA ya explicó arriba qué falta. Antes se saltaba a fabricar una herramienta,
+        // que no puede enviar ni consultar servicios y terminaba igual en «Aquí me detengo» tras
+        // gastar búsqueda y cuota. Ahora la persona elige: reformular o intentar crear una.
         if (usarRecienCreada()) return;
-        await disenar(objetivo, 'Ninguna de tus herramientas sirve para esto. Con lo que investigué, diseño una nueva…', true);
+        agregar({ de: 'capacita', tipo: 'planFallo', estado, bloqueado: true });
       }
     } catch (cause) {
       if (!controller.signal.aborted) {
@@ -742,8 +746,8 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
           className="mt-2 min-h-11 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-red-800 ring-1 ring-red-200 hover:bg-red-100 disabled:opacity-50">Reintentar el mismo pedido</button>}
       </div>;
       case 'planFallo': return <div className="taller-aviso taller-aviso--pausa">
-        <p className="flex gap-2 font-semibold"><Icono nombre="actualizar" className="mt-0.5 h-4 w-4 shrink-0" />No logré armar el proceso esta vez</p>
-        <p className="mt-1">La IA propuso un plan que no pasó la revisión de Capacita, así que no ejecuté nada. Con pedidos de muchos pasos pasa a veces y suele salir al reintentar.</p>
+        <p className="flex gap-2 font-semibold"><Icono nombre="actualizar" className="mt-0.5 h-4 w-4 shrink-0" />{mensaje.bloqueado ? 'Con las piezas que hay no llego a todo' : 'No logré armar el proceso esta vez'}</p>
+        <p className="mt-1">{mensaje.bloqueado ? 'Arriba te explico qué parte falta. No ejecuté nada: puedes reintentar, quitar esa parte del pedido o pedirme que intente crear una herramienta para ella.' : 'La IA propuso un plan que no pasó la revisión de Capacita, así que no ejecuté nada. Con pedidos de muchos pasos pasa a veces y suele salir al reintentar.'}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" disabled={ocupado} onClick={() => resolver(mensaje.estado)} className="min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Reintentar el mismo pedido</button>
           <button type="button" disabled={ocupado} onClick={() => continuar({ ...mensaje.estado, ruta: 'definir', metaDefinir: mensaje.estado.objetivo })} className="min-h-11 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50">Mejor crea una herramienta nueva</button>
@@ -802,6 +806,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
           <p className="font-semibold">{actual ? ESTADO_RUN[actual.status] || actual.status : 'Iniciando…'}</p>
           {actual?.status === 'queued' && <p className="mt-1 text-sm text-slate-600">Tu solicitud está guardada; empezará cuando el trabajador esté disponible.</p>}
           {actual?.output != null && <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm"><ResultadoDatos value={actual.output} /></div>}
+          {/* Una consulta que no respondió no tumbó la solución: la IA lo mencionó y aquí se avisa cuál. */}
+          {actual?.status === 'completed' && actual.report?.avisos?.length > 0 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Terminó, pero no pude consultar: {actual.report.avisos.map((id) => actual.report.steps?.find((paso) => paso.id === id)?.label || id).join(', ')}. El texto lo menciona; si quieres, ejecútala otra vez más tarde.</p>}
           {actual?.report?.error && <p role="alert" className="mt-2 break-words text-sm text-red-700">{explicarError(actual.report)}. Los pasos que terminaron se conservan; revisa tus datos e inténtalo de nuevo.</p>}
           {actual && !activo(actual.status) && <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={() => onCambiarSeccion?.(`historial/${actual.id}`)}>Ver en Resultados</button>
