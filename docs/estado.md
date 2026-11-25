@@ -4,6 +4,42 @@ Actualizado: 16/11/2026. Reportes anteriores en [historial](historial/README.md)
 
 ## Reanudación inmediata
 
+### Fahida — 21/11/2026: varios archivos a la vez en el chat
+Antes el chat guardaba un solo adjunto (el segundo pisaba al primero), a la IA le decía «Adjunté un PDF»
+y respondía «sube los dos documentos». Ahora, para cualquier cantidad y tipo de archivos:
+- `src/utils/archivos.js`: `sirvePara`, `tomarAdjunto` (cada campo toma en orden el primer adjunto que
+  le sirve) y `describirAdjuntos` («2 PDF», «una foto y un PDF»; sin nombres ni contenido).
+- `ChatTaller.jsx`: lista de adjuntos, selector con `multiple`, nota a la IA «Adjunté 2 PDF… ya están
+  todos» y cada campo de archivo se llena solo con su adjunto. `VistaPrevia` usa los archivos reales
+  de la persona (antes, con dos campos, siempre muestras).
+- `gemini.py`: regla común `ADJUNTOS_INFO` en diseñar y planear: nunca pedir de nuevo lo adjuntado.
+Validación: backend 368/368, `npm test` 18/18, lint y build OK. En la app real: subir dos PDF juntos
+muestra «Tengo 2 archivos (2 PDF)». **Sin verificar** la respuesta de la IA ni la vista previa con los
+dos archivos (Fahida lo prueba al grabar). El video lo graba Fahida; tomas en `output/video/` (ignorada).
+Después, Fahida confirmó en la app que la IA reconoce los 2 PDF, pero la tarjeta «Me falta una herramienta»
+salió **sin botones**: la IA eligió `create` con `missing` vacío. Arreglo general: `PlannerProposal` siempre
+nombra al menos una herramienta en `create` (si no, usa la explicación) y el chat, si llega vacía, ofrece
+crear la del pedido completo. Prueba `test_crear_sin_faltantes.py`; backend 372/372, front 18/18, build OK.
+
+### Fahida — 21/11/2026: comparar dos PDF y subrayar las diferencias (tras d3d0031)
+Antes: `documento.pdf` de muestra era una imagen (sin texto), la prueba comparaba un PDF consigo mismo
+(«0 cambios»), la herramienta rehacía el PDF desde cero y el planner respondía «no llego a todo».
+- **Muestras**: `public/muestras/documento.pdf` y `documento_v2.pdf` con texto seleccionable
+  (`scripts/muestras/generar_pdf_muestra.py`); `MUESTRA:pdf2` en backend, `archivos.js` y `VistaPrevia`.
+- **Receta comprobada** `backend/providers/recetas/comparar_pdf.py`: marca sobre el MISMO PDF nuevo
+  (subrayado verde lo agregado, marca roja y nota donde se quitó) y agrega una página «Lista de cambios».
+  Solo se añade al protocolo de la fábrica cuando la herramienta recibe dos o más PDF.
+- **Planner**: si elige `blocked`, se le recuerda una vez que una herramienta nueva sí trabaja con
+  archivos; el aviso del chat ofrece primero «Crear una herramienta para esto».
+- **Chat**: «Reintentar» no repite la búsqueda en internet; los ejemplos se muestran en palabras
+  (`src/components/taller/ejemplos.js`), no en JSON.
+
+Validación: backend 366/366, `npm test` 15/15, lint y build OK. La receta, con pypdf 5.1.0 y
+reportlab 4.2.5 (las del sandbox), da 2 cambios, 8 palabras agregadas y 1 eliminada; revisado el
+PDF a ojo. Fábrica real (`verify_factory_gemini_real.py`, gemini-3.5-flash-lite + gVisor): diseño con
+`MUESTRA:pdf`/`pdf2`, prueba superada a la primera, 0 correcciones, 17 s.
+**Sin revisar en la app real** con sesión (chat → crear → vista previa → descargar).
+
 ### Fahida — 21/11/2026: taller más bonito, biblioteca con búsqueda, editar/eliminar y reutilizar en el chat
 Cuatro bloques, un commit cada uno (punto para volver atrás: etiqueta `antes-del-rediseno`):
 - `b3d9a49` **Taller**: mapa por capas según las conexiones (`src/components/taller/distribucion.js`): las

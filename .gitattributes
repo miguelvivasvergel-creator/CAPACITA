@@ -1,2 +1,10 @@
 # Los scripts ejecutados dentro de WSL necesitan finales de línea Linux.
 scripts/maintenance/*_wsl.sh text eol=lf
+
+# PDF y documentos de muestra: binarios. Los PDF de reportlab son solo ASCII y git los tomaba por
+# texto; con autocrlf, al hacer checkout en Windows cambiaba LF por CRLF y rompía sus posiciones internas.
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.jpg binary
+*.png binary

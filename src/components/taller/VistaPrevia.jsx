@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Icono from '../common/Icono';
 import { ajustarOpciones } from '../../services/objetivos';
 import { consultarRun, ejecutarVersion } from '../../services/versiones';
-import { conMuestras, esArchivo, infoTipo, leerArchivo } from '../../utils/archivos';
+import { conMuestras, esArchivo, infoTipo, leerArchivo, tomarAdjunto } from '../../utils/archivos';
 import ResultadoDatos from '../common/ResultadoDatos';
 import { HEX, ajusteDirecto, archivosOpcionales, opcionesEditables, resumenValores, valoresIniciales } from './ajustes';
 
@@ -15,7 +15,7 @@ const MUESTRA_DE = (media) => (media.startsWith('image/') ? 'foto' : media === '
  * Vista previa «en prueba»: ejecuta la herramienta recién creada con el archivo de la
  * persona, muestra el resultado y deja ajustarla (controles o chat) antes de guardarla.
  */
-export default function VistaPrevia({ version, definition, archivo, registrarAjustador, onEstado, onGuardar, onDescartar, onMejorar }) {
+export default function VistaPrevia({ version, definition, archivos: propios, registrarAjustador, onEstado, onGuardar, onDescartar, onMejorar }) {
   const opciones = useMemo(() => opcionesEditables(definition), [definition]);
   const opcionales = useMemo(() => archivosOpcionales(definition), [definition]);
   // Solo se habla de «tu archivo» si la herramienta recibe uno obligatorio.
@@ -38,23 +38,26 @@ export default function VistaPrevia({ version, definition, archivo, registrarAju
   useEffect(() => { vivo.current = true; return () => { vivo.current = false; }; }, []);
   useEffect(() => { final.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [intentos, trabajando]);
 
-  // Los archivos de entrada se preparan una sola vez: el de la persona o uno de muestra.
-  // Con dos o más archivos obligatorios (comparar versiones) solo hay uno de la persona: se
-  // usan muestras distintas (word, word2…) para que el resultado tenga sentido.
+  // Los archivos de entrada se preparan una sola vez. Cada campo obligatorio toma, en orden, el
+  // siguiente archivo de la persona que le sirve (dos PDF → versión 1 y versión 2). Si falta
+  // alguno se usa una muestra distinta (word y word2, pdf y pdf2) para que el resultado tenga sentido.
   function entradasArchivo() {
     archivos.current ||= (async () => {
       const entradas = {}; let deMuestra = false;
       const requeridos = definition.input_schema?.required || [];
       const campos = Object.entries(definition.input_schema?.properties || {}).filter(([nombre, spec]) => esArchivo(spec) && requeridos.includes(nombre));
       const vistos = {};
+      let disponibles = [...(propios || [])];
       for (const [nombre, spec] of campos) {
         const tipo = MUESTRA_DE(spec.contentMediaType || 'image/jpeg');
         vistos[tipo] = (vistos[tipo] || 0) + 1;
         try {
-          if (!archivo || campos.length > 1) throw new Error('sin archivo');
+          const { archivo, resto } = tomarAdjunto(disponibles, spec.contentMediaType);
+          if (!archivo) throw new Error('sin archivo');
+          disponibles = resto;
           entradas[nombre] = await leerArchivo(archivo, spec.contentMediaType);
         } catch {
-          entradas[nombre] = await conMuestras(`MUESTRA:${tipo}${vistos[tipo] === 2 && tipo === 'word' ? '2' : ''}`);
+          entradas[nombre] = await conMuestras(`MUESTRA:${tipo}${vistos[tipo] === 2 && ['word', 'pdf'].includes(tipo) ? '2' : ''}`);
           deMuestra = true;
         }
       }

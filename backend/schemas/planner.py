@@ -85,4 +85,9 @@ class PlannerProposal(BaseModel):
         if self.definition and ((self.decision == "reuse" and len(self.definition.nodes) != 1)
                                 or (self.decision == "compose" and len(self.definition.nodes) < 2)):
             raise ValueError("Decisión incompatible con pasos")
+        # «create» sin decir qué crear dejaba la tarjeta «Me falta una herramienta» sin ningún botón.
+        # Toda decisión create nombra al menos una herramienta: si la IA no la nombró, su explicación
+        # (que describe lo que hay que crear) es esa herramienta.
+        if self.decision == "create":
+            self.missing = [item.strip()[:300] for item in self.missing if item.strip()] or [self.explanation[:300]]
         return self

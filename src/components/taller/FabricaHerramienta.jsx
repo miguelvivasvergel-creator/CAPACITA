@@ -10,6 +10,7 @@ import VistaPrevia from './VistaPrevia';
 import CompartirHerramienta from './CompartirHerramienta';
 import { guardarWorkflow } from '../../services/workflows';
 import { solucionDeVersion } from './solucionDirecta';
+import { ejemploLegible } from './ejemplos';
 
 const MAX_CORRECCIONES = 2;
 const BOTON = 'min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50';
@@ -26,7 +27,7 @@ function espera(ms, signal) {
  * prueba con los ejemplos de la definición y, si falla, la IA lo corrige (máximo 2 veces).
  * Solo se activa cuando la persona lo confirma; nada se publica.
  */
-export default function FabricaHerramienta({ definition, onEstado, onLista, archivo, registrarAjustador, onMejorar, automatica = false, onFallo }) {
+export default function FabricaHerramienta({ definition, onEstado, onLista, archivos, registrarAjustador, onMejorar, automatica = false, onFallo }) {
   const [similares, setSimilares] = useState([]);
   const [fase, setFase] = useState('inicio'); // inicio | trabajando | lista | fallo | activa
   const [bitacora, setBitacora] = useState([]);
@@ -175,7 +176,9 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
     <p className="mt-1 break-words text-sm text-slate-600">{definition.description}</p>
     {ejemplos.length > 0 && <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
       <p className="text-xs font-semibold text-slate-500">Así sabré que funciona</p>
-      <ul className="mt-1 space-y-1">{ejemplos.slice(0, 3).map((ejemplo, index) => <li key={index} className="break-words font-mono text-xs text-slate-700">{JSON.stringify(ejemplo.inputs)} → {JSON.stringify(ejemplo.expected_output)}</li>)}</ul>
+      <ul className="mt-1 space-y-2">{ejemplos.slice(0, 3).map((ejemplo, index) => { const { entrega, espera } = ejemploLegible(ejemplo, definition); return <li key={index} className="break-words text-sm text-slate-700">
+        <span className="font-semibold">Le doy</span> {entrega}<br /><span className="font-semibold">y debe devolver</span> {espera}
+      </li>; })}</ul>
     </div>}
     {bloqueada && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Esta herramienta necesitaría permisos o recursos externos que el entorno aislado todavía no ofrece. No la crearé.</p>}
     {!bloqueada && fase === 'inicio' && <>
@@ -190,7 +193,7 @@ export default function FabricaHerramienta({ definition, onEstado, onLista, arch
     {fase === 'lista' && <div className="mt-3 rounded-xl bg-emerald-50 p-3">
       <p className="text-sm text-emerald-900">Se probó en el laboratorio local; para activarla hace falta el trabajador compartido.</p>
     </div>}
-    {['vista', 'activa', 'descartada'].includes(fase) && resultado?.version && <VistaPrevia version={resultado.version} definition={resultado.candidato.manifest.definition} archivo={archivo}
+    {['vista', 'activa', 'descartada'].includes(fase) && resultado?.version && <VistaPrevia version={resultado.version} definition={resultado.candidato.manifest.definition} archivos={archivos}
       registrarAjustador={registrarAjustador} onEstado={estado} onGuardar={guardar} onDescartar={descartar}
       onMejorar={(texto, explicacion) => onMejorar?.(texto, explicacion, resultado.candidato.manifest.definition)} />}
     {fase === 'descartada' && <p className="mt-3 text-sm text-slate-600"><Icono nombre="basura" className="mr-1 inline h-4 w-4 align-[-3px]" />Descartada: la desactivé y no aparecerá en tus soluciones.</p>}

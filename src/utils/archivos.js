@@ -14,7 +14,7 @@ export const TIPOS = {
 };
 // word2: versión nueva de documento.docx (cambios descritos en backend/providers/gemini.py) para
 // probar herramientas que comparan dos versiones.
-const MUESTRAS = { foto: 'foto.jpg', pdf: 'documento.pdf', word: 'documento.docx', word2: 'documento_v2.docx', excel: 'hoja.xlsx' };
+const MUESTRAS = { foto: 'foto.jpg', pdf: 'documento.pdf', pdf2: 'documento_v2.pdf', word: 'documento.docx', word2: 'documento_v2.docx', excel: 'hoja.xlsx' };
 // Con 4 MB de límite total, un archivo de hasta ~2,8 MB cabe en base64.
 const MAX_BYTES = 2_800_000;
 const LADO_MAX = 1600;
@@ -41,11 +41,44 @@ async function imagenReducida(archivo, media) {
   return blob;
 }
 
+/** ¿Sirve este archivo para un campo de este tipo? (misma regla que aplica leerArchivo) */
+export function sirvePara(archivo, media) {
+  if (!archivo) return false;
+  if (media?.startsWith('image/')) return Boolean(archivo.type?.startsWith('image/'));
+  return !media || !TIPOS[media] || archivo.name.toLowerCase().endsWith(`.${TIPOS[media].ext}`);
+}
+
+/**
+ * Archivos que la persona adjuntó antes de tener solución: cada campo de archivo toma, en
+ * orden, el primero que le sirve. Así dos PDF llenan «versión 1» y «versión 2», y una foto con
+ * un PDF van cada uno a su campo, sin importar cuántos sean ni en qué orden se subieron.
+ */
+export function tomarAdjunto(lista, media) {
+  const indice = lista.findIndex((archivo) => sirvePara(archivo, media));
+  if (indice < 0) return { archivo: null, resto: lista };
+  return { archivo: lista[indice], resto: [...lista.slice(0, indice), ...lista.slice(indice + 1)] };
+}
+
+const CLASES = [
+  [(a) => Boolean(a.type?.startsWith('image/')), 'una foto', 'fotos'],
+  [(a) => a.name.toLowerCase().endsWith('.pdf'), 'un PDF', 'PDF'],
+  [(a) => a.name.toLowerCase().endsWith('.docx'), 'un documento Word', 'documentos Word'],
+  [(a) => a.name.toLowerCase().endsWith('.xlsx'), 'un Excel', 'Excel'],
+  [() => true, 'un archivo', 'archivos'],
+];
+/** «un PDF», «2 PDF», «una foto y 2 PDF»: solo tipos y cantidades, nunca nombres ni contenido. */
+export function describirAdjuntos(lista) {
+  const cuenta = CLASES.map(() => 0);
+  for (const archivo of lista) cuenta[CLASES.findIndex(([es]) => es(archivo))] += 1;
+  const partes = CLASES.map(([, uno, varios], i) => (cuenta[i] === 1 ? uno : cuenta[i] > 1 ? `${cuenta[i]} ${varios}` : '')).filter(Boolean);
+  return partes.length > 1 ? `${partes.slice(0, -1).join(', ')} y ${partes.at(-1)}` : partes[0] || '';
+}
+
 /** Lee un archivo elegido por la persona y lo deja listo para el contrato. */
 export async function leerArchivo(archivo, media) {
   const esImagen = media?.startsWith('image/');
   if (esImagen && !archivo.type.startsWith('image/')) throw new Error('Aquí necesito una foto o imagen (JPG o PNG).');
-  if (!esImagen && media && TIPOS[media] && !archivo.name.toLowerCase().endsWith(`.${TIPOS[media].ext}`)) {
+  if (!esImagen && !sirvePara(archivo, media)) {
     throw new Error(`Aquí necesito un archivo ${TIPOS[media].nombre} (.${TIPOS[media].ext}).`);
   }
   const contenido = esImagen ? await imagenReducida(archivo, media) : archivo;

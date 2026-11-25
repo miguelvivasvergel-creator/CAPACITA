@@ -609,7 +609,7 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
     verificación), paso 2 (plan) con hasta tres intentos corregidos y la revisión de que nada del pedido
     se pierda. validar(definition) devuelve {"order": [...]} o lanza HTTPException (404/409/422)."""
     selected = {row["id"] for row in options}
-    validation, feedback, usos, requisitos, parcial = None, None, {}, [], False
+    validation, feedback, usos, requisitos, parcial, revisado_crear = None, None, {}, [], False, False
     # Gemini a veces conecta mal los puertos: se le devuelve el error exacto y se reintenta una
     # vez, dentro del mismo turno del limitador (un pedido de la persona = un intento).
     limits.start(user_id)
@@ -641,6 +641,16 @@ async def planear(objective, options, provider, validar, user_id, auto=True, lim
                                 "las versiones. Haz compose con las partes posibles y pon SOLO lo imposible en "
                                 "pendientes" + (f" ({'; '.join(proposal.pendientes)[:300]})" if proposal.pendientes else "")
                                 + ", diciéndolo en explanation. Si de verdad no se puede nada, vuelve a elegir blocked.")
+                    continue
+                # «blocked» de una sola parte: la IA a veces lo elige para trabajos de archivos que una herramienta
+                # nueva sí hace («comparar dos PDF y subrayar las diferencias» terminaba en «no llego a todo» y
+                # la persona tenía que pedir la herramienta a mano). Se le recuerda una vez qué cubre create.
+                if proposal.decision == "blocked" and attempt < 2 and not revisado_crear:
+                    revisado_crear = True
+                    feedback = ("Elegiste blocked. Revisa: una herramienta nueva (create) puede leer, comparar, marcar, "
+                                "convertir y generar PDF, Word, Excel e imágenes y hacer cálculos, sin red. Si lo que falta "
+                                "es eso, elige create y descríbelo en missing. Vuelve a elegir blocked solo si hace falta "
+                                "una cuenta, un envío o un servicio externo sin conector, hardware o un permiso.")
                     continue
                 break
             ajenas = {str(node.version_id) for node in proposal.definition.nodes} - selected

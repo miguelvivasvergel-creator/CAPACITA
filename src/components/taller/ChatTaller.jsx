@@ -7,7 +7,7 @@ import { ajusteDirecto, opcionesEditables } from './ajustes';
 import { guardarWorkflow } from '../../services/workflows';
 import { camposChat } from '../../utils/formularioDatos';
 import { etiquetaLegible } from '../../utils/etiquetas';
-import { infoTipo, leerArchivo, urlDatos } from '../../utils/archivos';
+import { describirAdjuntos, infoTipo, leerArchivo, tomarAdjunto, urlDatos } from '../../utils/archivos';
 import FabricaHerramienta from './FabricaHerramienta';
 import ResultadoDatos from '../common/ResultadoDatos';
 import LienzoTaller from './LienzoTaller';
@@ -153,7 +153,11 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   const [vistaMovil, setVistaMovil] = useState('chat');
   // Datos del plan que el chat pide uno por uno: { definicion, campos, indice, datos }.
   const [pidiendo, setPidiendo] = useState(null);
-  const [adjunto, setAdjunto] = useState(null); // archivo enviado antes de tener solución
+  // Archivos enviados antes de tener solución (uno o varios: dos versiones, foto + logo…). La
+  // referencia es la fuente de verdad (la leen pasos encadenados); el estado repinta la fábrica.
+  const [adjuntos, setAdjuntos] = useState([]);
+  const porUsar = useRef([]);
+  function fijarAdjuntos(lista) { porUsar.current = lista; setAdjuntos(lista); }
   const [leyendo, setLeyendo] = useState(false);
   const siguienteId = useRef(0), peticion = useRef(null), fin = useRef(null), entrada = useRef(null), selector = useRef(null);
   // Mientras una herramienta está «en prueba», lo que se escribe la ajusta («ponle 30 %»).
@@ -163,8 +167,11 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   // Versiones creadas en esta necesidad: al rearmar el plan se ofrecen siempre al planner y,
   // si aun así no las combina, se usan directamente en vez de diseñar un duplicado.
   const recienCreadas = useRef([]);
+  // Lo investigado por pedido. «Reintentar» reenvía el estado de ANTES de investigar: sin esto, un
+  // «Gemini está ocupado» al diseñar hacía buscar en Google otra vez y mostraba la tarjeta repetida.
+  const investigado = useRef(new Map());
   // Para ajustar un resultado: contratos de las versiones del plan y el último archivo usado.
-  const opcionesPlan = useRef([]), ultimoArchivo = useRef(null);
+  const opcionesPlan = useRef([]), ultimosArchivos = useRef([]);
   // Qué pasos del plan son conectores (sello globo); se recalcula cada vez que cambian las opciones.
   const [conectores, setConectores] = useState(SIN_CONECTORES);
   function fijarOpciones(items) { opcionesPlan.current = items; setConectores(mapaConectores(items)); }
@@ -309,6 +316,17 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     setPidiendo(estado);
     const campo = estado.campos[estado.indice];
     if (!campo) { agregar({ de: 'capacita', tipo: 'confirmar', definicion: estado.definicion, datos: estado.datos }); return; }
+    // Cada campo de archivo toma el siguiente adjunto que le sirve; con varios (dos versiones,
+    // foto + logo…) se llenan todos sin volver a pedirlos.
+    if (campo.archivo) {
+      const { archivo, resto } = tomarAdjunto(porUsar.current, campo.archivo);
+      if (archivo) {
+        fijarAdjuntos(resto);
+        agregar({ de: 'capacita', tipo: 'texto', texto: `Para ${campo.etiqueta} uso el archivo que me enviaste (${archivo.name}).` });
+        usarArchivo(archivo, estado);
+        return;
+      }
+    }
     const inicio = estado.indice ? 'Ahora necesito' : 'Para ejecutarla necesito';
     if (campo.opcional) {
       agregar({ de: 'capacita', tipo: 'texto', texto: `Si quieres personalizarla, sube ${campo.etiqueta} (${infoTipo(campo.archivo).nombre}) con el botón del clip. Es opcional: si no, escribe «no»` });
@@ -343,7 +361,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     setLeyendo(true);
     try {
       const base64 = await leerArchivo(archivo, campo.archivo);
-      ultimoArchivo.current = archivo;
+      // Los archivos de esta ejecución (todos, no solo el último) quedan para ajustar el resultado.
+      const yaHayArchivos = estado.campos.slice(0, estado.indice).some((anterior) => anterior.archivo);
+      ultimosArchivos.current = yaHayArchivos ? [...ultimosArchivos.current, archivo] : [archivo];
       agregar({ de: 'tu', tipo: 'archivo', nombre: archivo.name, vista: campo.archivo.startsWith('image/') ? urlDatos(base64, campo.archivo) : null });
       pedirSiguiente({ ...estado, indice: estado.indice + 1, datos: { ...estado.datos, [campo.nombre]: base64 } });
     } catch (cause) {
@@ -360,10 +380,21 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       agregar({ de: 'capacita', tipo: 'texto', texto: `Ahora necesito: ${campo.etiqueta}. Escríbelo abajo` });
       return;
     }
-    // Aún no hay solución: se guarda y se usa cuando la solución pida un archivo.
-    setAdjunto(archivo);
+    // Aún no hay solución: se suman (no se reemplazan) y cada campo de archivo toma el suyo.
+    fijarAdjuntos([...porUsar.current, archivo]);
     agregar({ de: 'tu', tipo: 'archivo', nombre: archivo.name, vista: archivo.type.startsWith('image/') ? URL.createObjectURL(archivo) : null });
-    agregar({ de: 'capacita', tipo: 'texto', texto: 'Recibí tu archivo. Cuéntame qué quieres hacer con él.' });
+  }
+
+  // Uno o varios archivos a la vez (el selector admite varios mientras no se pide uno concreto).
+  function recibirArchivos(lista) {
+    const elegidos = [...(lista || [])];
+    if (!elegidos.length) return;
+    if (plan && pidiendo) { recibirArchivo(elegidos[0]); fijarAdjuntos([...porUsar.current, ...elegidos.slice(1)]); return; }
+    elegidos.forEach(recibirArchivo);
+    const total = porUsar.current.length;
+    agregar({ de: 'capacita', tipo: 'texto', texto: total > 1
+      ? `Tengo ${total} archivos (${describirAdjuntos(porUsar.current)}). Cuéntame qué quieres hacer con ellos; si te falta alguno, súbelo también.`
+      : 'Recibí tu archivo. Cuéntame qué quieres hacer con él; si es más de uno, súbelos también.' });
   }
 
   function empezarDatos(definicion) {
@@ -371,13 +402,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
     // entrada exigen campos obligatorios): pedir un logo opcional sería pedir algo que se ignora.
     const campos = camposChat(definicion.input_schema)?.filter((campo) => !campo.opcional);
     if (!campos?.length) { setPidiendo(null); return; }
-    const estado = { definicion, campos, indice: 0, datos: {} };
-    if (adjunto && campos[0].archivo) {
-      agregar({ de: 'capacita', tipo: 'texto', texto: `Uso el archivo que me enviaste (${adjunto.name}).` });
-      const archivo = adjunto; setAdjunto(null); usarArchivo(archivo, estado);
-      return;
-    }
-    pedirSiguiente(estado);
+    pedirSiguiente({ definicion, campos, indice: 0, datos: {} });
   }
 
   // mejorando: nombre de la herramienta que se está mejorando. La versión mejorada conserva ese
@@ -420,13 +445,20 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   // ya lo resuelven no se busca: usarlas no es hacer algo nuevo y la búsqueda tarda y gasta cuota.
   async function investigarPrimero(estado, signal) {
     if (estado.investigacion !== undefined) return estado.investigacion;
+    const pedido = estado.objetivo.slice(0, 2000);
+    if (investigado.current.has(pedido)) {
+      const guardada = investigado.current.get(pedido);
+      setConversacion((old) => (old ? { ...old, investigacion: guardada } : old));
+      return guardada;
+    }
     setFase('Antes de crearla, investigo en internet cómo se hace bien…');
     let resultado = null;
-    try { resultado = await investigar(estado.objetivo.slice(0, 2000), signal); } catch (cause) { if (signal.aborted) throw cause; }
+    try { resultado = await investigar(pedido, signal); } catch (cause) { if (signal.aborted) throw cause; }
     if (signal.aborted) return null;
     if (resultado) agregar({ de: 'capacita', tipo: 'investigacion', investigacion: resultado });
     else agregar({ de: 'capacita', tipo: 'texto', texto: 'No pude buscar en internet en este momento; sigo con lo que ya sé.' });
     const investigacion = resultado?.summary || null;
+    if (investigacion) investigado.current.set(pedido, investigacion);
     setConversacion((old) => (old ? { ...old, investigacion } : old));
     return investigacion;
   }
@@ -508,7 +540,10 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         agregar({ de: 'capacita', tipo: 'plan', definicion: proposal.definition });
         empezarDatos(proposal.definition);
       } else if (proposal.decision === 'create') {
-        agregar({ de: 'capacita', tipo: 'faltan', faltan: proposal.missing });
+        // Sin lista de faltantes la tarjeta quedaba sin botones: se ofrece crear la del pedido completo
+        // (sin la nota de adjuntos, que crearFaltante vuelve a añadir con el contexto).
+        const faltan = proposal.missing?.filter((item) => item?.trim()) || [];
+        agregar({ de: 'capacita', tipo: 'faltan', faltan: faltan.length ? faltan : [estado.objetivo.split('\n')[0]] });
       } else {
         // "blocked": la IA ya explicó arriba qué falta. Antes se saltaba a fabricar una herramienta,
         // que no puede enviar ni consultar servicios y terminaba igual en «Aquí me detengo» tras
@@ -574,10 +609,13 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
   function nuevaNecesidad(valor, mostrar = true) {
     if (mostrar) agregar({ de: 'tu', tipo: 'texto', texto: valor });
     nuevoTaller(); recienCreadas.current = [];
-    // Solo se cuenta el tipo de archivo adjunto, nunca su contenido.
-    const tipoAdjunto = !adjunto ? '' : adjunto.type.startsWith('image/') ? 'una foto' : adjunto.name.toLowerCase().endsWith('.pdf') ? 'un PDF'
-      : adjunto.name.toLowerCase().endsWith('.docx') ? 'un documento Word' : adjunto.name.toLowerCase().endsWith('.xlsx') ? 'un Excel' : 'un archivo';
-    continuar({ objetivo: tipoAdjunto ? `${valor}\n(Adjunté ${tipoAdjunto} como entrada.)` : valor, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
+    // Solo se cuentan tipos y cantidades de los adjuntos, nunca nombres ni contenido. Con varios
+    // se dice que ya están todos, para que la IA no los vuelva a pedir.
+    const lista = porUsar.current, tipos = describirAdjuntos(lista);
+    const nota = !tipos ? '' : lista.length > 1
+      ? `\n(Adjunté ${tipos} como entrada, en este orden; ya están todos: cada uno es una entrada distinta.)`
+      : `\n(Adjunté ${tipos} como entrada.)`;
+    continuar({ objetivo: `${valor}${nota}`, aclaraciones: [], ruta: 'buscar', metaDefinir: null });
   }
 
   function crearTodas(items) {
@@ -680,7 +718,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
       setEstadoCreacion('completed');
       // El archivo ya se usó en la vista previa: una necesidad nueva no debe heredarlo en
       // silencio (ni decirle a la IA «adjunté una foto»). Queda como último archivo para ajustes.
-      if (adjunto) { ultimoArchivo.current = adjunto; setAdjunto(null); }
+      if (porUsar.current.length) { ultimosArchivos.current = porUsar.current; fijarAdjuntos([]); }
       agregar({ de: 'capacita', tipo: 'texto', texto: '¡Guardada en tus herramientas privadas! Descarga el resultado desde la tarjeta. Para usarla otra vez con otro archivo, búscala en «Mi biblioteca» y tócala: no hará falta esperar a la IA.' });
       return;
     }
@@ -722,12 +760,14 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
           className="mt-2 min-h-11 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-red-800 ring-1 ring-red-200 hover:bg-red-100 disabled:opacity-50">Reintentar el mismo pedido</button>}
       </div>;
       case 'planFallo': return <div className="taller-aviso taller-aviso--pausa">
-        <p className="flex gap-2 font-semibold"><Icono nombre="actualizar" className="mt-0.5 h-4 w-4 shrink-0" />{mensaje.bloqueado ? 'Con las piezas que hay no llego a todo' : 'No logré armar el proceso esta vez'}</p>
-        <p className="mt-1">{mensaje.bloqueado ? 'Arriba te explico qué parte falta. No ejecuté nada: puedes reintentar, quitar esa parte del pedido o pedirme que intente crear una herramienta para ella.' : 'La IA propuso un plan que no pasó la revisión de Capacita, así que no ejecuté nada. Con pedidos de muchos pasos pasa a veces y suele salir al reintentar.'}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" disabled={ocupado} onClick={() => resolver(mensaje.estado)} className="min-h-11 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Reintentar el mismo pedido</button>
-          <button type="button" disabled={ocupado} onClick={() => continuar({ ...mensaje.estado, ruta: 'definir', metaDefinir: mensaje.estado.objetivo })} className="min-h-11 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50">Mejor crea una herramienta nueva</button>
-        </div>
+        <p className="flex gap-2 font-semibold"><Icono nombre="actualizar" className="mt-0.5 h-4 w-4 shrink-0" />{mensaje.bloqueado ? 'Con tus herramientas de ahora no llego a todo' : 'No logré armar el proceso esta vez'}</p>
+        <p className="mt-1">{mensaje.bloqueado ? 'Arriba te explico qué falta. No ejecuté nada. Si es algo que se hace con tus archivos o con cálculos, puedo crear una herramienta nueva para eso; si necesita una cuenta o un servicio que Capacita no tiene, quita esa parte del pedido.' : 'La IA propuso un plan que no pasó la revisión de Capacita, así que no ejecuté nada. Con pedidos de muchos pasos pasa a veces y suele salir al reintentar.'}</p>
+        {/* Bloqueado: reintentar da la misma respuesta (el planner ya lo reconsideró una vez), así que lo
+            primero es crear la herramienta; si fue un plan que no pasó la revisión, lo primero es reintentar. */}
+        <div className="mt-3 flex flex-wrap gap-2">{[
+          <button key="reintentar" type="button" disabled={ocupado} onClick={() => resolver(mensaje.estado)} className={`min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 ${mensaje.bloqueado ? 'border border-slate-300 bg-white text-slate-700' : 'bg-blue-700 text-white'}`}>Reintentar el mismo pedido</button>,
+          <button key="crear" type="button" disabled={ocupado} onClick={() => continuar({ ...mensaje.estado, ruta: 'definir', metaDefinir: mensaje.estado.objetivo })} className={`min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 ${mensaje.bloqueado ? 'bg-amber-500 text-white' : 'border border-amber-300 bg-white text-amber-900'}`}>{mensaje.bloqueado ? 'Crear una herramienta para esto' : 'Mejor crea una herramienta nueva'}</button>,
+        ][mensaje.bloqueado ? 'reverse' : 'slice']()}</div>
       </div>;
       case 'bloqueado': return <div className="taller-aviso taller-aviso--pausa">
         <p className="flex gap-2 font-semibold"><Icono nombre="candado" className="mt-0.5 h-4 w-4 shrink-0" />Aquí me detengo</p>
@@ -782,7 +822,7 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         </div>}
       </div>;
       case 'crear': return <FabricaHerramienta definition={mensaje.definicion} onEstado={setEstadoCreacion} onLista={herramientaLista}
-        archivo={adjunto || ultimoArchivo.current} registrarAjustador={registrarAjustador} onMejorar={mejorarHerramienta}
+        archivos={adjuntos.length ? adjuntos : ultimosArchivos.current} registrarAjustador={registrarAjustador} onMejorar={mejorarHerramienta}
         automatica={Boolean(mensaje.automatica)} onFallo={falloEnCola} />;
       case 'plan': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status))} onEjecucion={alEjecutar} conectores={conectores} /></div>;
       case 'confirmar': return <div className={tarjeta}><TarjetaPlan definition={mensaje.definicion} datos={mensaje.datos} obtenerGuardada={obtenerGuardada} ocupadoExterno={Boolean(run && activo(run.status)) || mensaje.definicion !== plan} onEjecucion={alEjecutar} conectores={conectores} /></div>;
@@ -848,9 +888,9 @@ export default function ChatTaller({ usuario, onCambiarSeccion, abrir = [] }) {
         <button type="button" className="shrink-0 rounded-lg px-2 py-1 font-semibold text-blue-700 hover:bg-blue-50" onClick={() => { setPidiendo(null); entrada.current?.focus(); }}>Pedir otra cosa</button>
       </div>}
       <form onSubmit={enviar} className="taller-compositor">
-        <input ref={selector} type="file" className="sr-only" tabIndex={-1} aria-hidden="true"
+        <input ref={selector} type="file" className="sr-only" tabIndex={-1} aria-hidden="true" multiple={!campoActual?.archivo}
           accept={campoActual?.archivo ? infoTipo(campoActual.archivo).acepta : 'image/*,.pdf,.docx,.xlsx'}
-          onChange={(event) => { recibirArchivo(event.target.files?.[0]); event.target.value = ''; }} />
+          onChange={(event) => { recibirArchivos(event.target.files); event.target.value = ''; }} />
         <button type="button" className="taller-adjuntar" disabled={ocupado || leyendo} onClick={() => selector.current?.click()}
           aria-label={campoActual?.archivo ? `Subir ${campoActual.etiqueta}` : 'Adjuntar foto, PDF, Word o Excel'} title="Adjuntar archivo"><Icono nombre={leyendo ? 'reloj' : 'clip'} className="h-5 w-5" /></button>
         <label htmlFor="taller-entrada" className="sr-only">Escribe tu necesidad</label>
